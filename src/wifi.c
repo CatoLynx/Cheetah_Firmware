@@ -5,6 +5,7 @@
 #include "esp_wifi.h"
 
 #include "wifi.h"
+#include "settings_secret.h"
 
 #define LOG_TAG "WiFi"
 
@@ -111,8 +112,8 @@ void wifi_init(void) {
 
     wifi_config_t wifi_config = {
         .sta = {
-            .ssid = CONFIG_PROJ_STA_SSID,
-            .password = CONFIG_PROJ_STA_PASS,
+            .ssid = STA_SSID,
+            .password = STA_PASS,
             /* Setting a password implies station will connect to all security modes including WEP/WPA.
              * However these modes are deprecated and not advisable to be used. Incase your Access point
              * doesn't support WPA2, these mode can be enabled by commenting below line */

@@ -4,3 +4,4 @@
 .vscode/launch.json
 .vscode/ipch
 sdkconfig.old
+include/settings_secret.h
