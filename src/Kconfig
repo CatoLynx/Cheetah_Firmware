@@ -1,0 +1,43 @@
+menu "Project Configuration"
+
+config PROJ_HOSTNAME
+    string "Device Hostname"
+    default "esp32"
+    help
+        This sets the network hostname used by the device.
+
+config PROJ_STA_SSID
+    string "STA WiFi SSID"
+	default ""
+	help
+		SSID (network name) to connect to.
+
+config PROJ_STA_PASS
+    string "STA WiFi password"
+	default ""
+	help
+		WiFi password (WPA or WPA2) to use.
+
+		Can be left blank if the network has no security set.
+
+config PROJ_STA_MAX_RECONNECTS
+    int "STA WiFi Max. Reconnects"
+	default 5
+	help
+		How often to try to reconnect to the STA WiFi.
+
+config PROJ_AP_SSID
+    string "AP WiFi SSID"
+	default ""
+	help
+		SSID (network name) to create when STA connection fails.
+
+config PROJ_AP_PASS
+    string "AP WiFi password"
+	default ""
+	help
+		WiFi password (WPA or WPA2) to use.
+
+		Can be left blank if the network has no security set.
+
+endmenu
