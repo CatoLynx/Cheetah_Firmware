@@ -1,0 +1,8 @@
+menu "Browser OTA"
+
+config FOO_ENABLE_BAR
+    bool "Enable the BAR feature."
+    help
+        This enables the BAR feature of the FOO component.
+
+endmenu

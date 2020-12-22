@@ -6,6 +6,8 @@
 
 #include "wifi.h"
 
+#define LOG_TAG "WiFi"
+
 
 static uint16_t s_retry_num = 0;
 
