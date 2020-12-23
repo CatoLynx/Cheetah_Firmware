@@ -4,6 +4,7 @@
 #include "nvs_flash.h"
 
 #include "browser_ota.h"
+#include "driver_display_flipdot.h"
 #include "wifi.h"
 
 void app_main(void) {
@@ -22,6 +23,7 @@ void app_main(void) {
     mdns_hostname_set(CONFIG_PROJ_HOSTNAME);
     mdns_instance_name_set(CONFIG_PROJ_HOSTNAME);
 
-    static httpd_handle_t server = NULL;
-    server = start_webserver();
+    start_webserver();
+
+    display_setupPeripherals();
 }
