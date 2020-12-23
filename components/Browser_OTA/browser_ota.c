@@ -47,26 +47,26 @@ static esp_err_t abortRequest(httpd_req_t *req) {
 
 static esp_err_t root_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
-	httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
-	return ESP_OK;
+    httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
+    return ESP_OK;
 }
 
 static esp_err_t favicon_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/x-icon");
-	httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_end - favicon_ico_start);
-	return ESP_OK;
+    httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_end - favicon_ico_start);
+    return ESP_OK;
 }
 
 static esp_err_t jquery_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "application/javascript");
-	httpd_resp_send(req, (const char *)jquery_3_4_1_min_js_start, (jquery_3_4_1_min_js_end - jquery_3_4_1_min_js_start)-1);
-	return ESP_OK;
+    httpd_resp_send(req, (const char *)jquery_3_4_1_min_js_start, (jquery_3_4_1_min_js_end - jquery_3_4_1_min_js_start)-1);
+    return ESP_OK;
 }
 
 static esp_err_t spinner_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/gif");
-	httpd_resp_send(req, (const char *)spinner_gif_start, spinner_gif_end - spinner_gif_start);
-	return ESP_OK;
+    httpd_resp_send(req, (const char *)spinner_gif_start, spinner_gif_end - spinner_gif_start);
+    return ESP_OK;
 }
 
 static esp_err_t ota_length_post_handler(httpd_req_t *req) {
@@ -206,8 +206,16 @@ static esp_err_t ota_status_get_handler(httpd_req_t *req) {
     char resp[100];
     sprintf(resp, "{\"payload_length\": %d, \"received\": %d, \"success\": %d}", ota_payload_length, ota_rx_len, ota_success);
     httpd_resp_set_type(req, "application/json");
-	httpd_resp_send(req, resp, strlen(resp));
-	return ESP_OK;
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
+static esp_err_t fw_version_get_handler(httpd_req_t *req) {
+    char resp[100];
+    sprintf(resp, "{\"compile_date\": \"%s\", \"compile_time\": \"%s\"}", __DATE__, __TIME__);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
 }
 
 static const httpd_uri_t root_get = {
@@ -252,9 +260,17 @@ static const httpd_uri_t ota_status_get = {
     .handler   = ota_status_get_handler
 };
 
+static const httpd_uri_t fw_version_get = {
+    .uri       = "/version",
+    .method    = HTTP_GET,
+    .handler   = fw_version_get_handler
+};
+
 httpd_handle_t start_webserver(void) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    config.max_uri_handlers = 16;
 
     ESP_LOGI(LOG_TAG, "Starting HTTP server on port %d", config.server_port);
     if (httpd_start(&server, &config) != ESP_OK) {
@@ -270,6 +286,7 @@ httpd_handle_t start_webserver(void) {
     httpd_register_uri_handler(server, &ota_length_post);
     httpd_register_uri_handler(server, &ota_post);
     httpd_register_uri_handler(server, &ota_status_get);
+    httpd_register_uri_handler(server, &fw_version_get);
     
     ESP_LOGI(LOG_TAG, "Creating restart task");
     xTaskCreate(&systemRestartTask, "restartTask", 2048, NULL, 5, &systemRestartTaskHandle);

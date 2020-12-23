@@ -9,7 +9,8 @@
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
-    <h1>ESP32 Firmware Update Page</h1>
+    <h1>xatLabs Cheetah</h1>
+    <h3 id="fw-version">&nbsp;</h3>
 
     <input type="file" id="file-firmware" accept=".bin" />
     <div id="div-file-info">&nbsp;</div>
@@ -86,6 +87,16 @@
         });
       }
       
+      function getFWVersion() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/version",
+          success: onGetFWVersionSuccess,
+          error: onGetFWVersionError
+        });
+      }
+      
       function onSetPayloadLengthSuccess(data, textStatus, jqXHR) {
         console.log("Successfully set payload size");
         uploadFirmware();
@@ -117,9 +128,18 @@
         setTimeout(getStatus, 2000);
       }
 
+      function onGetFWVersionSuccess(data, textStatus, jqXHR) {
+        $("#fw-version").html("Compiled: " + data['compile_date'] + " " + data['compile_time']);
+      }
+
+      function onGetFWVersionError(jqXHR, textStatus, errorThrown) {
+        $("#fw-version").html("Failed to load firmware version info");
+      }
+
       function onReady() {
         $("#file-firmware").change(onFileSelected);
         $("#btn-submit").click(startUpdate);
+        getFWVersion();
       }
 
       $(document).ready(onReady);
