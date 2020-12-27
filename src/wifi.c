@@ -100,8 +100,6 @@ void wifi_init_ap(void) {
 
 void wifi_init(void) {
     // Init WiFi in STA mode, AP will be automatically used as fallback
-    ESP_ERROR_CHECK(esp_netif_init());
-
     esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();

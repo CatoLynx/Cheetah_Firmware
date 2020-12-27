@@ -8,22 +8,72 @@ config PROJ_HOSTNAME
 
 config PROJ_STA_MAX_RECONNECTS
     int "STA WiFi Max. Reconnects"
-	default 5
-	help
-		How often to try to reconnect to the STA WiFi.
+    default 5
+    help
+        How often to try to reconnect to the STA WiFi.
 
 config PROJ_AP_SSID
     string "AP WiFi SSID"
-	default ""
-	help
-		SSID (network name) to create when STA connection fails.
+    default ""
+    help
+        SSID (network name) to create when STA connection fails.
 
 config PROJ_AP_PASS
     string "AP WiFi password"
-	default ""
-	help
-		WiFi password (WPA or WPA2) to use.
+    default ""
+    help
+        WiFi password (WPA or WPA2) to use.
 
-		Can be left blank if the network has no security set.
+        Can be left blank if the network has no security set.
+
+endmenu
+
+menu "Display Configuration"
+
+choice DISPLAY_FRAME_TYPE
+    bool "Display frame type"
+    default DISPLAY_FRAME_TYPE_1BPP
+
+    config DISPLAY_FRAME_TYPE_1BPP
+        bool "1 bit per pixel (black/white)"
+    
+    config DISPLAY_FRAME_TYPE_8BPP
+        bool "8 bits per pixel (greyscale)"
+    
+    config DISPLAY_FRAME_TYPE_24BPP
+        bool "24 bits per pixel (RGB, 8 bits per colour)"
+endchoice
+
+config DISPLAY_FRAME_TYPE
+    int
+    default 1 if DISPLAY_FRAME_TYPE_1BPP
+    default 8 if DISPLAY_FRAME_TYPE_8BPP
+    default 24 if DISPLAY_FRAME_TYPE_24BPP
+
+config DISPLAY_WIDTH
+    int "Actual display width"
+    default 0
+    help
+        Actual width of the display, as seen from the outside.
+
+config DISPLAY_HEIGHT
+    int "Actual display height"
+    default 0
+    help
+        Actual height of the display, as seen from the outside.
+
+config DISPLAY_FRAME_WIDTH
+    int "Display frame width"
+    default 0
+    help
+        Frame width of the display. Usually the same as the actual width, but can be different
+        in case of non-populated columns of pixels or other mapping shenanigans.
+
+config DISPLAY_FRAME_HEIGHT
+    int "Display frame height"
+    default 0
+    help
+        Frame height of the display. Usually the same as the actual height, but can be different
+        in case of non-populated rows of pixels or other mapping shenanigans.
 
 endmenu

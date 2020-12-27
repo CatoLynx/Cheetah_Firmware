@@ -1,4 +1,6 @@
 #include "esp_log.h"
+#include "esp_netif.h"
+#include "esp_wifi.h"
 #include "httpd.h"
 
 #define LOG_TAG "HTTPD"
@@ -22,6 +24,16 @@ static esp_err_t jquery_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t ip_get_handler(httpd_req_t *req) {
+    tcpip_adapter_ip_info_t ip_info;
+    tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
+    char ip_str[16];
+    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_send(req, ip_str, strlen(ip_str));
+    return ESP_OK;
+}
+
 static const httpd_uri_t favicon_get = {
     .uri       = "/favicon.ico",
     .method    = HTTP_GET,
@@ -32,6 +44,12 @@ static const httpd_uri_t jquery_get = {
     .uri       = "/jquery.min.js",
     .method    = HTTP_GET,
     .handler   = jquery_get_handler
+};
+
+static const httpd_uri_t ip_get = {
+    .uri       = "/ip",
+    .method    = HTTP_GET,
+    .handler   = ip_get_handler
 };
 
 httpd_handle_t start_webserver(void) {
@@ -49,6 +67,7 @@ httpd_handle_t start_webserver(void) {
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
     httpd_register_uri_handler(server, &favicon_get);
     httpd_register_uri_handler(server, &jquery_get);
+    httpd_register_uri_handler(server, &ip_get);
 
     return server;
 }

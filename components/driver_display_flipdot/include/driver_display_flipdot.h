@@ -11,3 +11,4 @@ void display_selectColor(uint8_t color);
 void display_deselect();
 void display_flip();
 void display_setBacklight(uint8_t state);
+void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);

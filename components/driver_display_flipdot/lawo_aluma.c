@@ -2,11 +2,17 @@
  * Functions for LAWO ALUMA (XY10) flipdot panels
  */
 
+#include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include <string.h>
+
 #include "lawo_aluma.h"
 #include "util.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
+
+#define LOG_TAG "LAWO-ALUMA"
+
 
 static const uint8_t rowLookupTableYellow[28] = {
     2, 3, 6, 7, 1, 0, 5, 4,
@@ -160,4 +166,38 @@ void display_setBacklight(uint8_t state) {
      */
 
     gpio_set_level(PIN_LED, state);
+}
+
+void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+    uint16_t p, x, y;
+    if(prevFrame) {
+        for(uint16_t i = 0; i < frameBufSize; i++) {
+            if((frame[i] > 127) == (prevFrame[i] > 127)) continue;
+            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
+            y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
+            p = x / 28; // TODO: Remove hardcoded 28
+            x %= 28;
+            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_selectPanel(p);
+            display_selectColor(frame[i] > 127);
+            display_selectColumn(x);
+            display_selectRow(y);
+            ESP_LOGI(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+            display_flip();
+        }
+        memcpy(prevFrame, frame, frameBufSize);
+    } else {
+        for(uint16_t i = 0; i < frameBufSize; i++) {
+            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
+            y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
+            p = x / 28; // TODO: Remove hardcoded 28
+            x %= 28;
+            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_selectPanel(p);
+            display_selectColor(frame[i] > 127);
+            display_selectColumn(x);
+            display_selectRow(y);
+            ESP_LOGI(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+            display_flip();
+        }
+    }
+    display_deselect();
 }

@@ -1,0 +1,11 @@
+menu "tpm2.net Receiver"
+
+config TPM2NET_PORT
+    int "UDP Port to listen on for tpm2.net messages"
+    default 65506
+
+config TPM2NET_RX_BUF_SIZE
+    int "Rx buffer size in bytes"
+    default 2048
+
+endmenu
