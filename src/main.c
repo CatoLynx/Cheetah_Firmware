@@ -21,7 +21,7 @@ uint8_t prev_display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 static void display_refresh_task(void* arg) {
     while (1) {
         memcpy(temp_output_buffer, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-        display_renderFrame8bpp(temp_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        display_render_frame_8bpp(temp_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
     }
 }
 
@@ -43,10 +43,10 @@ void app_main(void) {
     mdns_hostname_set(CONFIG_PROJ_HOSTNAME);
     mdns_instance_name_set(CONFIG_PROJ_HOSTNAME);
 
-    httpd_handle_t server = start_webserver();
+    httpd_handle_t server = httpd_init();
     browser_ota_init(&server);
-    display_setupPeripherals();
-    tpm2net_start(display_output_buffer);
+    display_init();
+    tpm2net_init(display_output_buffer);
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);
 }

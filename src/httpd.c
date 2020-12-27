@@ -52,7 +52,7 @@ static const httpd_uri_t ip_get = {
     .handler   = ip_get_handler
 };
 
-httpd_handle_t start_webserver(void) {
+httpd_handle_t httpd_init(void) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
@@ -72,7 +72,7 @@ httpd_handle_t start_webserver(void) {
     return server;
 }
 
-void stop_webserver(httpd_handle_t server) {
+void httpd_deinit(httpd_handle_t server) {
     ESP_LOGI(LOG_TAG, "Stopping HTTP server");
     httpd_stop(server);
 }

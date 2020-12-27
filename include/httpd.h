@@ -2,5 +2,5 @@
 
 #include "esp_http_server.h"
 
-httpd_handle_t start_webserver(void);
-void stop_webserver(httpd_handle_t server);
+httpd_handle_t httpd_init(void);
+void httpd_deinit(httpd_handle_t server);

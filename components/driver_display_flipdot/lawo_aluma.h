@@ -1,9 +1,4 @@
-/*
- * Header for LAWO ALUMA
- */
-
-#ifndef MAIN_DISPLAY_MATRIX_FLIPDOT_LAWO_ALUMA_H_
-#define MAIN_DISPLAY_MATRIX_FLIPDOT_LAWO_ALUMA_H_
+#pragma once
 
 #include "esp_system.h"
 
@@ -23,15 +18,13 @@
 #define FLIP_PULSE_WIDTH_US		350
 #define LATCH_PULSE_WIDTH_US	10
 
-void display_setupPeripherals();
-void display_setAddress(uint8_t address);
-void display_selectRow(uint8_t address);
-void display_selectColumn(uint8_t address);
-void display_selectPanel(uint8_t address);
-void display_selectColor(uint8_t color);
+void display_init();
+void display_set_address(uint8_t address);
+void display_select_row(uint8_t address);
+void display_select_column(uint8_t address);
+void display_select_panel(uint8_t address);
+void display_select_color(uint8_t color);
 void display_deselect();
 void display_flip();
-void display_setBacklight(uint8_t state);
-void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);
-
-#endif /* MAIN_DISPLAY_MATRIX_FLIPDOT_LAWO_ALUMA_H_ */
+void display_set_backlight(uint8_t state);
+void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);

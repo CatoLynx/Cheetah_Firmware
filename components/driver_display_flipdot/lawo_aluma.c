@@ -30,7 +30,7 @@ static const uint8_t rowLookupTableBlack[28] = {
 
 static uint8_t currentColor = 0;
 
-void display_setupPeripherals() {
+void display_init() {
     /*
      * Set up all needed peripherals
      */
@@ -75,7 +75,7 @@ void display_setupPeripherals() {
     gpio_set_level(PIN_LED, 0);
 }
 
-void display_setAddress(uint8_t address) {
+void display_set_address(uint8_t address) {
     /*
      * Output a 4-bit address on the address bus
      */
@@ -86,15 +86,15 @@ void display_setAddress(uint8_t address) {
     gpio_set_level(PIN_A3, ((address & 8) != 0));
 }
 
-void display_selectRow(uint8_t address) {
+void display_select_row(uint8_t address) {
     /*
      * Select a row
      */
 
-    display_setAddress(address);
+    display_set_address(address);
 }
 
-void display_selectColumn(uint8_t address) {
+void display_select_column(uint8_t address) {
     /*
      * Select a column and latch the address
      */
@@ -107,7 +107,7 @@ void display_selectColumn(uint8_t address) {
         colAddress = rowLookupTableBlack[address];
     }
 
-    display_setAddress(colAddress);
+    display_set_address(colAddress);
     gpio_pulse(PIN_LC_N, 0, LATCH_PULSE_WIDTH_US, LATCH_PULSE_WIDTH_US);
 
     gpio_set_level(PIN_COL_A3, ((colAddress & 8) != 0));
@@ -121,16 +121,16 @@ void display_selectColumn(uint8_t address) {
     }
 }
 
-void display_selectPanel(uint8_t address) {
+void display_select_panel(uint8_t address) {
     /*
      * Select a panel and latch the address
      */
 
-    display_setAddress(7 - address);
+    display_set_address(7 - address);
     gpio_pulse(PIN_LP_N, 0, LATCH_PULSE_WIDTH_US, LATCH_PULSE_WIDTH_US);
 }
 
-void display_selectColor(uint8_t color) {
+void display_select_color(uint8_t color) {
     /*
      * Select the color to flip to.
      * 1 = yellow
@@ -160,7 +160,7 @@ void display_flip() {
     gpio_pulse(PIN_F, 1, FLIP_PULSE_WIDTH_US, FLIP_PULSE_WIDTH_US);
 }
 
-void display_setBacklight(uint8_t state) {
+void display_set_backlight(uint8_t state) {
     /*
      * Set the backlight on or off
      */
@@ -168,7 +168,7 @@ void display_setBacklight(uint8_t state) {
     gpio_set_level(PIN_LED, state);
 }
 
-void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
     uint16_t p, x, y;
     if(prevFrame) {
         for(uint16_t i = 0; i < frameBufSize; i++) {
@@ -177,10 +177,10 @@ void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameB
             y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
             p = x / 28; // TODO: Remove hardcoded 28
             x %= 28;
-            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_selectPanel(p);
-            display_selectColor(frame[i] > 127);
-            display_selectColumn(x);
-            display_selectRow(y);
+            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_select_panel(p);
+            display_select_color(frame[i] > 127);
+            display_select_column(x);
+            display_select_row(y);
             ESP_LOGI(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
@@ -191,10 +191,10 @@ void display_renderFrame8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameB
             y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
             p = x / 28; // TODO: Remove hardcoded 28
             x %= 28;
-            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_selectPanel(p);
-            display_selectColor(frame[i] > 127);
-            display_selectColumn(x);
-            display_selectRow(y);
+            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_select_panel(p);
+            display_select_color(frame[i] > 127);
+            display_select_column(x);
+            display_select_row(y);
             ESP_LOGI(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
