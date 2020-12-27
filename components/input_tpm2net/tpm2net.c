@@ -77,6 +77,7 @@ static void tpm2net_task(void* arg) {
                 ESP_LOGD(LOG_TAG, "Received packet %d of %d", packetNum, numPackets);
 
                 // Copy partial frame to buffer
+                // TODO: Implement buffer conversion (1/8/24 bpp) using TPM2NET_FRAME_TYPE and DISPLAY_FRAME_TYPE
                 memcpy(&tpm2net_output_buffer[packetLen * (packetNum - 1)], &rx_buffer[6], packetLen);
             }
         }

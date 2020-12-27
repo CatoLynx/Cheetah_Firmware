@@ -30,25 +30,16 @@ endmenu
 
 menu "Display Configuration"
 
-choice DISPLAY_FRAME_TYPE
-    bool "Display frame type"
-    default DISPLAY_FRAME_TYPE_1BPP
+choice DISPLAY_TYPE
+    bool "Display type"
+    default DISPLAY_TYPE_PIXEL
 
-    config DISPLAY_FRAME_TYPE_1BPP
-        bool "1 bit per pixel (black/white)"
+    config DISPLAY_TYPE_PIXEL
+        bool "Pixel-based display"
     
-    config DISPLAY_FRAME_TYPE_8BPP
-        bool "8 bits per pixel (greyscale)"
-    
-    config DISPLAY_FRAME_TYPE_24BPP
-        bool "24 bits per pixel (RGB, 8 bits per colour)"
+    config DISPLAY_TYPE_CHARACTER
+        bool "Character-based display"
 endchoice
-
-config DISPLAY_FRAME_TYPE
-    int
-    default 1 if DISPLAY_FRAME_TYPE_1BPP
-    default 8 if DISPLAY_FRAME_TYPE_8BPP
-    default 24 if DISPLAY_FRAME_TYPE_24BPP
 
 config DISPLAY_WIDTH
     int "Actual display width"
@@ -62,7 +53,23 @@ config DISPLAY_HEIGHT
     help
         Actual height of the display, as seen from the outside.
 
+choice DISPLAY_FRAME_TYPE
+    depends on DISPLAY_TYPE_PIXEL
+    bool "Display frame type"
+    default DISPLAY_FRAME_TYPE_1BPP
+
+    config DISPLAY_FRAME_TYPE_1BPP
+        bool "1 bit per pixel (black/white)"
+    
+    config DISPLAY_FRAME_TYPE_8BPP
+        bool "8 bits per pixel (greyscale)"
+    
+    config DISPLAY_FRAME_TYPE_24BPP
+        bool "24 bits per pixel (RGB, 8 bits per colour)"
+endchoice
+
 config DISPLAY_FRAME_WIDTH
+    depends on DISPLAY_TYPE_PIXEL
     int "Display frame width"
     default 0
     help
@@ -70,10 +77,18 @@ config DISPLAY_FRAME_WIDTH
         in case of non-populated columns of pixels or other mapping shenanigans.
 
 config DISPLAY_FRAME_HEIGHT
+    depends on DISPLAY_TYPE_PIXEL
     int "Display frame height"
     default 0
     help
         Frame height of the display. Usually the same as the actual height, but can be different
         in case of non-populated rows of pixels or other mapping shenanigans.
+
+config DISPLAY_USE_PREV_FRAMEBUF
+    depends on DISPLAY_TYPE_PIXEL
+    bool "Use second framebuffer to store the previous frame"
+    help
+        This allows the display to take advantage of knowing what has changed between the current
+        and previous frames, thus enabling a quicker refresh.
 
 endmenu
