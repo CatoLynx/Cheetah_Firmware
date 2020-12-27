@@ -5,6 +5,7 @@
 
 #include "browser_ota.h"
 #include "driver_display_flipdot.h"
+#include "httpd.h"
 #include "wifi.h"
 
 void app_main(void) {
@@ -23,7 +24,8 @@ void app_main(void) {
     mdns_hostname_set(CONFIG_PROJ_HOSTNAME);
     mdns_instance_name_set(CONFIG_PROJ_HOSTNAME);
 
-    start_webserver();
+    httpd_handle_t server = start_webserver();
+    browser_ota_init(&server);
 
     display_setupPeripherals();
 }

@@ -6,7 +6,7 @@
 
 #include "browser_ota.h"
 
-#define LOG_TAG "OTA-HTTPD"
+#define LOG_TAG "BROWSER-OTA"
 
 static uint32_t ota_payload_length = 0;
 static uint32_t ota_rx_len = 0;
@@ -18,15 +18,11 @@ static TaskHandle_t systemRestartTaskHandle;
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t index_html_start[] asm("_binary_index_html_start");
 extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
-extern const uint8_t favicon_ico_start[] asm("_binary_favicon_ico_start");
-extern const uint8_t favicon_ico_end[]   asm("_binary_favicon_ico_end");
-extern const uint8_t jquery_3_4_1_min_js_start[] asm("_binary_jquery_3_4_1_min_js_start");
-extern const uint8_t jquery_3_4_1_min_js_end[]   asm("_binary_jquery_3_4_1_min_js_end");
 extern const uint8_t spinner_gif_start[] asm("_binary_spinner_gif_start");
 extern const uint8_t spinner_gif_end[]   asm("_binary_spinner_gif_end");
 
 
-void systemRestartTask(void* arg) {
+static void systemRestartTask(void* arg) {
     restart_event_group = xEventGroupCreate();
     xEventGroupClearBits(restart_event_group, restart_BIT);
     while (1) {
@@ -45,25 +41,13 @@ static esp_err_t abortRequest(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static esp_err_t root_get_handler(httpd_req_t *req) {
+static esp_err_t ota_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
     return ESP_OK;
 }
 
-static esp_err_t favicon_get_handler(httpd_req_t *req) {
-    httpd_resp_set_type(req, "image/x-icon");
-    httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_end - favicon_ico_start);
-    return ESP_OK;
-}
-
-static esp_err_t jquery_get_handler(httpd_req_t *req) {
-    httpd_resp_set_type(req, "application/javascript");
-    httpd_resp_send(req, (const char *)jquery_3_4_1_min_js_start, (jquery_3_4_1_min_js_end - jquery_3_4_1_min_js_start)-1);
-    return ESP_OK;
-}
-
-static esp_err_t spinner_get_handler(httpd_req_t *req) {
+static esp_err_t ota_spinner_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/gif");
     httpd_resp_send(req, (const char *)spinner_gif_start, spinner_gif_end - spinner_gif_start);
     return ESP_OK;
@@ -210,7 +194,7 @@ static esp_err_t ota_status_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static esp_err_t fw_version_get_handler(httpd_req_t *req) {
+static esp_err_t ota_version_get_handler(httpd_req_t *req) {
     char resp[100];
     sprintf(resp, "{\"compile_date\": \"%s\", \"compile_time\": \"%s\"}", __DATE__, __TIME__);
     httpd_resp_set_type(req, "application/json");
@@ -218,28 +202,16 @@ static esp_err_t fw_version_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static const httpd_uri_t root_get = {
-    .uri       = "/",
+static const httpd_uri_t ota_get = {
+    .uri       = "/ota",
     .method    = HTTP_GET,
-    .handler   = root_get_handler
+    .handler   = ota_get_handler
 };
 
-static const httpd_uri_t favicon_get = {
-    .uri       = "/favicon.ico",
+static const httpd_uri_t ota_spinner_get = {
+    .uri       = "/ota/spinner.gif",
     .method    = HTTP_GET,
-    .handler   = favicon_get_handler
-};
-
-static const httpd_uri_t jquery_get = {
-    .uri       = "/jquery-3.4.1.min.js",
-    .method    = HTTP_GET,
-    .handler   = jquery_get_handler
-};
-
-static const httpd_uri_t spinner_get = {
-    .uri       = "/spinner.gif",
-    .method    = HTTP_GET,
-    .handler   = spinner_get_handler
+    .handler   = ota_spinner_get_handler
 };
 
 static const httpd_uri_t ota_length_post = {
@@ -260,42 +232,28 @@ static const httpd_uri_t ota_status_get = {
     .handler   = ota_status_get_handler
 };
 
-static const httpd_uri_t fw_version_get = {
-    .uri       = "/version",
+static const httpd_uri_t ota_version_get = {
+    .uri       = "/ota/version",
     .method    = HTTP_GET,
-    .handler   = fw_version_get_handler
+    .handler   = ota_version_get_handler
 };
 
-httpd_handle_t start_webserver(void) {
-    httpd_handle_t server = NULL;
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-    config.max_uri_handlers = 16;
-
-    ESP_LOGI(LOG_TAG, "Starting HTTP server on port %d", config.server_port);
-    if (httpd_start(&server, &config) != ESP_OK) {
-        ESP_LOGI(LOG_TAG, "Error starting server!");
-        return NULL;
-    }
-
+void browser_ota_init(httpd_handle_t* server) {
+    ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
-    httpd_register_uri_handler(server, &root_get);
-    httpd_register_uri_handler(server, &favicon_get);
-    httpd_register_uri_handler(server, &jquery_get);
-    httpd_register_uri_handler(server, &spinner_get);
-    httpd_register_uri_handler(server, &ota_length_post);
-    httpd_register_uri_handler(server, &ota_post);
-    httpd_register_uri_handler(server, &ota_status_get);
-    httpd_register_uri_handler(server, &fw_version_get);
+    httpd_register_uri_handler(*server, &ota_get);
+    httpd_register_uri_handler(*server, &ota_spinner_get);
+    httpd_register_uri_handler(*server, &ota_length_post);
+    httpd_register_uri_handler(*server, &ota_post);
+    httpd_register_uri_handler(*server, &ota_status_get);
+    httpd_register_uri_handler(*server, &ota_version_get);
     
     ESP_LOGI(LOG_TAG, "Creating restart task");
     xTaskCreate(&systemRestartTask, "restartTask", 2048, NULL, 5, &systemRestartTaskHandle);
-    return server;
 }
 
-void stop_webserver(httpd_handle_t server) {
-    ESP_LOGI(LOG_TAG, "Stopping HTTP server");
-    httpd_stop(server);
+void browser_ota_deinit(void) {
+    ESP_LOGI(LOG_TAG, "De-Init");
+    ESP_LOGI(LOG_TAG, "Deleting restart task");
     vTaskDelete(systemRestartTaskHandle);
-    ESP_LOGI(LOG_TAG, "Stopped HTTP server, deleted restart task");
 }
