@@ -6,6 +6,7 @@
 #include "nvs_flash.h"
 
 #include "browser_ota.h"
+#include "browser_canvas.h"
 #include "driver_display_flipdot.h"
 #include "httpd.h"
 #include "macros.h"
@@ -61,7 +62,8 @@ void app_main(void) {
     httpd_handle_t server = httpd_init();
     browser_ota_init(&server);
     display_init();
-    tpm2net_init(display_output_buffer);
+    tpm2net_init(display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+    browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);
 }

@@ -3,6 +3,8 @@
 #include "esp_wifi.h"
 #include "httpd.h"
 
+#include "macros.h"
+
 #define LOG_TAG "HTTPD"
 
 // Embedded files - refer to CMakeLists.txt
@@ -34,6 +36,16 @@ static esp_err_t ip_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t display_info_get_handler(httpd_req_t *req) {
+    char resp[300];
+    sprintf(resp, "{\"type\": \"%s\", \"driver\": \"%s\", \"width\": %d, \"height\": %d, \"frame_width\": %d, \"frame_height\": %d, \"viewport_offset_x\": %d, \"viewport_offset_y\": %d, \"frame_type\": \"%s\", \"framebuf_size\": %d}",
+            DISPLAY_TYPE, DISPLAY_DRIVER, CONFIG_DISPLAY_WIDTH, CONFIG_DISPLAY_HEIGHT, DISPLAY_FRAME_WIDTH, DISPLAY_FRAME_HEIGHT, DISPLAY_VIEWPORT_OFFSET_X, DISPLAY_VIEWPORT_OFFSET_Y, DISPLAY_FRAME_TYPE, DISPLAY_FRAMEBUF_SIZE);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    return ESP_OK;
+}
+
 static const httpd_uri_t favicon_get = {
     .uri       = "/favicon.ico",
     .method    = HTTP_GET,
@@ -52,11 +64,17 @@ static const httpd_uri_t ip_get = {
     .handler   = ip_get_handler
 };
 
+static const httpd_uri_t display_info_get = {
+    .uri       = "/display_info",
+    .method    = HTTP_GET,
+    .handler   = display_info_get_handler
+};
+
 httpd_handle_t httpd_init(void) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
 
-    config.max_uri_handlers = 16;
+    config.max_uri_handlers = 32;
 
     ESP_LOGI(LOG_TAG, "Starting HTTP server on port %d", config.server_port);
     if (httpd_start(&server, &config) != ESP_OK) {
@@ -68,6 +86,7 @@ httpd_handle_t httpd_init(void) {
     httpd_register_uri_handler(server, &favicon_get);
     httpd_register_uri_handler(server, &jquery_get);
     httpd_register_uri_handler(server, &ip_get);
+    httpd_register_uri_handler(server, &display_info_get);
 
     return server;
 }

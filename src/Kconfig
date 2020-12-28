@@ -41,6 +41,18 @@ choice DISPLAY_TYPE
         bool "Character-based display"
 endchoice
 
+choice DISPLAY_DRIVER
+    bool "Display driver"
+    default DISPLAY_DRIVER_NONE
+
+    config DISPLAY_DRIVER_NONE
+        bool "None"
+
+    config DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA
+        depends on DISPLAY_TYPE_PIXEL
+        bool "LAWO ALUMA flipdot (XY10 panels)"
+endchoice
+
 config DISPLAY_WIDTH
     int "Actual display width"
     default 0
@@ -83,6 +95,22 @@ config DISPLAY_FRAME_HEIGHT
     help
         Frame height of the display. Usually the same as the actual height, but can be different
         in case of non-populated rows of pixels or other mapping shenanigans.
+
+config DISPLAY_VIEWPORT_OFFSET_X
+    depends on DISPLAY_TYPE_PIXEL
+    int "Display viewport X offset"
+    default 0
+    help
+        In case the frame width is larger than the display width,
+        this specifies the X offset between the viewport and the framebuffer.
+
+config DISPLAY_VIEWPORT_OFFSET_Y
+    depends on DISPLAY_TYPE_PIXEL
+    int "Display viewport Y offset"
+    default 0
+    help
+        In case the frame height is larger than the display height,
+        this specifies the Y offset between the viewport and the framebuffer.
 
 config DISPLAY_USE_PREV_FRAMEBUF
     depends on DISPLAY_TYPE_PIXEL

@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Pixel Grid</title>
+    <link rel="icon" href="/favicon.ico">
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <script src="/jquery.min.js"></script>
+  </head>
+
+  <body style="font-family: Arial; background-color: #ccc;">
+    <canvas id="pixel-canvas"">
+      If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
+      Try enabling JavaScript and reload the page.
+    </canvas>
+
+    <script type="text/javascript">
+      var display_info = {};
+      var pixelWidth = 20;
+      var pixelHeight = 20;
+      var bgColor = "#000000";
+      var fgColor = "#ffffff";
+      var gridColor = "#444444";
+      var gridLineWidth = 2;
+      var pixels = new Array(0);
+
+      let Pixel = function(x, y, width, height, spacing, color) {
+        let canvas = $("#pixel-canvas")[0];
+
+        this.getGridAlignedPos = function(num, size) {
+          return num - (num % size);
+        };
+
+        this.x = this.getGridAlignedPos(x, width + spacing);
+        this.y = this.getGridAlignedPos(y, height + spacing);
+        this.buf_x = this.x / (width + spacing);
+        this.buf_y = this.y / (height + spacing);
+        this.width = width;
+        this.height = height;
+        this.fillColor = color;
+      };
+
+      Pixel.prototype.draw = function() {
+        let canvas = $("#pixel-canvas")[0];
+        let ctx = canvas.getContext("2d");
+        ctx.fillStyle = this.fillColor;
+        ctx.strokeStyle = gridColor;
+        ctx.fillRect(this.x, this.y, this.width, this.height);
+      };
+
+      Pixel.prototype.getIndex = function() {
+        return this.buf_x * display_info["height"] + this.buf_y;
+      }
+
+      function drawLine(ctx, x1, y1, x2, y2) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawGrid() {
+        let canvas = $("#pixel-canvas")[0];
+        canvas.width = (pixelWidth * display_info["width"]) + (gridLineWidth * (display_info["width"] - 1));
+        canvas.height = (pixelHeight * display_info["height"]) + (gridLineWidth * (display_info["height"] - 1));
+        let ctx = canvas.getContext("2d");
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = gridColor;
+        ctx.lineWidth = gridLineWidth;
+        
+        for (let i = pixelWidth + (gridLineWidth / 2); i < canvas.width; i += (pixelWidth + gridLineWidth)) {
+            drawLine(ctx, i, 0, i, canvas.height);
+        }
+
+        for (let i = pixelHeight + (gridLineWidth / 2); i < canvas.height; i += (pixelHeight + gridLineWidth)) {
+            drawLine(ctx, 0, i, canvas.width, i);
+        }
+      }
+
+      function drawPixel(x, y, color) {
+        let canvas = $("#pixel-canvas")[0];
+        let margin = canvas.getBoundingClientRect();
+
+        x -= margin.left;
+        y -= margin.top;
+
+        let newPixel = new Pixel(x, y, pixelWidth, pixelHeight, gridLineWidth, color);
+        newPixel.draw();
+        let i = newPixel.getIndex();
+        pixels[i] = color;
+      }
+
+      function onCanvasMouseDown(event) {
+        event.preventDefault();
+        if(event.button == 0) drawPixel(event.clientX, event.clientY, fgColor);
+        if(event.button == 2) drawPixel(event.clientX, event.clientY, bgColor);
+      }
+
+      function onCanvasMouseRightClick(event) {
+        event.preventDefault();
+      }
+
+      function onCanvasMouseMove(event) {
+        event.preventDefault();
+        if(event.buttons == 1){
+          drawPixel(event.clientX, event.clientY, fgColor);
+        } else if(event.buttons == 2) {
+          drawPixel(event.clientX, event.clientY, bgColor);
+        }
+      }
+
+      function hexToRGB(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      }
+
+      function calculateLuminosity(color) {
+        let rgb = hexToRGB(color);
+        let lum = Math.round(rgb["r"] * 0.2126 + rgb["g"] * 0.7152 + rgb["b"] * 0.0722);
+        return lum > 255 ? 255 : lum;
+      }
+
+      function getFramebuffer() {
+        switch(display_info["frame_type"]) {
+          case "1bpp": {
+
+            break;
+          }
+
+          case "8bpp": {
+            let framebuf = new Array(display_info["framebuf_size"]);
+            let fb_idx = 0;
+            let pixel_idx = 0;
+            for (let x = 0; x < display_info["frame_width"]; x++) {
+              for (let y = 0; y < display_info["frame_height"]; y++) {
+                if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
+                  framebuf[fb_idx] = 0;
+                } else {
+                  framebuf[fb_idx] = calculateLuminosity(pixels[pixel_idx]);
+                  pixel_idx++;
+                }
+                fb_idx++;
+              }
+            }
+            return framebuf;
+          }
+
+          case "24bpp": {
+
+            break;
+          }
+        }
+      }
+
+      function updateDisplay() {
+        let fb = getFramebuffer();
+        console.log(fb);
+        console.log(fb.length);
+        let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
+        console.log(fb_blob);
+        var formData = new FormData();
+        formData.set("frame", fb_blob, "frame");
+        var xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener("load", onUpdateDisplaySuccess, false);
+        xhr.upload.addEventListener("error", onUpdateDisplayError, false);
+        xhr.open("POST", "/canvas/update");
+        xhr.responseType = "blob";
+        xhr.send(formData);
+      }
+
+      function getDisplayInfo() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/display_info",
+          success: onGetDisplayInfoSuccess,
+          error: onGetDisplayInfoError
+        });
+      }
+
+      function onGetDisplayInfoSuccess(data, textStatus, jqXHR) {
+        display_info = data;
+        if(display_info["type"] != "pixel") {
+          console.log("ERROR: Only pixel type display supported!");
+          return;
+        }
+        pixels = new Array(data["width"] * data["height"]);
+        pixels.fill(bgColor);
+        drawGrid();
+        $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
+        $("#pixel-canvas").mousedown(onCanvasMouseDown);
+        $("#pixel-canvas").mousemove(onCanvasMouseMove);
+        $("#pixel-canvas").mouseup(updateDisplay);
+      }
+
+      function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {
+        console.log("Error querying display info!");
+        console.log(errorThrown);
+      }
+
+      function onUpdateDisplaySuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onUpdateDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error updating display!");
+        console.log(errorThrown);
+      }
+
+      function onReady() {
+        getDisplayInfo();
+      }
+
+      $(document).ready(onReady);
+    </script>
+  </body>
+</html>
