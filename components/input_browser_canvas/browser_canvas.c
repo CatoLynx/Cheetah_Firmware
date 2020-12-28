@@ -52,5 +52,6 @@ void browser_canvas_init(httpd_handle_t* server, uint8_t* outBuf, size_t bufSize
 void browser_canvas_stop(void) {
     ESP_LOGI(LOG_TAG, "Stopping browser canvas");
     canvas_output_buffer = NULL;
+    httpd_unregister_uri_handler(*canvas_server, canvas_get.uri, canvas_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_update_post.uri, canvas_update_post.method);
 }
