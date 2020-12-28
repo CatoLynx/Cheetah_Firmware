@@ -2,14 +2,14 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Pixel Grid</title>
+    <title>Pixel Canvas</title>
     <link rel="icon" href="/favicon.ico">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
     <script src="/jquery.min.js"></script>
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
-    <canvas id="pixel-canvas"">
+    <canvas id="pixel-canvas">
       If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
       Try enabling JavaScript and reload the page.
     </canvas>
@@ -23,6 +23,8 @@
       var gridColor = "#444444";
       var gridLineWidth = 2;
       var pixels = new Array(0);
+      var buttonPressed = false;
+      var updateInProgress = false;
 
       let Pixel = function(x, y, width, height, spacing, color) {
         let canvas = $("#pixel-canvas")[0];
@@ -96,6 +98,8 @@
         event.preventDefault();
         if(event.button == 0) drawPixel(event.clientX, event.clientY, fgColor);
         if(event.button == 2) drawPixel(event.clientX, event.clientY, bgColor);
+        buttonPressed = true;
+        updateDisplay();
       }
 
       function onCanvasMouseRightClick(event) {
@@ -104,11 +108,26 @@
 
       function onCanvasMouseMove(event) {
         event.preventDefault();
+        if((event.buttons == 1 || event.buttons == 2) && !buttonPressed) {
+          // Mouse has entered the canvas with button pressed
+          buttonPressed = true;
+          updateDisplay();
+        }
         if(event.buttons == 1){
           drawPixel(event.clientX, event.clientY, fgColor);
         } else if(event.buttons == 2) {
           drawPixel(event.clientX, event.clientY, bgColor);
         }
+      }
+
+      function onCanvasMouseUp(event) {
+        buttonPressed = false;
+        updateDisplay();
+      }
+
+      function onCanvasMouseOut(event) {
+        if(buttonPressed) updateDisplay();
+        buttonPressed = false;
       }
 
       function hexToRGB(hex) {
@@ -159,11 +178,10 @@
       }
 
       function updateDisplay() {
+        if(updateInProgress) return;
+        updateInProgress = true;
         let fb = getFramebuffer();
-        console.log(fb);
-        console.log(fb.length);
         let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
-        console.log(fb_blob);
         var formData = new FormData();
         formData.set("frame", fb_blob, "frame");
         var xhr = new XMLHttpRequest();
@@ -196,7 +214,8 @@
         $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
         $("#pixel-canvas").mousedown(onCanvasMouseDown);
         $("#pixel-canvas").mousemove(onCanvasMouseMove);
-        $("#pixel-canvas").mouseup(updateDisplay);
+        $("#pixel-canvas").mouseup(onCanvasMouseUp);
+        $("#pixel-canvas").mouseout(onCanvasMouseOut);
       }
 
       function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {
@@ -205,7 +224,9 @@
       }
 
       function onUpdateDisplaySuccess(data, textStatus, jqXHR) {
-        
+        console.log("Successfully updated display!");
+        updateInProgress = false;
+        if(buttonPressed) updateDisplay();
       }
 
       function onUpdateDisplayError(jqXHR, textStatus, errorThrown) {
