@@ -16,8 +16,8 @@ static TaskHandle_t systemRestartTaskHandle;
 #define restart_BIT BIT0
 
 // Embedded files - refer to CMakeLists.txt
-extern const uint8_t index_html_start[] asm("_binary_index_html_start");
-extern const uint8_t index_html_end[]   asm("_binary_index_html_end");
+extern const uint8_t browser_ota_html_start[] asm("_binary_browser_ota_html_start");
+extern const uint8_t browser_ota_html_end[]   asm("_binary_browser_ota_html_end");
 extern const uint8_t spinner_gif_start[] asm("_binary_spinner_gif_start");
 extern const uint8_t spinner_gif_end[]   asm("_binary_spinner_gif_end");
 
@@ -43,7 +43,7 @@ static esp_err_t abortRequest(httpd_req_t *req) {
 
 static esp_err_t ota_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, (const char *)index_html_start, index_html_end - index_html_start);
+    httpd_resp_send(req, (const char *)browser_ota_html_start, browser_ota_html_end - browser_ota_html_start);
     return ESP_OK;
 }
 
