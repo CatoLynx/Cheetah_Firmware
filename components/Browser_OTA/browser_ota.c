@@ -5,12 +5,14 @@
 #include "sys/param.h"
 
 #include "browser_ota.h"
+#include "util_httpd.h"
 
 #define LOG_TAG "BROWSER-OTA"
 
 static uint32_t ota_payload_length = 0;
 static uint32_t ota_rx_len = 0;
 static uint8_t ota_success = 0;
+static httpd_handle_t* ota_server;
 static EventGroupHandle_t restart_event_group;
 static TaskHandle_t systemRestartTaskHandle;
 #define restart_BIT BIT0
@@ -35,12 +37,6 @@ static void systemRestartTask(void* arg) {
     }
 }
 
-static esp_err_t abortRequest(httpd_req_t *req) {
-    httpd_resp_set_status(req, "500 Internal Server Error");
-    httpd_resp_send_chunk(req, NULL, 0);
-    return ESP_OK;
-}
-
 static esp_err_t ota_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *)browser_ota_html_start, browser_ota_html_end - browser_ota_html_start);
@@ -56,15 +52,15 @@ static esp_err_t ota_spinner_get_handler(httpd_req_t *req) {
 static esp_err_t ota_length_post_handler(httpd_req_t *req) {
     char buf[10];
     size_t length = req->content_len;
-    if (length > 9) {
-        return abortRequest(req);
-    }
-
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
+    
+    if (length > 9) {
+        return abortRequest(req, "413 Payload Too Large");
+    }
 
     int ret = httpd_req_recv(req, buf, length);
     if (ret <= 0) {
-        return abortRequest(req);
+        return abortRequest(req, "500 Internal Server Error");
     }
     buf[length] = 0x00;
 
@@ -92,14 +88,14 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
     // Abort if OTA payload length has not been announed
     if(ota_payload_length == 0) {
         ESP_LOGE(LOG_TAG, "Trying to start OTA without announcing OTA payload length, aborting");
-        return abortRequest(req);
+        return abortRequest(req, "500 Internal Server Error");
     }
 
     // OTA partition handle
     const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
     if(!update_partition) {
         ESP_LOGE(LOG_TAG, "Failed to find a suitable OTA partition, aborting");
-        return abortRequest(req);
+        return abortRequest(req, "500 Internal Server Error");
     }
 
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
@@ -112,7 +108,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
                 continue;
             }
             ESP_LOGI(LOG_TAG, "Receive error, aborting");
-            return abortRequest(req);
+            return abortRequest(req, "500 Internal Server Error");
         }
         remaining -= ret;
         ESP_LOGI(LOG_TAG, "Received %d of %d bytes", (length - remaining), length);
@@ -132,14 +128,14 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             if((remaining + body_part_len) < ota_payload_length) {
                 // Expected total payload length is smaller than previously announced
                 ESP_LOGE(LOG_TAG, "POST payload length is smaller than previously announced OTA payload length, aborting");
-                return abortRequest(req);
+                return abortRequest(req, "500 Internal Server Error");
             }
 
             // Initiate OTA
             err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to initialise OTA, status %d", err);
-                return abortRequest(req);
+                return abortRequest(req, "500 Internal Server Error");
             }
             ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
 
@@ -148,7 +144,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             err = esp_ota_write(ota_handle, body_start_p, chunk_length);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to write OTA data, status %d", err);
-                return abortRequest(req);
+                return abortRequest(req, "500 Internal Server Error");
             }
             ota_rx_len += chunk_length;
         } else {
@@ -157,7 +153,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             err = esp_ota_write(ota_handle, ota_buf, chunk_length);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to write OTA data, status %d", err);
-                return abortRequest(req);
+                return abortRequest(req, "500 Internal Server Error");
             }
             ota_rx_len += chunk_length;
         }
@@ -174,11 +170,11 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             ESP_LOGI(LOG_TAG, "OTA success! Restart flag set.");
         } else {
             ESP_LOGE(LOG_TAG, "Failed to set boot partition, aborting");
-            return abortRequest(req);
+            return abortRequest(req, "500 Internal Server Error");
         }
     } else {
         ESP_LOGE(LOG_TAG, "Failed to end OTA, aborting");
-        return abortRequest(req);
+        return abortRequest(req, "500 Internal Server Error");
     }
 
     // End response
@@ -247,6 +243,7 @@ void browser_ota_init(httpd_handle_t* server) {
     httpd_register_uri_handler(*server, &ota_post);
     httpd_register_uri_handler(*server, &ota_status_get);
     httpd_register_uri_handler(*server, &ota_version_get);
+    ota_server = server;
     
     ESP_LOGI(LOG_TAG, "Creating restart task");
     xTaskCreate(&systemRestartTask, "restartTask", 2048, NULL, 5, &systemRestartTaskHandle);
@@ -256,4 +253,11 @@ void browser_ota_deinit(void) {
     ESP_LOGI(LOG_TAG, "De-Init");
     ESP_LOGI(LOG_TAG, "Deleting restart task");
     vTaskDelete(systemRestartTaskHandle);
+    ESP_LOGI(LOG_TAG, "Unregistering URI handlers");
+    httpd_unregister_uri_handler(*ota_server, ota_get.uri, ota_get.method);
+    httpd_unregister_uri_handler(*ota_server, ota_spinner_get.uri, ota_spinner_get.method);
+    httpd_unregister_uri_handler(*ota_server, ota_length_post.uri, ota_length_post.method);
+    httpd_unregister_uri_handler(*ota_server, ota_post.uri, ota_post.method);
+    httpd_unregister_uri_handler(*ota_server, ota_status_get.uri, ota_status_get.method);
+    httpd_unregister_uri_handler(*ota_server, ota_version_get.uri, ota_version_get.method);
 }

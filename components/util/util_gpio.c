@@ -2,7 +2,7 @@
  * Utility functions for GPIO pins
  */
 
-#include "gpio.h"
+#include "util_gpio.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

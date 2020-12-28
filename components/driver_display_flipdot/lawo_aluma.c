@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include "lawo_aluma.h"
-#include "util.h"
+#include "util_gpio.h"
 
 
 #define LOG_TAG "LAWO-ALUMA"
