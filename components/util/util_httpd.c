@@ -56,7 +56,7 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
             // Header has already been skipped, just receive data until the payload size is reached
             chunk_length = MAX(MIN((max_size - rx_len), ret), 0);
             ESP_LOGI(log_tag, "Copying chunk of length %d", chunk_length);
-            memcpy(dest, recv_buf, chunk_length);
+            memcpy(dest + rx_len, recv_buf, chunk_length);
             rx_len += chunk_length;
         }
     }

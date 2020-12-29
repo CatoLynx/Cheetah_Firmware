@@ -13,6 +13,8 @@
 
 #define LOG_TAG "LAWO-ALUMA"
 
+static uint8_t display_dirty = 1;
+
 
 static const uint8_t rowLookupTableYellow[28] = {
     2, 3, 6, 7, 1, 0, 5, 4,
@@ -126,7 +128,7 @@ void display_select_panel(uint8_t address) {
      * Select a panel and latch the address
      */
 
-    display_set_address(7 - address);
+    display_set_address(CONFIG_ALUMA_NUM_PANELS - (7 - address) - 1);
     gpio_pulse(PIN_LP_N, 0, LATCH_PULSE_WIDTH_US, LATCH_PULSE_WIDTH_US);
 }
 
@@ -169,15 +171,20 @@ void display_set_backlight(uint8_t state) {
 }
 
 void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    uint16_t p, x, y;
-    if(prevFrame) {
+    uint16_t prev_p, p, x, y;
+    prev_p = 65535;
+    if(!display_dirty && prevFrame) {
         for(uint16_t i = 0; i < frameBufSize; i++) {
             if((frame[i] > 127) == (prevFrame[i] > 127)) continue;
             x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
             y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
-            p = x / 28; // TODO: Remove hardcoded 28
-            x %= 28;
-            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_select_panel(p);
+            p = x / CONFIG_ALUMA_PANEL_WIDTH;
+            x %= CONFIG_ALUMA_PANEL_WIDTH;
+            if (p != prev_p) {
+                ESP_LOGI(LOG_TAG, "Selecting panel %d", p);
+                display_select_panel(p);
+                prev_p = p;
+            }
             display_select_color(frame[i] > 127);
             display_select_column(x);
             display_select_row(y);
@@ -189,15 +196,21 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         for(uint16_t i = 0; i < frameBufSize; i++) {
             x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
             y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
-            p = x / 28; // TODO: Remove hardcoded 28
-            x %= 28;
-            if(i % (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT) == 0) display_select_panel(p);
+            p = x / CONFIG_ALUMA_PANEL_WIDTH;
+            x %= CONFIG_ALUMA_PANEL_WIDTH;
+            if (p != prev_p) {
+                ESP_LOGI(LOG_TAG, "Selecting panel %d", p);
+                display_select_panel(p);
+                prev_p = p;
+            }
             display_select_color(frame[i] > 127);
             display_select_column(x);
             display_select_row(y);
             ESP_LOGI(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
+        if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);
+        display_dirty = 0;
     }
     display_deselect();
 }

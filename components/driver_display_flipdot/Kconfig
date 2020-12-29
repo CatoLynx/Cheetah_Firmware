@@ -1,0 +1,15 @@
+menu "LAWO ALUMA Flipdot Configuration"
+
+config ALUMA_PANEL_WIDTH
+    int "Panel Width"
+    default 28
+    help
+        Width of each flipdot panel
+
+config ALUMA_NUM_PANELS
+    int "Number of panels"
+    default 1
+    help
+        Total number of flipdot panels connected
+
+endmenu
