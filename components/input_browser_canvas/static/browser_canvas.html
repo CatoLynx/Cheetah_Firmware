@@ -13,18 +13,38 @@
       If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
       Try enabling JavaScript and reload the page.
     </canvas>
+    <div>
+      <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
+      <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label>
+    </div>
 
     <script type="text/javascript">
+      var _CANVASDEBUG = false;
+      var _CANVASDEBUGINFO = {
+            type: "pixel",
+            driver: "dummy",
+            width: 180,
+            height: 7,
+            frame_width: 180,
+            frame_height: 7,
+            viewport_offset_x: 0,
+            viewport_offset_y: 0,
+            frame_type: "1bpp",
+            framebuf_size: 180
+          };
+      
       var display_info = {};
       var pixelWidth = 20;
       var pixelHeight = 20;
+      var baseColor = "#000000";
       var bgColor = "#000000";
-      var fgColor = "#ffffff";
       var gridColor = "#444444";
+      var fgColor = "#ffffff";
       var gridLineWidth = 2;
       var pixels = new Array(0);
       var buttonPressed = false;
       var updateInProgress = false;
+      
 
       let Pixel = function(x, y, width, height, spacing, color) {
         let canvas = $("#pixel-canvas")[0];
@@ -62,12 +82,12 @@
         ctx.restore();
       }
 
-      function drawGrid() {
+      function drawPixelCanvas() {
         let canvas = $("#pixel-canvas")[0];
         canvas.width = (pixelWidth * display_info["width"]) + (gridLineWidth * (display_info["width"] - 1));
         canvas.height = (pixelHeight * display_info["height"]) + (gridLineWidth * (display_info["height"] - 1));
         let ctx = canvas.getContext("2d");
-        ctx.fillStyle = bgColor;
+        ctx.fillStyle = baseColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = gridColor;
         ctx.lineWidth = gridLineWidth;
@@ -138,6 +158,34 @@
           b: parseInt(result[3], 16)
         } : null;
       }
+      
+      function componentToHex(c) {
+        let hex = c.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+      }
+      
+      function rgbToHex(r, g, b) {
+        return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+      }
+      
+      function limitColorRange(color) {
+        switch(display_info["frame_type"]) {
+          case "1bpp": {
+            let lum = calculateLuminosity(color);
+            return lum > 127 ? "#ffffff" : "#000000";
+          }
+
+          case "8bpp": {
+            let lum = calculateLuminosity(color);
+            return rgbToHex(lum, lum, lum);
+          }
+          
+          default:
+          case "24bpp": {
+            return color;
+          }
+        }
+      }
 
       function calculateLuminosity(color) {
         let rgb = hexToRGB(color);
@@ -148,8 +196,24 @@
       function getFramebuffer() {
         switch(display_info["frame_type"]) {
           case "1bpp": {
-
-            break;
+            let framebuf = new Array(display_info["framebuf_size"]);
+            let fb_idx = 0;
+            let pixel_idx = 0;
+            for (let x = 0; x < display_info["frame_width"]; x++) {
+              let byte = 0x00;
+              for (let y = 0; y < display_info["frame_height"]; y++) {
+                let bit = y % 8;
+                if (!((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"])))) {
+                  if (calculateLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
+                  pixel_idx++;
+                }
+                if ((bit == 7) || (y == display_info["frame_height"] - 1)) {
+                  framebuf[fb_idx++] = byte;
+                  byte = 0x00;
+                }
+              }
+            }
+            return framebuf;
           }
 
           case "8bpp": {
@@ -159,47 +223,73 @@
             for (let x = 0; x < display_info["frame_width"]; x++) {
               for (let y = 0; y < display_info["frame_height"]; y++) {
                 if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
-                  framebuf[fb_idx] = 0;
+                  framebuf[fb_idx++] = 0;
                 } else {
-                  framebuf[fb_idx] = calculateLuminosity(pixels[pixel_idx]);
+                  framebuf[fb_idx++] = calculateLuminosity(pixels[pixel_idx]);
                   pixel_idx++;
                 }
-                fb_idx++;
               }
             }
             return framebuf;
           }
 
           case "24bpp": {
-
-            break;
+            let framebuf = new Array(display_info["framebuf_size"]);
+            let fb_idx = 0;
+            let pixel_idx = 0;
+            for (let x = 0; x < display_info["frame_width"]; x++) {
+              for (let y = 0; y < display_info["frame_height"]; y++) {
+                if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
+                  framebuf[fb_idx++] = 0;
+                  framebuf[fb_idx++] = 0;
+                  framebuf[fb_idx++] = 0;
+                } else {
+                  color = hexToRGB(pixels[pixel_idx]);
+                  framebuf[fb_idx++] = color["r"];
+                  framebuf[fb_idx++] = color["g"];
+                  framebuf[fb_idx++] = color["b"];
+                  pixel_idx++;
+                }
+              }
+            }
+            return framebuf;
           }
         }
       }
 
       function updateDisplay() {
-        if(updateInProgress) return;
-        updateInProgress = true;
-        let fb = getFramebuffer();
-        let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
-        var formData = new FormData();
-        formData.set("frame", fb_blob, "frame");
-        var xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("load", onUpdateDisplaySuccess, false);
-        xhr.upload.addEventListener("error", onUpdateDisplayError, false);
-        xhr.open("POST", "/canvas/update");
-        xhr.responseType = "blob";
-        xhr.send(formData);
+        if (_CANVASDEBUG) {
+          let fb = getFramebuffer();
+          console.log(fb);
+          setTimeout(onUpdateDisplaySuccess, 250);
+        } else {
+          if(updateInProgress) return;
+          updateInProgress = true;
+          let fb = getFramebuffer();
+          let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
+          var formData = new FormData();
+          formData.set("frame", fb_blob, "frame");
+          var xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener("load", onUpdateDisplaySuccess, false);
+          xhr.upload.addEventListener("error", onUpdateDisplayError, false);
+          xhr.open("POST", "/canvas/update");
+          xhr.responseType = "blob";
+          xhr.send(formData);
+        }
       }
 
       function getDisplayInfo() {
-        $.ajax({
-          type: "GET",
-          dataType: "json",
-          url: "/display_info",
-          success: onGetDisplayInfoSuccess,
-          error: onGetDisplayInfoError
-        });
+        if (_CANVASDEBUG) {
+          onGetDisplayInfoSuccess(_CANVASDEBUGINFO);
+        } else {
+          $.ajax({
+            type: "GET",
+            dataType: "json",
+            url: "/display_info",
+            success: onGetDisplayInfoSuccess,
+            error: onGetDisplayInfoError
+          });
+        }
       }
 
       function onGetDisplayInfoSuccess(data, textStatus, jqXHR) {
@@ -210,7 +300,7 @@
         }
         pixels = new Array(data["width"] * data["height"]);
         pixels.fill(bgColor);
-        drawGrid();
+        drawPixelCanvas();
         $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
         $("#pixel-canvas").mousedown(onCanvasMouseDown);
         $("#pixel-canvas").mousemove(onCanvasMouseMove);
@@ -221,6 +311,7 @@
       function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {
         console.log("Error querying display info!");
         console.log(errorThrown);
+        $("body").html("<div style='color: #ff3333; font-weight: bold; font-size: 3vw;'>Error communicating with display!</div>");
       }
 
       function onUpdateDisplaySuccess(data, textStatus, jqXHR) {
@@ -232,9 +323,27 @@
         console.log("Error updating display!");
         console.log(errorThrown);
       }
+      
+      function onForegroundColorChange(event) {
+        fgColor = limitColorRange($("#fg-color").val());
+        $("#fg-color").val(fgColor);
+        localStorage.setItem("fgColor", fgColor);
+      }
+      
+      function onBackgroundColorChange(event) {
+        bgColor = limitColorRange($("#bg-color").val());
+        $("#bg-color").val(bgColor);
+        localStorage.setItem("bgColor", bgColor);
+      }
 
       function onReady() {
         getDisplayInfo();
+        fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
+        bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
+        $("#fg-color").val(fgColor);
+        $("#bg-color").val(bgColor);
+        $("#fg-color").change(onForegroundColorChange);
+        $("#bg-color").change(onBackgroundColorChange);
       }
 
       $(document).ready(onReady);
