@@ -7,7 +7,7 @@
 
 #include "browser_ota.h"
 #include "browser_canvas.h"
-#include "driver_display_flipdot.h"
+#include "driver_display_led_shift_register.h"
 #include "httpd.h"
 #include "macros.h"
 #include "tpm2net.h"
@@ -24,6 +24,7 @@ uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 
 
 static void display_refresh_task(void* arg) {
+    // Framebuffer format: Top-to-bottom columns
     while (1) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
             memcpy(temp_output_buffer, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);

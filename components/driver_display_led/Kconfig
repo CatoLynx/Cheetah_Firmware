@@ -1,0 +1,129 @@
+menu "Shift Register LED Matrix Configuration"
+
+config SR_LED_MATRIX_WIDTH
+    int "Chain Length"
+    default 32
+    help
+        Total length (width) of all chained LED modules
+
+config SR_LED_MATRIX_NUM_ROWS
+    int "Number of rows"
+    default 8
+    help
+        Number of separate rows in the display
+
+config SR_LED_MATRIX_DATA_IO
+    int "Data GPIO"
+    default 0
+    help
+        GPIO pin for shift register data
+
+config SR_LED_MATRIX_CLK_IO
+    int "Clock GPIO"
+    default 0
+    help
+        GPIO pin for shift register clock
+
+config SR_LED_MATRIX_LATCH_IO
+    int "Latch GPIO"
+    default 0
+    help
+        GPIO pin for shift register latch
+
+config SR_LED_MATRIX_EN_IO
+    int "Enable GPIO"
+    default 0
+    help
+        GPIO pin for shift register output enable
+
+
+
+config SR_LED_MATRIX_ROW_ADDR_USE_LATCH
+    bool "Use row address latch"
+    default false
+    help
+        Row address latch pin is present
+
+choice SR_LED_MATRIX_ROW_ADDR_SIZE
+    bool "Row address size"
+    default SR_LED_MATRIX_ROW_ADDR_SIZE_3BIT
+
+    config SR_LED_MATRIX_ROW_ADDR_SIZE_3BIT
+        bool "3 Bit"
+    
+    config SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT
+        bool "4 Bit"
+endchoice
+
+config SR_LED_MATRIX_ROW_A0_IO
+    int "Row address bit 0 GPIO"
+    default 0
+    help
+        GPIO pin for row address bit 0
+
+config SR_LED_MATRIX_ROW_A1_IO
+    int "Row address bit 1 GPIO"
+    default 0
+    help
+        GPIO pin for row address bit 1
+
+config SR_LED_MATRIX_ROW_A2_IO
+    int "Row address bit 2 GPIO"
+    default 0
+    help
+        GPIO pin for row address bit 2
+
+config SR_LED_MATRIX_ROW_A3_IO
+    depends on SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT
+    int "Row address bit 3 GPIO"
+    default 0
+    help
+        GPIO pin for row address bit 3
+
+config SR_LED_MATRIX_ROW_ADDR_LATCH_IO
+    depends on SR_LED_MATRIX_ROW_ADDR_USE_LATCH
+    int "Row address latch GPIO"
+    default 0
+    help
+        GPIO pin for row address latch
+
+
+
+config SR_LED_MATRIX_DATA_INV
+    bool "Data GPIO active-low"
+    default false
+    help
+        Data GPIO active-low or active-high
+
+config SR_LED_MATRIX_CLK_INV
+    bool "Clock GPIO active-low"
+    default false
+    help
+        Clock GPIO active-low or active-high
+
+config SR_LED_MATRIX_LATCH_INV
+    bool "Latch GPIO active-low"
+    default false
+    help
+        Latch GPIO active-low or active-high
+
+config SR_LED_MATRIX_EN_INV
+    bool "Enable GPIO active-low"
+    default false
+    help
+        Output enable GPIO active-low or active-high
+
+config SR_LED_MATRIX_ROW_ADDR_INV
+    bool "Row address GPIOs active-low"
+    default 0
+    help
+        Row address GPIOs active-low or active-high
+
+config SR_LED_MATRIX_ROW_ADDR_LATCH_INV
+    depends on SR_LED_MATRIX_ROW_ADDR_USE_LATCH
+    bool "Row address latch GPIO active-low"
+    default 0
+    help
+        Row address latch GPIO active-low or active-high
+
+endmenu
