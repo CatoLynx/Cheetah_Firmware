@@ -20,6 +20,8 @@ static size_t tpm2net_temp_buffer_size = 0;
 static uint8_t* tpm2net_out_buffer;
 static size_t tpm2net_out_buffer_size = 0;
 
+uint16_t tpm2net_chunkSize = 0;
+
 
 static void tpm2net_task(void* arg) {
     uint8_t rx_buffer[CONFIG_TPM2NET_RX_BUF_SIZE];
@@ -82,8 +84,17 @@ static void tpm2net_task(void* arg) {
                 uint8_t numPackets = rx_buffer[5];
                 ESP_LOGD(LOG_TAG, "Received packet %d of %d", packetNum, numPackets);
 
-                // Copy partial frame to buffer
-                memcpy(&tpm2net_temp_buffer[packetLen * (packetNum - 1)], &rx_buffer[6], packetLen);
+                if (packetNum != numPackets && packetLen != tpm2net_chunkSize) {
+                    tpm2net_chunkSize = packetLen;
+                    ESP_LOGD(LOG_TAG, "Updated chunk size: %d", tpm2net_chunkSize);
+                }
+
+                if (tpm2net_chunkSize == 0) {
+                    ESP_LOGD(LOG_TAG, "Discarding packet, chunk size not yet set");
+                } else {
+                    // Copy partial frame to buffer
+                    memcpy(&tpm2net_temp_buffer[tpm2net_chunkSize * (packetNum - 1)], &rx_buffer[6], packetLen);
+                }
 
                 #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
