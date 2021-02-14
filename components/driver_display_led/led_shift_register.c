@@ -10,6 +10,8 @@
 #include "led_shift_register.h"
 #include "util_gpio.h"
 
+#if defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER)
+
 
 #define LOG_TAG "LED-SR"
 
@@ -110,3 +112,5 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         display_enable();
     }
 }
+#endif
+

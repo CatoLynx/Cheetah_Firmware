@@ -10,6 +10,8 @@
 #include "lawo_aluma.h"
 #include "util_gpio.h"
 
+#if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
+
 
 #define LOG_TAG "LAWO-ALUMA"
 
@@ -214,3 +216,5 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
     }
     display_deselect();
 }
+
+#endif
