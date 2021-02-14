@@ -4,15 +4,30 @@
 #include "freertos/task.h"
 #include "mdns.h"
 #include "nvs_flash.h"
+#include "esp_system.h"
 
 #include "browser_ota.h"
 #include "browser_canvas.h"
-#include "driver_display_led_shift_register.h"
 #include "httpd.h"
 #include "macros.h"
 #include "tpm2net.h"
 #include "wifi.h"
+#include "util_gpio.h"
 
+#if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
+#include "driver_display_flipdot_lawo_aluma.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER) || defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
+#include "driver_display_led_shift_register.h"
+#endif
+
+#if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
+#elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_8BPP
+#elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
+#endif
+uint8_t tpm2net_output_buffer[TPM2NET_FRAMEBUF_SIZE] = {0};
 
 uint8_t display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
@@ -39,6 +54,7 @@ static void display_refresh_task(void* arg) {
 
         #endif
         taskYIELD();
+        vTaskDelay(1);
     }
 }
 
@@ -63,7 +79,7 @@ void app_main(void) {
     httpd_handle_t server = httpd_init();
     browser_ota_init(&server);
     display_init();
-    tpm2net_init(display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+    tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
     browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);

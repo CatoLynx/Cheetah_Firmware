@@ -8,12 +8,16 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
+#include "util_buffer.h"
+
 
 #define LOG_TAG "tpm2.net"
 
 static TaskHandle_t tpm2netTaskHandle;
-static uint8_t* tpm2net_output_buffer;
-static size_t tpm2net_output_buffer_size = 0;
+static uint8_t* tpm2net_temp_buffer;
+static size_t tpm2net_temp_buffer_size = 0;
+static uint8_t* tpm2net_out_buffer;
+static size_t tpm2net_out_buffer_size = 0;
 
 
 static void tpm2net_task(void* arg) {
@@ -78,8 +82,33 @@ static void tpm2net_task(void* arg) {
                 ESP_LOGD(LOG_TAG, "Received packet %d of %d", packetNum, numPackets);
 
                 // Copy partial frame to buffer
-                // TODO: Implement buffer conversion (1/8/24 bpp) using TPM2NET_FRAME_TYPE and DISPLAY_FRAME_TYPE
-                memcpy(&tpm2net_output_buffer[packetLen * (packetNum - 1)], &rx_buffer[6], packetLen);
+                memcpy(&tpm2net_temp_buffer[packetLen * (packetNum - 1)], &rx_buffer[6], packetLen);
+
+                #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
+                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+                    buffer_8to1(tpm2net_temp_buffer, tpm2net_out_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+
+                    #endif
+                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
+                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+
+                    #endif
+                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
+                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+
+                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+
+                    #endif
+                #endif
             }
         }
 
@@ -92,15 +121,17 @@ static void tpm2net_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void tpm2net_init(uint8_t* outBuf, size_t bufSize) {
+void tpm2net_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize) {
     ESP_LOGI(LOG_TAG, "Starting tpm2.net receiver");
-    tpm2net_output_buffer = outBuf;
-    tpm2net_output_buffer_size = bufSize;
+    tpm2net_temp_buffer = tmpBuf;
+    tpm2net_temp_buffer_size = tmpBufSize;
+    tpm2net_out_buffer = outBuf;
+    tpm2net_out_buffer_size = outBufSize;
     xTaskCreate(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle);
 }
 
 void tpm2net_stop(void) {
     ESP_LOGI(LOG_TAG, "Stopping tpm2.net receiver");
     vTaskDelete(tpm2netTaskHandle);
-    tpm2net_output_buffer = NULL;
+    tpm2net_temp_buffer = NULL;
 }
