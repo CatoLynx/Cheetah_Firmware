@@ -53,6 +53,9 @@ choice SR_LED_MATRIX_ROW_ADDR_SIZE
     
     config SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT
         bool "4 Bit"
+    
+    config SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT
+        bool "5 Bit"
 endchoice
 
 config SR_LED_MATRIX_ROW_A0_IO
@@ -74,11 +77,18 @@ config SR_LED_MATRIX_ROW_A2_IO
         GPIO pin for row address bit 2
 
 config SR_LED_MATRIX_ROW_A3_IO
-    depends on SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT
+    depends on SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT || SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT
     int "Row address bit 3 GPIO"
     default 0
     help
         GPIO pin for row address bit 3
+
+config SR_LED_MATRIX_ROW_A4_IO
+    depends on SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT
+    int "Row address bit 4 GPIO"
+    default 0
+    help
+        GPIO pin for row address bit 4
 
 config SR_LED_MATRIX_ROW_ADDR_LATCH_IO
     depends on SR_LED_MATRIX_ROW_ADDR_USE_LATCH
@@ -125,5 +135,30 @@ config SR_LED_MATRIX_ROW_ADDR_LATCH_INV
     default 0
     help
         Row address latch GPIO active-low or active-high
+
+
+choice SR_LED_MATRIX_EN_MODE
+    bool "Control Mode"
+    default SR_LED_MATRIX_EN_MODE_CONTINUOUS
+
+    config SR_LED_MATRIX_EN_MODE_CONTINUOUS
+        bool "Keep EN active while shifting in data"
+    
+    config SR_LED_MATRIX_EN_MODE_PULSED
+        bool "Pulse EN after latch"
+endchoice
+
+config SR_LED_MATRIX_EN_PULSE_LENGTH
+    depends on SR_LED_MATRIX_EN_MODE_PULSED
+    int "EN pulse length [µs]"
+    default 1
+    help
+        Pulse length of the enable pulse, in microseconds
+
+config SR_LED_MATRIX_LATCH_PULSE_LENGTH
+    int "Latch pulse length [µs]"
+    default 1
+    help
+        Pulse length of the latch pulse, in microseconds
 
 endmenu

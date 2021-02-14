@@ -31,4 +31,4 @@ void display_enable();
 void display_disable();
 void display_shiftBit(uint8_t byte);
 void display_latch();
-void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);
+void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);

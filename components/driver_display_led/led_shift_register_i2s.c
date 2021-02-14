@@ -7,13 +7,27 @@
 #include "freertos/task.h"
 #include <string.h>
 
-#include "led_shift_register.h"
+#include "i2s_parallel.h"
+#include "led_shift_register_i2s.h"
 #include "util_gpio.h"
 
-#if defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER)
+#if defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
 
 
-#define LOG_TAG "LED-SR"
+#define LOG_TAG "LED-SR-I2S"
+
+
+#if !defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
+#error "I2S shift register LED matrix driver can only be used with 1bpp frame buffer"
+#endif
+
+#define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
+#define DISPLAY_FRAMEBUF_SIZE DIV_CEIL(CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT, 8)
+#define I2S_BUF_SIZE (DISPLAY_FRAMEBUF_SIZE * 8)
+uint8_t i2s_buf[I2S_BUF_SIZE];
+
+// Indices: Logical addresses; Values: Actual addresses
+uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 14, 13, 12, 11, 10, 9, 15, 16, 17};
 
 
 void display_init() {
@@ -62,67 +76,67 @@ void display_init() {
     gpio_set_direction(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, 0, CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV);
     #endif
+
+    i2s_parallel_buffer_desc_t bufdesc;
+    i2s_parallel_config_t cfg = {
+        .gpio_bus = {CONFIG_SR_LED_MATRIX_DATA_IO, CONFIG_SR_LED_MATRIX_LATCH_IO, CONFIG_SR_LED_MATRIX_EN_IO, CONFIG_SR_LED_MATRIX_ROW_A0_IO, CONFIG_SR_LED_MATRIX_ROW_A1_IO, CONFIG_SR_LED_MATRIX_ROW_A2_IO, CONFIG_SR_LED_MATRIX_ROW_A3_IO, CONFIG_SR_LED_MATRIX_ROW_A4_IO},
+        .gpio_clk = CONFIG_SR_LED_MATRIX_CLK_IO,
+        .clkspeed_hz = 1 * 1000 * 1000,
+        .bits = I2S_PARALLEL_BITS_8,
+        .buf = &bufdesc
+    };
+
+    bufdesc.memory = i2s_buf;
+    bufdesc.size = I2S_BUF_SIZE;
+
+    i2s_parallel_setup(&I2S1, &cfg);
 }
 
-void display_select_row(uint8_t address) {
-    /*
-     * Enable a row
-     */
+void _convertBuffer(uint8_t* src) {
+    // Convert 1bpp framebuffer to I²S buffer format
+    uint32_t byteIdx;
+    uint8_t bitIdx;
+    uint32_t i2sBufIdx = 0;
+    uint8_t byte;
+    uint8_t _y;
+    for (uint16_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT; y++) {
+        for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH; x++) {
+            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT, 8) + y / 8;
+            bitIdx = y % 8;
+            _y = ROW_MAP[(y - 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
 
-    gpio_set(CONFIG_SR_LED_MATRIX_ROW_A0_IO, ((address & 1) != 0), CONFIG_SR_LED_MATRIX_ROW_ADDR_INV);
-    gpio_set(CONFIG_SR_LED_MATRIX_ROW_A1_IO, ((address & 2) != 0), CONFIG_SR_LED_MATRIX_ROW_ADDR_INV);
-    gpio_set(CONFIG_SR_LED_MATRIX_ROW_A2_IO, ((address & 4) != 0), CONFIG_SR_LED_MATRIX_ROW_ADDR_INV);
-    #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT)
-    gpio_set(CONFIG_SR_LED_MATRIX_ROW_A3_IO, ((address & 8) != 0), CONFIG_SR_LED_MATRIX_ROW_ADDR_INV);
-    #endif
+            // Data bit
+            byte = (src[byteIdx] & (1 << bitIdx)) >> bitIdx;
 
-    #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_USE_LATCH)
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, 1, SR_PULSE_WIDTH_US, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV);
-    #endif
-}
+            // Latch bit
+            if (x == CONFIG_DISPLAY_FRAME_WIDTH - 1) byte |= 0x02;
 
-void display_enable() {
-    /*
-     * Enable output
-     */
+            // Enable bit
+            if (x < 20) byte |= 0x04;
 
-    gpio_set(CONFIG_SR_LED_MATRIX_EN_IO, 1, CONFIG_SR_LED_MATRIX_EN_INV);
-}
+            // Row A0 bit
+            if (_y & 1) byte |= 0x08;
 
-void display_disable() {
-    /*
-     * Disable output
-     */
+            // Row A1 bit
+            if (_y & 2) byte |= 0x10;
 
-    gpio_set(CONFIG_SR_LED_MATRIX_EN_IO, 0, CONFIG_SR_LED_MATRIX_EN_INV);
-}
+            // Row A2 bit
+            if (_y & 4) byte |= 0x20;
 
-void display_shiftBit(uint8_t byte) {
-    gpio_set(CONFIG_SR_LED_MATRIX_DATA_IO, !!byte, CONFIG_SR_LED_MATRIX_DATA_INV);
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_CLK_IO, 1, 0, 0, CONFIG_SR_LED_MATRIX_CLK_INV);
-}
+            // Row A3 bit
+            if (_y < 16) byte |= 0x40;
 
-void display_latch() {
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_LATCH_IO, 1, CONFIG_SR_LED_MATRIX_LATCH_PULSE_LENGTH, CONFIG_SR_LED_MATRIX_LATCH_PULSE_LENGTH, CONFIG_SR_LED_MATRIX_LATCH_INV);
-}
+            // Row A4 bit
+            if (_y >= 8 && _y < 16) byte |= 0x80;
 
-void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    ESP_LOGI(LOG_TAG, "Rendering frame");
-    for (uint8_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT; y++) {
-        for (uint16_t i = y; i < frameBufSize; i += CONFIG_DISPLAY_FRAME_HEIGHT) {
-            display_shiftBit(frame[i] > 127);
+            i2s_buf[i2sBufIdx ^ 0x02] = byte;
+            i2sBufIdx++;
         }
-        #if defined(CONFIG_SR_LED_MATRIX_EN_MODE_CONTINUOUS)
-        display_disable();
-        display_select_row(y);
-        display_latch();
-        display_enable();
-        #elif defined(CONFIG_SR_LED_MATRIX_EN_MODE_PULSED)
-        display_select_row(y);
-        display_latch();
-        gpio_pulse_inv(CONFIG_SR_LED_MATRIX_EN_IO, 1, CONFIG_SR_LED_MATRIX_EN_PULSE_LENGTH, CONFIG_SR_LED_MATRIX_EN_PULSE_LENGTH, CONFIG_SR_LED_MATRIX_EN_INV);
-        #endif
     }
+}
+
+void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+    _convertBuffer(frame);
 }
 
 #endif
