@@ -6,6 +6,7 @@
 #include "nvs_flash.h"
 #include "esp_system.h"
 
+#include "artnet.h"
 #include "browser_ota.h"
 #include "browser_canvas.h"
 #include "httpd.h"
@@ -28,6 +29,15 @@
 #define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
 #endif
 uint8_t tpm2net_output_buffer[TPM2NET_FRAMEBUF_SIZE] = {0};
+
+#if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
+#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
+#elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
+#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_8BPP
+#elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
+#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
+#endif
+uint8_t artnet_output_buffer[ARTNET_FRAMEBUF_SIZE] = {0};
 
 uint8_t display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
@@ -80,6 +90,7 @@ void app_main(void) {
     browser_ota_init(&server);
     display_init();
     tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
+    artnet_init(display_output_buffer, artnet_output_buffer, DISPLAY_FRAMEBUF_SIZE, ARTNET_FRAMEBUF_SIZE);
     browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);

@@ -8,21 +8,21 @@
 #include "lwip/sys.h"
 #include <lwip/netdb.h>
 
-#include "tpm2net.h"
+#include "artnet.h"
 #include "util_buffer.h"
 
 
-#define LOG_TAG "tpm2.net"
+#define LOG_TAG "ArtNet"
 
-static TaskHandle_t tpm2netTaskHandle;
-static uint8_t* tpm2net_temp_buffer;
-static size_t tpm2net_temp_buffer_size = 0;
-static uint8_t* tpm2net_out_buffer;
-static size_t tpm2net_out_buffer_size = 0;
+static TaskHandle_t artnetTaskHandle;
+static uint8_t* artnet_temp_buffer;
+static size_t artnet_temp_buffer_size = 0;
+static uint8_t* artnet_out_buffer;
+static size_t artnet_out_buffer_size = 0;
 
 
-static void tpm2net_task(void* arg) {
-    uint8_t rx_buffer[CONFIG_TPM2NET_RX_BUF_SIZE];
+static void artnet_task(void* arg) {
+    uint8_t rx_buffer[CONFIG_ARTNET_RX_BUF_SIZE];
     char addr_str[128];
     int addr_family;
     int ip_protocol;
@@ -31,7 +31,7 @@ static void tpm2net_task(void* arg) {
         struct sockaddr_in dest_addr;
         dest_addr.sin_addr.s_addr = htonl(INADDR_ANY);
         dest_addr.sin_family = AF_INET;
-        dest_addr.sin_port = htons(CONFIG_TPM2NET_PORT);
+        dest_addr.sin_port = htons(CONFIG_ARTNET_PORT);
         addr_family = AF_INET;
         ip_protocol = IPPROTO_IP;
         inet_ntoa_r(dest_addr.sin_addr, addr_str, sizeof(addr_str) - 1);
@@ -47,7 +47,7 @@ static void tpm2net_task(void* arg) {
         if (err < 0) {
             ESP_LOGE(LOG_TAG, "Socket unable to bind: errno %d", errno);
         }
-        ESP_LOGI(LOG_TAG, "Socket bound, port %d", CONFIG_TPM2NET_PORT);
+        ESP_LOGI(LOG_TAG, "Socket bound, port %d", CONFIG_ARTNET_PORT);
 
         while (1) {
             ESP_LOGD(LOG_TAG, "Waiting for data");
@@ -70,43 +70,47 @@ static void tpm2net_task(void* arg) {
                 }
                 ESP_LOGD(LOG_TAG, "Received %d bytes from %s", len, addr_str);
 
-                // Skip non-tpm2.net packets
-                if (rx_buffer[0] != 0x9C) continue;
-                // Skip non-data messages as well
-                if (rx_buffer[1] != 0xDA) continue;
-                // Calculate frame length
-                uint16_t packetLen = rx_buffer[2] << 8 | rx_buffer[3];
-                ESP_LOGD(LOG_TAG, "Packet length: %d bytes", packetLen);
+                artnetPacket_t packet;
+                //check if ArtNet header present
+                if (strncmp((const char*)rx_buffer, "Art-Net", 8) != 0) {
+                    return;
+                }
 
-                uint8_t packetNum = rx_buffer[4];
-                uint8_t numPackets = rx_buffer[5];
-                ESP_LOGD(LOG_TAG, "Received packet %d of %d", packetNum, numPackets);
+                packet.opcode = rx_buffer[8] | rx_buffer[9] << 8;
+                if (packet.opcode == 0x5000) { // check if opcode equals Art-Net opcode
+                    packet.sequence = rx_buffer[12];
+                    packet.universe = rx_buffer[14] | rx_buffer[15] << 8;
+                    packet.dataLength = rx_buffer[17] | rx_buffer[16] << 8;
+                    packet.data = &rx_buffer[ARTNET_HEADER_LENGTH];
+                }
+
+                ESP_LOGD(LOG_TAG, "Received universe %d", packet.universe);
 
                 // Copy partial frame to buffer
-                memcpy(&tpm2net_temp_buffer[packetLen * (packetNum - 1)], &rx_buffer[6], packetLen);
+                memcpy(&artnet_temp_buffer[packet.universe * ARTNET_UNIVERSE_SIZE], packet.data, packet.dataLength);
 
                 #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
-                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-                    buffer_8to1(tpm2net_temp_buffer, tpm2net_out_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
+                    buffer_8to1(artnet_temp_buffer, artnet_out_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
                 #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
-                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
 
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
                 #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
-                    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+                    #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
 
-                    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+                    #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
                 #endif
@@ -122,17 +126,17 @@ static void tpm2net_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void tpm2net_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize) {
-    ESP_LOGI(LOG_TAG, "Starting tpm2.net receiver");
-    tpm2net_temp_buffer = tmpBuf;
-    tpm2net_temp_buffer_size = tmpBufSize;
-    tpm2net_out_buffer = outBuf;
-    tpm2net_out_buffer_size = outBufSize;
-    xTaskCreate(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle);
+void artnet_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize) {
+    ESP_LOGI(LOG_TAG, "Starting ArtNet receiver");
+    artnet_temp_buffer = tmpBuf;
+    artnet_temp_buffer_size = tmpBufSize;
+    artnet_out_buffer = outBuf;
+    artnet_out_buffer_size = outBufSize;
+    xTaskCreate(artnet_task, "artnet_server", 4096, NULL, 5, &artnetTaskHandle);
 }
 
-void tpm2net_stop(void) {
-    ESP_LOGI(LOG_TAG, "Stopping tpm2.net receiver");
-    vTaskDelete(tpm2netTaskHandle);
-    tpm2net_temp_buffer = NULL;
+void artnet_stop(void) {
+    ESP_LOGI(LOG_TAG, "Stopping ArtNet receiver");
+    vTaskDelete(artnetTaskHandle);
+    artnet_temp_buffer = NULL;
 }

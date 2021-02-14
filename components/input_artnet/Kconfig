@@ -1,0 +1,25 @@
+menu "ArtNet Receiver"
+
+config ARTNET_PORT
+    int "UDP Port to listen on for ArtNet messages"
+    default 6454
+
+config ARTNET_RX_BUF_SIZE
+    int "Rx buffer size in bytes"
+    default 2048
+
+choice ARTNET_FRAME_TYPE
+    bool "ArtNet frame type"
+    default ARTNET_FRAME_TYPE_24BPP
+    
+    config ARTNET_FRAME_TYPE_1BPP
+        bool "1 bit per pixel (black/white)"
+    
+    config ARTNET_FRAME_TYPE_8BPP
+        bool "8 bits per pixel (greyscale)"
+    
+    config ARTNET_FRAME_TYPE_24BPP
+        bool "24 bits per pixel (RGB, 8 bits per colour)"
+endchoice
+
+endmenu
