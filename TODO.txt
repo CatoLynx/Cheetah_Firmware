@@ -1,0 +1,3 @@
+Support mapping framebuffer to actual display format (e.g. half-panel layouts)
+Add font renderer
+Add font support (via filesystem?)
