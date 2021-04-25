@@ -1,0 +1,57 @@
+menu "aesys LED Matrix Configuration"
+
+config AESYS_LED_MATRIX_WIDTH
+    int "Chain Length"
+    default 32
+    help
+        Total length (width) of all chained LED modules
+
+config AESYS_LED_MATRIX_NUM_ROWS
+    int "Number of rows"
+    default 8
+    help
+        Number of separate rows in the display
+
+config AESYS_LED_MATRIX_DATA_IO
+    int "Data GPIO"
+    default 0
+    help
+        GPIO pin for shift register data
+
+config AESYS_LED_MATRIX_CLK_IO
+    int "Clock GPIO"
+    default 0
+    help
+        GPIO pin for shift register clock
+
+config AESYS_LED_MATRIX_LATCH_IO
+    int "Latch GPIO"
+    default 0
+    help
+        GPIO pin for shift register latch
+
+config AESYS_LED_MATRIX_EN_IO
+    int "Enable GPIO"
+    default 0
+    help
+        GPIO pin for shift register output enable
+
+config AESYS_LED_MATRIX_BRT_IO
+    int "Ambient Brightness GPIO"
+    default 0
+    help
+        GPIO pin for ambient brightness signal input
+
+config AESYS_LED_MATRIX_FB_IO
+    int "Feedback GPIO"
+    default 0
+    help
+        GPIO pin for display content feedback signal input
+
+config AESYS_LED_MATRIX_FB_LATCH_IO
+    int "Feedback Latch GPIO"
+    default 0
+    help
+        GPIO pin for display content feedback signal latch output
+
+endmenu

@@ -82,6 +82,7 @@ void display_init() {
         .gpio_bus = {CONFIG_SR_LED_MATRIX_DATA_IO, CONFIG_SR_LED_MATRIX_LATCH_IO, CONFIG_SR_LED_MATRIX_EN_IO, CONFIG_SR_LED_MATRIX_ROW_A0_IO, CONFIG_SR_LED_MATRIX_ROW_A1_IO, CONFIG_SR_LED_MATRIX_ROW_A2_IO, CONFIG_SR_LED_MATRIX_ROW_A3_IO, CONFIG_SR_LED_MATRIX_ROW_A4_IO},
         .gpio_clk = CONFIG_SR_LED_MATRIX_CLK_IO,
         .clkspeed_hz = 1 * 1000 * 1000,
+        .clk_inv = false,
         .bits = I2S_PARALLEL_BITS_8,
         .buf = &bufdesc
     };

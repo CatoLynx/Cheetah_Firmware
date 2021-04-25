@@ -35,6 +35,8 @@
     #define DISPLAY_DRIVER "led_shift_register"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
     #define DISPLAY_DRIVER "led_shift_register_i2s"
+#elif defined(CONFIG_DISPLAY_DRIVER_LED_AESYS_I2S)
+    #define DISPLAY_DRIVER "led_aesys_i2s"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_SEG_LCD_SPI)
     #define DISPLAY_DRIVER "char_seg_lcd_spi"
 #endif

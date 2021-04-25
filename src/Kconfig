@@ -60,6 +60,9 @@ choice DISPLAY_DRIVER
         depends on DISPLAY_TYPE_PIXEL
         bool "Generic shift-register based LED display (using I2S peripheral)"
 
+    config DISPLAY_DRIVER_LED_AESYS_I2S
+        depends on DISPLAY_TYPE_PIXEL
+        bool "aesys LED display (using I2S peripheral)"
     config DISPLAY_DRIVER_CHAR_SEG_LCD_SPI
         depends on DISPLAY_TYPE_CHARACTER
         bool "Character-based segmented LCD (using SPI peripheral)"

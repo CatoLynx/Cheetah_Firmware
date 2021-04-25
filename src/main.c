@@ -19,6 +19,8 @@
 #include "driver_display_flipdot_lawo_aluma.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER) || defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
 #include "driver_display_led_shift_register.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_LED_AESYS_I2S)
+#include "driver_display_led_aesys.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_SEG_LCD_SPI)
 #include "driver_display_char_segment_lcd_spi.h"
 #endif

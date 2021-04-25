@@ -130,9 +130,7 @@ void i2s_parallel_setup(i2s_dev_t *dev, const i2s_parallel_config_t *cfg) {
         gpio_setup_out(cfg->gpio_bus[x], sig_data_base+x, false);
     }
 		
-    //ToDo: Clk/WS may need inversion?
-    //gpio_setup_out(cfg->gpio_clk, sig_clk, true);
-    gpio_setup_out(cfg->gpio_clk, sig_clk, false);
+    gpio_setup_out(cfg->gpio_clk, sig_clk, cfg->clk_inv);
     
     //Power on dev
     if (dev == &I2S0) {
