@@ -9,28 +9,33 @@
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
-    <canvas id="pixel-canvas">
-      If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
-      Try enabling JavaScript and reload the page.
-    </canvas>
-    <div>
-      <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
-      <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label>
+    <div id="canvas-container" style="display: none;">
+      <canvas id="pixel-canvas">
+        If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
+        Try enabling JavaScript and reload the page.
+      </canvas>
+      <div>
+        <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
+        <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label>
+      </div>
+    </div>
+    <div id="text-container" style="display: none;">
+      <input type="text" id="text-input" name="text" style="font-family: monospace; font-size: 3em;">
     </div>
 
     <script type="text/javascript">
       var _CANVASDEBUG = false;
       var _CANVASDEBUGINFO = {
-            type: "pixel",
-            driver: "dummy",
-            width: 180,
-            height: 7,
-            frame_width: 180,
-            frame_height: 7,
+            type: "character",
+            driver: "char_seg_lcd_spi",
+            width: 24,
+            height: 1,
+            frame_width: 24,
+            frame_height: 1,
             viewport_offset_x: 0,
             viewport_offset_y: 0,
-            frame_type: "1bpp",
-            framebuf_size: 180
+            frame_type: "",
+            framebuf_size: 120
           };
       
       var display_info = {};
@@ -99,6 +104,12 @@
         for (let i = pixelHeight + (gridLineWidth / 2); i < canvas.height; i += (pixelHeight + gridLineWidth)) {
             drawLine(ctx, 0, i, canvas.width, i);
         }
+        $("#canvas-container").show();
+      }
+
+      function drawTextInput() {
+        $("#text-input").prop('size', display_info["width"]);
+        $("#text-container").show();
       }
 
       function drawPixel(x, y, color) {
@@ -150,6 +161,11 @@
         buttonPressed = false;
       }
 
+      function onTextInputInput(event) {
+        event.preventDefault();
+        updateDisplay();
+      }
+
       function hexToRGB(hex) {
         var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
@@ -194,66 +210,81 @@
       }
 
       function getFramebuffer() {
-        switch(display_info["frame_type"]) {
-          case "1bpp": {
-            let framebuf = new Array(display_info["framebuf_size"]);
-            let fb_idx = 0;
-            let pixel_idx = 0;
-            for (let x = 0; x < display_info["frame_width"]; x++) {
-              let byte = 0x00;
-              for (let y = 0; y < display_info["frame_height"]; y++) {
-                let bit = y % 8;
-                if (!((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"])))) {
-                  if (calculateLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
-                  pixel_idx++;
-                }
-                if ((bit == 7) || (y == display_info["frame_height"] - 1)) {
-                  framebuf[fb_idx++] = byte;
-                  byte = 0x00;
+        if (display_info["type"] == "pixel") {
+          switch(display_info["frame_type"]) {
+            case "1bpp": {
+              let framebuf = new Array(display_info["framebuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width"]; x++) {
+                let byte = 0x00;
+                for (let y = 0; y < display_info["frame_height"]; y++) {
+                  let bit = y % 8;
+                  if (!((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"])))) {
+                    if (calculateLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
+                    pixel_idx++;
+                  }
+                  if ((bit == 7) || (y == display_info["frame_height"] - 1)) {
+                    framebuf[fb_idx++] = byte;
+                    byte = 0x00;
+                  }
                 }
               }
+              return framebuf;
             }
-            return framebuf;
-          }
 
-          case "8bpp": {
-            let framebuf = new Array(display_info["framebuf_size"]);
-            let fb_idx = 0;
-            let pixel_idx = 0;
-            for (let x = 0; x < display_info["frame_width"]; x++) {
-              for (let y = 0; y < display_info["frame_height"]; y++) {
-                if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
-                  framebuf[fb_idx++] = 0;
-                } else {
-                  framebuf[fb_idx++] = calculateLuminosity(pixels[pixel_idx]);
-                  pixel_idx++;
+            case "8bpp": {
+              let framebuf = new Array(display_info["framebuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width"]; x++) {
+                for (let y = 0; y < display_info["frame_height"]; y++) {
+                  if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
+                    framebuf[fb_idx++] = 0;
+                  } else {
+                    framebuf[fb_idx++] = calculateLuminosity(pixels[pixel_idx]);
+                    pixel_idx++;
+                  }
                 }
               }
+              return framebuf;
             }
-            return framebuf;
-          }
 
-          case "24bpp": {
-            let framebuf = new Array(display_info["framebuf_size"]);
-            let fb_idx = 0;
-            let pixel_idx = 0;
-            for (let x = 0; x < display_info["frame_width"]; x++) {
-              for (let y = 0; y < display_info["frame_height"]; y++) {
-                if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
-                  framebuf[fb_idx++] = 0;
-                  framebuf[fb_idx++] = 0;
-                  framebuf[fb_idx++] = 0;
-                } else {
-                  color = hexToRGB(pixels[pixel_idx]);
-                  framebuf[fb_idx++] = color["r"];
-                  framebuf[fb_idx++] = color["g"];
-                  framebuf[fb_idx++] = color["b"];
-                  pixel_idx++;
+            case "24bpp": {
+              let framebuf = new Array(display_info["framebuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width"]; x++) {
+                for (let y = 0; y < display_info["frame_height"]; y++) {
+                  if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
+                    framebuf[fb_idx++] = 0;
+                    framebuf[fb_idx++] = 0;
+                    framebuf[fb_idx++] = 0;
+                  } else {
+                    color = hexToRGB(pixels[pixel_idx]);
+                    framebuf[fb_idx++] = color["r"];
+                    framebuf[fb_idx++] = color["g"];
+                    framebuf[fb_idx++] = color["b"];
+                    pixel_idx++;
+                  }
                 }
               }
+              return framebuf;
             }
-            return framebuf;
           }
+        } else if (display_info["type"] == "character") {
+          let framebuf = new Array(display_info["framebuf_size"]);
+          let val =$("#text-input").val();
+          let valLen = val.length;
+          for (let i = 0; i < display_info["framebuf_size"]; i++) {
+            if (i >= valLen) {
+              framebuf[i] = 0;
+            } else {
+              let code = val.charCodeAt(i);
+              framebuf[i] = code > 255 ? 0 : code;
+            }
+          }
+          return framebuf;
         }
       }
 
@@ -294,18 +325,22 @@
 
       function onGetDisplayInfoSuccess(data, textStatus, jqXHR) {
         display_info = data;
-        if(display_info["type"] != "pixel") {
-          console.log("ERROR: Only pixel type display supported!");
+        if(display_info["type"] == "pixel") {
+          pixels = new Array(data["width"] * data["height"]);
+          pixels.fill(bgColor);
+          drawPixelCanvas();
+          $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
+          $("#pixel-canvas").mousedown(onCanvasMouseDown);
+          $("#pixel-canvas").mousemove(onCanvasMouseMove);
+          $("#pixel-canvas").mouseup(onCanvasMouseUp);
+          $("#pixel-canvas").mouseout(onCanvasMouseOut);
+        } else if(display_info["type"] == "character") {
+          drawTextInput();
+          $("#text-input").on("input", onTextInputInput);
+        } else {
+          console.log("ERROR: Unsupported display type \"" + display_info["type"] + "\"");
           return;
         }
-        pixels = new Array(data["width"] * data["height"]);
-        pixels.fill(bgColor);
-        drawPixelCanvas();
-        $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
-        $("#pixel-canvas").mousedown(onCanvasMouseDown);
-        $("#pixel-canvas").mousemove(onCanvasMouseMove);
-        $("#pixel-canvas").mouseup(onCanvasMouseUp);
-        $("#pixel-canvas").mouseout(onCanvasMouseOut);
       }
 
       function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {

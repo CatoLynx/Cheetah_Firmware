@@ -12,6 +12,8 @@
 #include "led_shift_register_spi.h"
 #include "util_gpio.h"
 
+#if defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER)
+
 
 #define LOG_TAG "LED-SR-SPI"
 
@@ -64,10 +66,10 @@ void display_init() {
         .max_transfer_sz = DISPLAY_FRAMEBUF_SIZE
     };
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 1000000UL, // 1 MHz
-        .mode = 0, // positive clock, sample on rising edge
-        .spics_io_num = -1, // -1 = not used
-        .queue_size = 1, // max. 1 transaction in queue
+        .clock_speed_hz = 1000000UL,    // 1 MHz
+        .mode = 0,                      // positive clock, sample on rising edge
+        .spics_io_num = -1,             // -1 = not used
+        .queue_size = 1,                // max. 1 transaction in queue
         .pre_cb = display_pre_transfer_cb,
         .post_cb = display_post_transfer_cb,
     };
@@ -149,3 +151,5 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         display_enable();
     }
 }
+
+#endif

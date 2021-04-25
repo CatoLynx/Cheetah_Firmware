@@ -59,19 +59,23 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S
         depends on DISPLAY_TYPE_PIXEL
         bool "Generic shift-register based LED display (using I2S peripheral)"
+
+    config DISPLAY_DRIVER_CHAR_SEG_LCD_SPI
+        depends on DISPLAY_TYPE_CHARACTER
+        bool "Character-based segmented LCD (using SPI peripheral)"
 endchoice
 
 config DISPLAY_WIDTH
     int "Actual display width"
     default 0
     help
-        Actual width of the display, as seen from the outside.
+        Actual width of the display, as seen from the outside, in pixels or characters.
 
 config DISPLAY_HEIGHT
     int "Actual display height"
     default 0
     help
-        Actual height of the display, as seen from the outside.
+        Actual height of the display, as seen from the outside, in pixels or characters.
 
 choice DISPLAY_FRAME_TYPE
     depends on DISPLAY_TYPE_PIXEL
@@ -89,23 +93,20 @@ choice DISPLAY_FRAME_TYPE
 endchoice
 
 config DISPLAY_FRAME_WIDTH
-    depends on DISPLAY_TYPE_PIXEL
     int "Display frame width"
     default 0
     help
         Frame width of the display. Usually the same as the actual width, but can be different
-        in case of non-populated columns of pixels or other mapping shenanigans.
+        in case of non-populated columns of pixels/characters or other mapping shenanigans.
 
 config DISPLAY_FRAME_HEIGHT
-    depends on DISPLAY_TYPE_PIXEL
     int "Display frame height"
     default 0
     help
         Frame height of the display. Usually the same as the actual height, but can be different
-        in case of non-populated rows of pixels or other mapping shenanigans.
+        in case of non-populated rows of pixels/characters or other mapping shenanigans.
 
 config DISPLAY_VIEWPORT_OFFSET_X
-    depends on DISPLAY_TYPE_PIXEL
     int "Display viewport X offset"
     default 0
     help
@@ -113,7 +114,6 @@ config DISPLAY_VIEWPORT_OFFSET_X
         this specifies the X offset between the viewport and the framebuffer.
 
 config DISPLAY_VIEWPORT_OFFSET_Y
-    depends on DISPLAY_TYPE_PIXEL
     int "Display viewport Y offset"
     default 0
     help
@@ -121,10 +121,16 @@ config DISPLAY_VIEWPORT_OFFSET_Y
         this specifies the Y offset between the viewport and the framebuffer.
 
 config DISPLAY_USE_PREV_FRAMEBUF
-    depends on DISPLAY_TYPE_PIXEL
     bool "Use second framebuffer to store the previous frame"
     help
         This allows the display to take advantage of knowing what has changed between the current
         and previous frames, thus enabling a quicker refresh.
+
+config DISPLAY_BYTES_PER_CHAR
+    depends on DISPLAY_TYPE_CHARACTER
+    int "Bytes per character"
+    default 1
+    help
+        How many bytes of data are required for one character
 
 endmenu
