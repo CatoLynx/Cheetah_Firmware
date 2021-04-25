@@ -84,7 +84,7 @@ static void tpm2net_task(void* arg) {
                 uint8_t numPackets = rx_buffer[5];
                 ESP_LOGD(LOG_TAG, "Received packet %d of %d", packetNum, numPackets);
 
-                if (packetNum != numPackets && packetLen != tpm2net_chunkSize) {
+                if ((packetNum != numPackets || numPackets == 1) && packetLen != tpm2net_chunkSize) {
                     tpm2net_chunkSize = packetLen;
                     ESP_LOGD(LOG_TAG, "Updated chunk size: %d", tpm2net_chunkSize);
                 }
