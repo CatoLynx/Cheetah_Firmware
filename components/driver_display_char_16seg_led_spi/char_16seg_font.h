@@ -52,7 +52,7 @@ const uint32_t char_16seg_font[96] = {
   /*   */ 0,
   /* ! */ A | B | E | F | K | M | N,
   /* " */ C | H,
-  /* # */ 0,
+  /* # */ C | D | E | F | M | P | S | U,
   /* $ */ A | B | D | E | F | H | M | P | S | U,
   /* % */ A | E | N | T,
   /* & */ A | E | F | G | H | M | P | S | U,
