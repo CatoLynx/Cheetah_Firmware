@@ -23,6 +23,8 @@
 #include "driver_display_led_aesys.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_SEG_LCD_SPI)
 #include "driver_display_char_segment_lcd_spi.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_SPI)
+#include "driver_display_char_16seg_led_spi.h"
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL)

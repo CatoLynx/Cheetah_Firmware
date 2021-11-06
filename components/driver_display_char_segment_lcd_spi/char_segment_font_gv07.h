@@ -1,6 +1,7 @@
 #include <stdint.h>
 
-const uint8_t char_seg_font_offset = 32;
+const uint8_t char_seg_font_min = 32;
+const uint8_t char_seg_font_max = 90;
 const uint8_t char_seg_font[] = {
     0, 0, 0, 0,  0,          // Space  32
     64, 4, 62, 48,  128,     //    !   33

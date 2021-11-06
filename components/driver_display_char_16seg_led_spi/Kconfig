@@ -1,81 +1,72 @@
-menu "Character-based Segment LCD Configuration"
+menu "16-segment LED Configuration"
 
-config CSEG_LCD_SPI_CLK_FREQ
+config 16SEG_LED_SPI_CLK_FREQ
     int "SPI Clock Frequency (Hz)"
     default 1000000
     help
         Frequency for SPI clock (in Hz)
 
-config CSEG_LCD_DATA_IO
+config 16SEG_LED_DATA_IO
     int "Data GPIO"
     default 0
     help
         GPIO pin for shift register data
 
-config CSEG_LCD_CLOCK_IO
+config 16SEG_LED_CLOCK_IO
     int "Clock GPIO"
     default 0
     help
         GPIO pin for shift register clock
 
-config CSEG_LCD_LATCH_IO
+config 16SEG_LED_LATCH_IO
     int "Latch GPIO"
     default 0
     help
         GPIO pin for shift register latch
 
-config CSEG_LCD_FRCLK_IO
-    int "Frame Clock GPIO"
-    default 0
-    help
-        GPIO pin for LCD frame clock (AC signal)
-
-config CSEG_LCD_FRCLK_FREQ
-    int "Frame Clock Frequency (Hz)"
-    default 0
-    help
-        Frequency for LCD frame clock (in Hz, AC signal)
-
-
-config CSEG_LCD_LATCH_INV
+config 16SEG_LED_LATCH_INV
     bool "Latch GPIO active-low"
     default false
     help
         Latch GPIO active-low or active-high
 
-
-config CSEG_LCD_LATCH_PULSE_LENGTH
+config 16SEG_LED_LATCH_PULSE_LENGTH
     int "Latch pulse length [µs]"
     default 1
     help
         Pulse length of the latch pulse, in microseconds
 
-
-config CSEG_LCD_USE_ENABLE
+config 16SEG_LED_USE_ENABLE
     bool "Use enable"
     default false
     help
         Enable pin is present
 
-config CSEG_LCD_EN_IO
-    depends on CSEG_LCD_USE_ENABLE
+config 16SEG_LED_EN_IO
+    depends on 16SEG_LED_USE_ENABLE
     int "Enable GPIO"
     default 0
     help
         GPIO pin for shift register output enable
 
-config CSEG_LCD_EN_INV
-    depends on CSEG_LCD_USE_ENABLE
+config 16SEG_LED_EN_INV
+    depends on 16SEG_LED_USE_ENABLE
     bool "Enable GPIO active-low"
     default false
     help
         Output enable GPIO active-low or active-high
 
-choice CSEG_LCD_FONT
-    bool "LCD type / font"
+config 16SEG_LED_USE_DP_DATA
+    bool "Send extra decimal point data"
+    default false
+    help
+        Send extra decimal point data mixed in with the character data
 
-    config CSEG_LCD_FONT_GV07
-        bool "GV07"
-endchoice
+config 16SEG_LED_DP_DATA_INTERVAL
+    depends on 16SEG_LED_USE_DP_DATA
+    int "Decimal point data interval"
+    default 8
+    help
+        Send a packet of decimal point data every n characters
 
 endmenu

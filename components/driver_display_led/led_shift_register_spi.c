@@ -140,7 +140,7 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
     // Allocate DMA-capable buffer
     //uint8_t* buf = heap_caps_malloc()
 
-    ESP_LOGI(LOG_TAG, "Rendering frame");
+    ESP_LOGD(LOG_TAG, "Rendering frame");
     for (uint8_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT; y++) {
         for (uint16_t i = y; i < frameBufSize; i += CONFIG_DISPLAY_FRAME_HEIGHT) {
             display_shiftBit(frame[i] > 127);

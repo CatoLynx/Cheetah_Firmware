@@ -118,7 +118,7 @@ void wifi_init(void) {
 	        .threshold.authmode = WIFI_AUTH_WPA2_PSK,
 
             .pmf_cfg = {
-                .capable = true,
+                .capable = false,
                 .required = false
             },
         },

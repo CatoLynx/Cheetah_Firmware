@@ -19,7 +19,7 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
     uint8_t req_body_started = 0;       // Whether the form data headers have already been skipped
     uint16_t chunk_length = 0;          // Length of the current chunk
     uint16_t rx_len = 0;                // Total payload bytes received
-    ESP_LOGI(log_tag, "Content length: %d bytes", length);
+    ESP_LOGD(log_tag, "Content length: %d bytes", length);
 
     while (remaining > 0) {
         ret = httpd_req_recv(req, recv_buf, MIN(remaining, sizeof(recv_buf)));
@@ -28,7 +28,7 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
                 ESP_LOGI(log_tag, "Socket timeout, continuing");
                 continue;
             }
-            ESP_LOGI(log_tag, "Receive error, aborting");
+            ESP_LOGE(log_tag, "Receive error, aborting");
             return abortRequest(req, "500 Internal Server Error");
         }
         remaining -= ret;
@@ -38,7 +38,7 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
             // We need to wait for the headers to be complete
             // Check if the end of headers is in this block
             char *body_start_p = strstr(recv_buf, "\r\n\r\n") + 4;
-            ESP_LOGI(log_tag, "Body starts at offset %d", (body_start_p - recv_buf));
+            ESP_LOGD(log_tag, "Body starts at offset %d", (body_start_p - recv_buf));
             if (!body_start_p) {
                 // Header is not yet finished
                 continue;
@@ -49,13 +49,13 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
 
             // Write the first chunk
             chunk_length = MAX(MIN((max_size - rx_len), body_part_len), 0);
-            ESP_LOGI(log_tag, "Copying chunk of length %d", chunk_length);
+            ESP_LOGD(log_tag, "Copying chunk of length %d", chunk_length);
             memcpy(dest, body_start_p, chunk_length);
             rx_len += chunk_length;
         } else {
             // Header has already been skipped, just receive data until the payload size is reached
             chunk_length = MAX(MIN((max_size - rx_len), ret), 0);
-            ESP_LOGI(log_tag, "Copying chunk of length %d", chunk_length);
+            ESP_LOGD(log_tag, "Copying chunk of length %d", chunk_length);
             memcpy(dest + rx_len, recv_buf, chunk_length);
             rx_len += chunk_length;
         }

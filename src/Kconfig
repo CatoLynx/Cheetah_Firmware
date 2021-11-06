@@ -63,9 +63,14 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_LED_AESYS_I2S
         depends on DISPLAY_TYPE_PIXEL
         bool "aesys LED display (using I2S peripheral)"
+        
     config DISPLAY_DRIVER_CHAR_SEG_LCD_SPI
         depends on DISPLAY_TYPE_CHARACTER
         bool "Character-based segmented LCD (using SPI peripheral)"
+        
+    config DISPLAY_DRIVER_CHAR_16SEG_LED_SPI
+        depends on DISPLAY_TYPE_CHARACTER
+        bool "16-segment LED (using SPI peripheral)"
 endchoice
 
 config DISPLAY_WIDTH
@@ -129,11 +134,18 @@ config DISPLAY_USE_PREV_FRAMEBUF
         This allows the display to take advantage of knowing what has changed between the current
         and previous frames, thus enabling a quicker refresh.
 
-config DISPLAY_BYTES_PER_CHAR
+config DISPLAY_FONT_BYTES_PER_CHAR
     depends on DISPLAY_TYPE_CHARACTER
-    int "Bytes per character"
+    int "Bytes per character (for font)"
     default 1
     help
-        How many bytes of data are required for one character
+        How many bytes of data the font contains per character.
+
+config DISPLAY_FRAMEBUF_BITS_PER_CHAR
+    depends on DISPLAY_TYPE_CHARACTER
+    int "Bits per character (for framebuffer size)"
+    default 8
+    help
+        How many bits of data are to be stored per character. Used for framebuffer size calculation.
 
 endmenu
