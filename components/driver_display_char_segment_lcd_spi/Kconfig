@@ -78,4 +78,15 @@ choice CSEG_LCD_FONT
         bool "GV07"
 endchoice
 
+choice CSEG_LCD_SPI_HOST
+    bool "SPI Host"
+    default CSEG_LCD_SPI_HOST_VSPI
+
+    config CSEG_LCD_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config CSEG_LCD_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
 endmenu

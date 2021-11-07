@@ -79,8 +79,13 @@ void display_init() {
         .pre_cb = display_pre_transfer_cb,
         .post_cb = display_post_transfer_cb,
     };
+    #if defined(CONFIG_CSEG_LCD_SPI_HOST_VSPI)
     ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &buscfg, 1));
     ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &devcfg, &spi));
+    #elif defined(CONFIG_CSEG_LCD_SPI_HOST_HSPI)
+    ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfg, 1));
+    ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
+    #endif
 }
 
 void display_pre_transfer_cb(spi_transaction_t *t) {
@@ -136,7 +141,7 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t c
 void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
     if (display_transferOngoing) return;
 
-    ESP_LOGD(LOG_TAG, "Rendering frame");
+    ESP_LOGV(LOG_TAG, "Rendering frame");
     spi_transaction_t spi_trans = {
         .length = frameBufSize * 8,
         .tx_buffer = frame,

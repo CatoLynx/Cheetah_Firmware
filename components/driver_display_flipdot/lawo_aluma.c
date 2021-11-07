@@ -183,14 +183,14 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             p = x / CONFIG_ALUMA_PANEL_WIDTH;
             x %= CONFIG_ALUMA_PANEL_WIDTH;
             if (p != prev_p) {
-                ESP_LOGD(LOG_TAG, "Selecting panel %d", p);
+                ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
                 display_select_panel(p);
                 prev_p = p;
             }
             display_select_color(frame[i] > 127);
             display_select_column(x);
             display_select_row(y);
-            ESP_LOGD(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
         memcpy(prevFrame, frame, frameBufSize);
@@ -201,14 +201,14 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             p = x / CONFIG_ALUMA_PANEL_WIDTH;
             x %= CONFIG_ALUMA_PANEL_WIDTH;
             if (p != prev_p) {
-                ESP_LOGD(LOG_TAG, "Selecting panel %d", p);
+                ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
                 display_select_panel(p);
                 prev_p = p;
             }
             display_select_color(frame[i] > 127);
             display_select_column(x);
             display_select_row(y);
-            ESP_LOGD(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
         if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);

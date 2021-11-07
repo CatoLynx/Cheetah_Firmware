@@ -69,4 +69,15 @@ config 16SEG_LED_DP_DATA_INTERVAL
     help
         Send a packet of decimal point data every n characters
 
+choice 16SEG_LED_SPI_HOST
+    bool "SPI Host"
+    default 16SEG_LED_SPI_HOST_VSPI
+
+    config 16SEG_LED_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config 16SEG_LED_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
 endmenu
