@@ -13,6 +13,7 @@
 #include "macros.h"
 #include "tpm2net.h"
 #include "wifi.h"
+#include "ethernet.h"
 #include "util_gpio.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
@@ -98,6 +99,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     wifi_init();
+
+    #if defined(CONFIG_ETHERNET_ENABLED)
+    ethernet_init();
+    #endif
 
     ESP_ERROR_CHECK(mdns_init());
     mdns_hostname_set(CONFIG_PROJ_HOSTNAME);

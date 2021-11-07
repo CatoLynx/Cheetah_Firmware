@@ -28,6 +28,86 @@ config PROJ_AP_PASS
 
 endmenu
 
+
+menu "W5500 Ethernet Configuration"
+
+config ETHERNET_ENABLED
+    bool "Use W5500 Ethernet"
+    default false
+    help
+        Enable W5500 for Ethernet use
+
+config ETHERNET_MISO_IO
+    depends on ETHERNET_ENABLED
+    int "MISO GPIO"
+    default 0
+    help
+        GPIO pin for W5500 MISO
+
+config ETHERNET_MOSI_IO
+    depends on ETHERNET_ENABLED
+    int "MOSI GPIO"
+    default 0
+    help
+        GPIO pin for W5500 MOSI
+
+config ETHERNET_SCLK_IO
+    depends on ETHERNET_ENABLED
+    int "SCLK GPIO"
+    default 0
+    help
+        GPIO pin for W5500 SCLK
+
+config ETHERNET_CS_IO
+    depends on ETHERNET_ENABLED
+    int "CS GPIO"
+    default 0
+    help
+        GPIO pin for W5500 CS
+
+config ETHERNET_INT_IO
+    depends on ETHERNET_ENABLED
+    int "INT GPIO"
+    default 0
+    help
+        GPIO pin for W5500 INT
+
+config ETHERNET_RST_IO
+    depends on ETHERNET_ENABLED
+    int "RST GPIO"
+    default 0
+    help
+        GPIO pin for W5500 RST
+
+config ETHERNET_PHY_ADDR
+    depends on ETHERNET_ENABLED
+    int "PHY address"
+    default 0
+    help
+        PHY address for W5500
+
+config ETHERNET_SPI_CLK_FREQ
+    depends on ETHERNET_ENABLED
+    int "SPI Clock Frequency (Hz)"
+    default 1000000
+    help
+        Frequency for SPI clock (in Hz)
+
+choice ETHERNET_SPI_HOST
+    depends on ETHERNET_ENABLED
+    bool "SPI Host"
+    default ETHERNET_SPI_HOST_VSPI
+
+    config ETHERNET_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config ETHERNET_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
+endmenu
+
+
 menu "Display Configuration"
 
 choice DISPLAY_TYPE
