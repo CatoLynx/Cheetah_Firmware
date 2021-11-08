@@ -1,0 +1,2 @@
+IMPORTANT: If you're using ESP-IDF v4.3.0 or older, you need to replade the file components/esp_eth/src/esp_eth_mac_w5500.c with the one in this repository.
+It contains patches for SPI communication. WIthout these, once the link is up, unplugging the ethernet cable will cause the program to crash.
