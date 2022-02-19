@@ -1,3 +1,3 @@
-idf_component_register(SRCS         flipdot_common.c lawo_aluma.c
+idf_component_register(SRCS         lawo_aluma.c
                        INCLUDE_DIRS include
                        REQUIRES     util)
