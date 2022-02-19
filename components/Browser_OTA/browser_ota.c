@@ -198,6 +198,13 @@ static esp_err_t ota_version_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t ota_verify_get_handler(httpd_req_t *req) {
+    esp_ota_mark_app_valid_cancel_rollback();
+    httpd_resp_set_type(req, "text/plain");
+    httpd_resp_send(req, "OK", 3);
+    return ESP_OK;
+}
+
 static const httpd_uri_t ota_get = {
     .uri       = "/ota",
     .method    = HTTP_GET,
@@ -234,6 +241,12 @@ static const httpd_uri_t ota_version_get = {
     .handler   = ota_version_get_handler
 };
 
+static const httpd_uri_t ota_verify_get = {
+    .uri       = "/ota/verify",
+    .method    = HTTP_GET,
+    .handler   = ota_verify_get_handler
+};
+
 void browser_ota_init(httpd_handle_t* server) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
@@ -243,6 +256,7 @@ void browser_ota_init(httpd_handle_t* server) {
     httpd_register_uri_handler(*server, &ota_post);
     httpd_register_uri_handler(*server, &ota_status_get);
     httpd_register_uri_handler(*server, &ota_version_get);
+    httpd_register_uri_handler(*server, &ota_verify_get);
     ota_server = server;
     
     ESP_LOGI(LOG_TAG, "Creating restart task");
@@ -260,4 +274,5 @@ void browser_ota_deinit(void) {
     httpd_unregister_uri_handler(*ota_server, ota_post.uri, ota_post.method);
     httpd_unregister_uri_handler(*ota_server, ota_status_get.uri, ota_status_get.method);
     httpd_unregister_uri_handler(*ota_server, ota_version_get.uri, ota_version_get.method);
+    httpd_unregister_uri_handler(*ota_server, ota_verify_get.uri, ota_verify_get.method);
 }

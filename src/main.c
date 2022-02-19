@@ -5,6 +5,7 @@
 #include "mdns.h"
 #include "nvs_flash.h"
 #include "esp_system.h"
+#include "esp_ota_ops.h"
 
 #include "artnet.h"
 #include "browser_ota.h"
@@ -110,6 +111,7 @@ void app_main(void) {
 
     httpd_handle_t server = httpd_init();
     browser_ota_init(&server);
+
     display_init();
 
     #if defined(CONFIG_DISPLAY_TYPE_PIXEL)

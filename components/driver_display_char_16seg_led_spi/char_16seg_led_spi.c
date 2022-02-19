@@ -23,6 +23,9 @@ spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 
 
+// TODO: Proper fan control, proper enable pin handling (dimming)
+
+
 void display_init() {
     /*
      * Set up all needed peripherals
@@ -37,6 +40,26 @@ void display_init() {
     gpio_set_direction(CONFIG_16SEG_LED_EN_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
     #endif
+    
+    ledc_timer_config_t fan_timer = {
+        .duty_resolution = LEDC_TIMER_8_BIT,
+        .freq_hz = 25000,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_num = LEDC_TIMER_0,
+        .clk_cfg = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&fan_timer);
+
+    ledc_channel_config_t fan_channel = {
+        .channel    = LEDC_CHANNEL_0,
+        .duty       = 0,
+        .gpio_num   = 4,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .timer_sel  = LEDC_TIMER_0
+    };
+    ledc_channel_config(&fan_channel);
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 128);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 
     // Init SPI peripheral
     spi_bus_config_t buscfg = {
@@ -92,13 +115,21 @@ void display_disable() {
      */
 
     #if defined(CONFIG_16SEG_LED_USE_ENABLE)
-    gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
+    // TODO: TEMP WORKAROUND
+    //gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
     #endif
 }
 
 void display_latch() {
     gpio_pulse_inv(CONFIG_16SEG_LED_LATCH_IO, 1, CONFIG_16SEG_LED_LATCH_PULSE_LENGTH, CONFIG_16SEG_LED_LATCH_PULSE_LENGTH, CONFIG_16SEG_LED_LATCH_INV);
 }
+
+/*
+ TODO
+ - Implement dot handling
+ - Add brightness control (also in canvas interface)
+ - Display multiline text field in canvas
+ */
 
 void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     uint16_t fb_i = 0;

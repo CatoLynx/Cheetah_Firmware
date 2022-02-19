@@ -17,6 +17,8 @@
     <input type="submit" id="btn-submit" value="Update Firmware">
     <div id="div-upload-progress">&nbsp;</div>
     <div id="div-wait" style="display: none;"><img src="/ota/spinner.gif"> Update finished, restart pending. Reloading in a few seconds...</div>
+    <input type="submit" id="btn-verify" value="Mark OTA partition as valid">
+    <div id="verify-status">&nbsp;</div>
 
     <script type="text/javascript">
       function setPayloadLength() {
@@ -96,6 +98,16 @@
           error: onGetFWVersionError
         });
       }
+
+      function verifyOTA() {
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/ota/verify",
+          success: onVerifyOTASuccess,
+          error: onVerifyOTAError
+        });
+      }
       
       function onSetPayloadLengthSuccess(data, textStatus, jqXHR) {
         console.log("Successfully set payload size");
@@ -136,9 +148,18 @@
         $("#fw-version").html("Failed to load firmware version info");
       }
 
+      function onVerifyOTASuccess(data, textStatus, jqXHR) {
+        $("#verify-status").html("OTA partition verified!");
+      }
+
+      function onVerifyOTAError(jqXHR, textStatus, errorThrown) {
+        $("#verify-status").html("Failed to verify OTA partition");
+      }
+
       function onReady() {
         $("#file-firmware").change(onFileSelected);
         $("#btn-submit").click(startUpdate);
+        $("#btn-verify").click(verifyOTA);
         getFWVersion();
       }
 
