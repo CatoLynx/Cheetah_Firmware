@@ -108,7 +108,7 @@ static void tpm2net_task(void* arg) {
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-
+                    memcpy(tpm2net_out_buffer, tpm2net_temp_buffer, tpm2net_temp_buffer_size);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif
