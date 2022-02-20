@@ -132,6 +132,10 @@ choice DISPLAY_DRIVER
         depends on DISPLAY_TYPE_PIXEL
         bool "LAWO ALUMA flipdot (XY10 panels)"
 
+    config DISPLAY_DRIVER_FLIPDOT_BROSE
+        depends on DISPLAY_TYPE_PIXEL
+        bool "BROSE flipdot"
+
     config DISPLAY_DRIVER_LED_SHIFT_REGISTER
         depends on DISPLAY_TYPE_PIXEL
         bool "Generic shift-register based LED display"

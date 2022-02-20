@@ -31,6 +31,8 @@
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
     #define DISPLAY_DRIVER "flipdot_lawo_aluma"
+#elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_BROSE)
+    #define DISPLAY_DRIVER "flipdot_brose"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER)
     #define DISPLAY_DRIVER "led_shift_register"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)

@@ -1,0 +1,93 @@
+menu "BROSE Flipdot Configuration"
+
+config BROSE_PANEL_WIDTH
+    int "Panel Width"
+    default 28
+    help
+        Width of each flipdot panel
+
+config BROSE_NUM_PANELS
+    int "Number of panels"
+    default 1
+    help
+        Total number of flipdot panels connected
+
+config BROSE_FLIP_PULSE_WIDTH
+    int "Flip pulse width in microseconds"
+    default 350
+    help
+        Pixel flip impulse length in microseconds
+
+config BROSE_RD_EN_R_IO
+    int "Row driver enable reset GPIO"
+    default 0
+    help
+        GPIO pin for enabling the row driver for resetting pixels
+
+config BROSE_RD_EN_S_IO
+    int "Row driver enable set GPIO"
+    default 0
+    help
+        GPIO pin for enabling the row driver for setting pixels
+
+config BROSE_RD_A0_IO
+    int "Row driver address bit 0 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 0 of the row drivers
+
+config BROSE_RD_A1_IO
+    int "Row driver address bit 1 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 1 of the row drivers
+
+config BROSE_RD_A2_IO
+    int "Row driver address bit 2 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 2 of the row drivers
+
+config BROSE_PAN_E_IO
+    int "Panel enable GPIO"
+    default 0
+    help
+        GPIO pin for the panel enable signal
+
+config BROSE_PAN_CS_IO
+    int "Panel colour select GPIO"
+    default 0
+    help
+        GPIO pin for the panel colour select signal
+
+config BROSE_COL_A0_IO
+    int "Column driver address bit 0 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 0 for the column drivers
+
+config BROSE_COL_A1_IO
+    int "Column driver address bit 1 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 1 for the column drivers
+
+config BROSE_COL_A2_IO
+    int "Column driver address bit 2 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 2 for the column drivers
+
+config BROSE_COL_B0_IO
+    int "Column driver address bit 3 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 3 for the column drivers
+
+config BROSE_COL_B1_IO
+    int "Column driver address bit 4 GPIO"
+    default 0
+    help
+        GPIO pin for address bit 4 for the column drivers
+
+endmenu
