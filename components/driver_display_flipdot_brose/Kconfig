@@ -18,6 +18,12 @@ config BROSE_FLIP_PULSE_WIDTH
     help
         Pixel flip impulse length in microseconds
 
+config BROSE_FLIP_PAUSE_LENGTH
+    int "Flip pause length in microseconds"
+    default 350
+    help
+        Pixel flip pause length in microseconds
+
 config BROSE_RD_EN_R_IO
     int "Row driver enable reset GPIO"
     default 0
