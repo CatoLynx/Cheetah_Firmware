@@ -3,6 +3,8 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+.vscode/settings.json
+.vscode/extensions.json
 sdkconfig.esp-wrover-kit
 sdkconfig*.old
 include/settings_secret.h
