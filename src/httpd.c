@@ -38,8 +38,8 @@ static esp_err_t ip_get_handler(httpd_req_t *req) {
 
 static esp_err_t display_info_get_handler(httpd_req_t *req) {
     char resp[300];
-    sprintf(resp, "{\"type\": \"%s\", \"driver\": \"%s\", \"width\": %d, \"height\": %d, \"frame_width\": %d, \"frame_height\": %d, \"viewport_offset_x\": %d, \"viewport_offset_y\": %d, \"frame_type\": \"%s\", \"framebuf_size\": %d}",
-            DISPLAY_TYPE, DISPLAY_DRIVER, CONFIG_DISPLAY_WIDTH, CONFIG_DISPLAY_HEIGHT, DISPLAY_FRAME_WIDTH, DISPLAY_FRAME_HEIGHT, DISPLAY_VIEWPORT_OFFSET_X, DISPLAY_VIEWPORT_OFFSET_Y, DISPLAY_FRAME_TYPE, DISPLAY_FRAMEBUF_SIZE);
+    sprintf(resp, "{\"type\": \"%s\", \"driver\": \"%s\", \"width\": %d, \"height\": %d, \"frame_width\": %d, \"frame_height\": %d, \"viewport_offset_x\": %d, \"viewport_offset_y\": %d, \"frame_type\": \"%s\", \"framebuf_size\": %d, \"brightness_control\": %d}",
+            DISPLAY_TYPE, DISPLAY_DRIVER, CONFIG_DISPLAY_WIDTH, CONFIG_DISPLAY_HEIGHT, DISPLAY_FRAME_WIDTH, DISPLAY_FRAME_HEIGHT, DISPLAY_VIEWPORT_OFFSET_X, DISPLAY_VIEWPORT_OFFSET_Y, DISPLAY_FRAME_TYPE, DISPLAY_FRAMEBUF_SIZE, DISPLAY_HAS_BRIGHTNESS_CONTROL);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, resp, strlen(resp));

@@ -80,4 +80,25 @@ choice 16SEG_LED_SPI_HOST
         bool "HSPI"
 endchoice
 
+config 16SEG_LED_PWM_TIMER_NUM
+    depends on 16SEG_LED_USE_ENABLE
+    int "Dimming PWM timer number"
+    default 0
+    help
+        LEDC timer number for display dimming PWM (0 to 3)
+
+config 16SEG_LED_PWM_CHANNEL_NUM
+    depends on 16SEG_LED_USE_ENABLE
+    int "Dimming PWM channel number"
+    default 0
+    help
+        LEDC channel number for display dimming PWM (0 to 7)
+
+config 16SEG_LED_PWM_FREQ
+    depends on 16SEG_LED_USE_ENABLE
+    int "Dimming PWM frequency (Hz)"
+    default 25000
+    help
+        PWM frequency for display dimming PWM
+
 endmenu

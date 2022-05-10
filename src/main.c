@@ -68,6 +68,11 @@ uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
     uint8_t* prev_display_output_buffer = NULL;
 #endif
 
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+uint8_t display_prevBrightness = 0;
+uint8_t display_brightness = 255;
+#endif
+
 
 static void display_refresh_task(void* arg) {
     while (1) {
@@ -88,6 +93,13 @@ static void display_refresh_task(void* arg) {
 
         #if defined(CONFIG_FAN_ENABLED)
         fan_set_target_speed(display_get_fan_speed(display_output_buffer, DISPLAY_FRAMEBUF_SIZE));
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+        if (display_brightness != display_prevBrightness) {
+            display_set_brightness(display_brightness);
+            display_prevBrightness = display_brightness;
+        }
         #endif
 
         taskYIELD();
@@ -133,7 +145,7 @@ void app_main(void) {
     #endif
     
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+    browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE, &display_brightness);
     #endif
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);

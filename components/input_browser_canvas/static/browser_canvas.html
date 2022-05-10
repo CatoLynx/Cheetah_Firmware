@@ -22,20 +22,25 @@
     <div id="text-container" style="display: none;">
       <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
     </div>
+    <div id="brightness-container" style="display: none;">
+      <label for="brightness-input">Brightness</label>
+      <input type="range" id="brightness-input" name="brightness" min="0" max="255" value="255" />
+    </div>
 
     <script type="text/javascript">
       var _CANVASDEBUG = false;
       var _CANVASDEBUGINFO = {
             type: "character",
-            driver: "char_seg_lcd_spi",
+            driver: "char_16seg_led_spi",
             width: 24,
-            height: 1,
+            height: 4,
             frame_width: 24,
-            frame_height: 1,
+            frame_height: 4,
             viewport_offset_x: 0,
             viewport_offset_y: 0,
             frame_type: "",
-            framebuf_size: 120
+            framebuf_size: 204,
+            brightness_control: 1
           };
       
       var display_info = {};
@@ -113,6 +118,10 @@
         $("#text-container").show();
       }
 
+      function drawBrightnessControl() {
+        $("#brightness-container").show();
+      }
+
       function drawPixel(x, y, color) {
         let canvas = $("#pixel-canvas")[0];
         let margin = canvas.getBoundingClientRect();
@@ -165,6 +174,10 @@
       function onTextInputInput(event) {
         event.preventDefault();
         updateDisplay();
+      }
+
+      function onBrightnessChange(event) {
+        updateBrightness();
       }
 
       function hexToRGB(hex) {
@@ -293,14 +306,13 @@
       }
 
       function updateDisplay() {
+        let fb = getFramebuffer();
         if (_CANVASDEBUG) {
-          let fb = getFramebuffer();
           console.log(fb);
           setTimeout(onUpdateDisplaySuccess, 250);
         } else {
           if(updateInProgress) return;
           updateInProgress = true;
-          let fb = getFramebuffer();
           let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
           var formData = new FormData();
           formData.set("frame", fb_blob, "frame");
@@ -308,6 +320,23 @@
           xhr.upload.addEventListener("load", onUpdateDisplaySuccess, false);
           xhr.upload.addEventListener("error", onUpdateDisplayError, false);
           xhr.open("POST", "/canvas/update");
+          xhr.responseType = "blob";
+          xhr.send(formData);
+        }
+      }
+
+      function updateBrightness() {
+        let brightness = $("#brightness-input").val();
+        if (_CANVASDEBUG) {
+          console.log("Setting brightness to " + brightness);
+        } else {
+          let fb_blob = new Blob([new Uint8Array([brightness]).buffer], {type: "application/octet-stream"});
+          var formData = new FormData();
+          formData.set("frame", fb_blob, "frame");
+          var xhr = new XMLHttpRequest();
+          xhr.upload.addEventListener("load", onSetBrightnessSuccess, false);
+          xhr.upload.addEventListener("error", onSetBrightnessError, false);
+          xhr.open("POST", "/canvas/set_brightness");
           xhr.responseType = "blob";
           xhr.send(formData);
         }
@@ -345,6 +374,11 @@
           console.log("ERROR: Unsupported display type \"" + display_info["type"] + "\"");
           return;
         }
+
+        if(display_info["brightness_control"]) {
+          drawBrightnessControl();
+          $("#brightness-input").change(onBrightnessChange);
+        }
       }
 
       function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {
@@ -360,6 +394,15 @@
 
       function onUpdateDisplayError(jqXHR, textStatus, errorThrown) {
         console.log("Error updating display!");
+        console.log(errorThrown);
+      }
+
+      function onSetBrightnessSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetBrightnessError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting brightness!");
         console.log(errorThrown);
       }
       

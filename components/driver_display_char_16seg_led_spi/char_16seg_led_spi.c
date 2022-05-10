@@ -2,6 +2,7 @@
  * Functions for shift-register based LED displays
  */
 
+#include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -21,9 +22,25 @@
 
 spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
+uint8_t display_currentBrightness = 255;
 
+#if defined(CONFIG_16SEG_LED_USE_ENABLE)
+ledc_timer_config_t dimming_timer = {
+    .duty_resolution = LEDC_TIMER_8_BIT,
+    .freq_hz = CONFIG_16SEG_LED_PWM_FREQ,
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .timer_num = CONFIG_16SEG_LED_PWM_TIMER_NUM,
+    .clk_cfg = LEDC_AUTO_CLK
+};
 
-// TODO: Proper enable pin handling (dimming)
+ledc_channel_config_t dimming_channel = {
+    .channel    = CONFIG_16SEG_LED_PWM_CHANNEL_NUM,
+    .duty       = 0,
+    .gpio_num   = CONFIG_16SEG_LED_EN_IO,
+    .speed_mode = LEDC_LOW_SPEED_MODE,
+    .timer_sel  = CONFIG_16SEG_LED_PWM_TIMER_NUM
+};
+#endif
 
 
 void display_init() {
@@ -39,6 +56,11 @@ void display_init() {
     gpio_reset_pin(CONFIG_16SEG_LED_EN_IO);
     gpio_set_direction(CONFIG_16SEG_LED_EN_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
+
+        #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+        ESP_ERROR_CHECK(ledc_timer_config(&dimming_timer));
+        ESP_ERROR_CHECK(ledc_channel_config(&dimming_channel));
+        #endif
     #endif
 
     // Init SPI peripheral
@@ -66,16 +88,16 @@ void display_init() {
     ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfg, 1));
     ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
     #endif
+
+    display_enable();
 }
 
 void display_pre_transfer_cb(spi_transaction_t *t) {
     display_transferOngoing = true;
-    display_disable();
 }
 
 void display_post_transfer_cb(spi_transaction_t *t) {
     display_latch();
-    display_enable();
     display_transferOngoing = false;
 }
 
@@ -95,14 +117,35 @@ void display_disable() {
      */
 
     #if defined(CONFIG_16SEG_LED_USE_ENABLE)
-    // TODO: TEMP WORKAROUND
-    //gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
+    gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
     #endif
 }
 
 void display_latch() {
     gpio_pulse_inv(CONFIG_16SEG_LED_LATCH_IO, 1, CONFIG_16SEG_LED_LATCH_PULSE_LENGTH, CONFIG_16SEG_LED_LATCH_PULSE_LENGTH, CONFIG_16SEG_LED_LATCH_INV);
 }
+
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+esp_err_t display_set_brightness(uint8_t brightness) {
+    display_currentBrightness = brightness;
+    
+    #if defined(CONFIG_16SEG_LED_EN_INV)
+    brightness = 255 - brightness;
+    #endif
+
+    esp_err_t ret;
+
+    ret = ledc_set_duty(LEDC_LOW_SPEED_MODE, CONFIG_16SEG_LED_PWM_CHANNEL_NUM, brightness);
+    if (ret != ESP_OK) return ret;
+
+    ret = ledc_update_duty(LEDC_LOW_SPEED_MODE, CONFIG_16SEG_LED_PWM_CHANNEL_NUM);
+    return ret;
+}
+#else
+esp_err_t display_set_brightness(uint8_t brightness) {
+    return ESP_OK;
+}
+#endif
 
 uint16_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
     // Calculate the frame buffer start index for the given character position
@@ -201,7 +244,7 @@ uint8_t display_get_fan_speed(uint8_t* frameBuf, uint16_t frameBufSize) {
 
     // Dividing by (frameBufSize * 5) instead of * 8 to reach maximum fan speed
     // with less than literally every segment lit up
-    uint16_t speed = (255 * numActiveSegments) / (frameBufSize * 5);
+    uint16_t speed = (255 * numActiveSegments * display_currentBrightness) / (frameBufSize * 5 * 255);
     if (speed > 255) speed = 255;
     return (uint8_t)speed;
 }

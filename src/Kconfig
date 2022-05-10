@@ -232,6 +232,12 @@ config DISPLAY_FRAMEBUF_BITS_PER_CHAR
     help
         How many bits of data are to be stored per character. Used for framebuffer size calculation.
 
+config DISPLAY_HAS_BRIGHTNESS_CONTROL
+    bool "Display has brightness control"
+    default false
+    help
+        Enable brightness control
+
 endmenu
 
 

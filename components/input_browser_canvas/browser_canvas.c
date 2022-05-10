@@ -14,6 +14,7 @@
 static httpd_handle_t* canvas_server;
 static uint8_t* canvas_output_buffer;
 static size_t canvas_output_buffer_size = 0;
+static uint8_t* canvas_brightness;
 
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t browser_canvas_html_start[] asm("_binary_browser_canvas_html_start");
@@ -30,6 +31,10 @@ static esp_err_t canvas_update_post_handler(httpd_req_t *req) {
     return post_recv_handler(LOG_TAG, req, canvas_output_buffer, canvas_output_buffer_size);
 }
 
+static esp_err_t canvas_set_brightness_post_handler(httpd_req_t *req) {
+    return post_recv_handler(LOG_TAG, req, canvas_brightness, 1);
+}
+
 static const httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -42,18 +47,29 @@ static const httpd_uri_t canvas_update_post = {
     .handler   = canvas_update_post_handler
 };
 
-void browser_canvas_init(httpd_handle_t* server, uint8_t* outBuf, size_t bufSize) {
+static const httpd_uri_t canvas_set_brightness_post = {
+    .uri       = "/canvas/set_brightness",
+    .method    = HTTP_POST,
+    .handler   = canvas_set_brightness_post_handler
+};
+
+void browser_canvas_init(httpd_handle_t* server, uint8_t* outBuf, size_t bufSize, uint8_t* brightness) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_output_buffer = outBuf;
     canvas_output_buffer_size = bufSize;
+    canvas_brightness = brightness;
     httpd_register_uri_handler(*server, &canvas_get);
     httpd_register_uri_handler(*server, &canvas_update_post);
+    httpd_register_uri_handler(*server, &canvas_set_brightness_post);
     canvas_server = server;
 }
 
 void browser_canvas_stop(void) {
     ESP_LOGI(LOG_TAG, "Stopping browser canvas");
     canvas_output_buffer = NULL;
+    canvas_output_buffer_size = 0;
+    canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_get.uri, canvas_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_update_post.uri, canvas_update_post.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_set_brightness_post.uri, canvas_set_brightness_post.method);
 }
