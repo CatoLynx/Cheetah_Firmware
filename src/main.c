@@ -149,5 +149,8 @@ void app_main(void) {
     #endif
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);
+
+    #if defined(CONFIG_FAN_ENABLED)
     xTaskCreate(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL);
+    #endif
 }
