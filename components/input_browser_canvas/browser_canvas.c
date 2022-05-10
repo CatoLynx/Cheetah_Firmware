@@ -6,6 +6,8 @@
 #include "browser_canvas.h"
 #include "util_httpd.h"
 
+// TODO: Sometimes, the last change doesn't get sent
+
 
 #define LOG_TAG "Canvas"
 

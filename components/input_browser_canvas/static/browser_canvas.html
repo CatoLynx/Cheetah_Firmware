@@ -20,7 +20,7 @@
       </div>
     </div>
     <div id="text-container" style="display: none;">
-      <input type="text" id="text-input" name="text" style="font-family: monospace; font-size: 3em;">
+      <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
     </div>
 
     <script type="text/javascript">
@@ -108,7 +108,8 @@
       }
 
       function drawTextInput() {
-        $("#text-input").prop('size', display_info["width"]);
+        $("#text-input").prop('cols', display_info["width"]);
+        $("#text-input").prop('rows', display_info["height"]);
         $("#text-container").show();
       }
 
@@ -274,7 +275,10 @@
           }
         } else if (display_info["type"] == "character") {
           let framebuf = new Array(display_info["framebuf_size"]);
-          let val =$("#text-input").val();
+          let val = "";
+          $("#text-input").val().split("\n").forEach(function(e) {
+            val += e.substring(0, display_info["width"]).padEnd(display_info["width"], " ");
+          });
           let valLen = val.length;
           for (let i = 0; i < display_info["framebuf_size"]; i++) {
             if (i >= valLen) {
