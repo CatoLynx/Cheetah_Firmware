@@ -2,7 +2,6 @@
  * Functions for shift-register based LED displays
  */
 
-#include "driver/ledc.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
@@ -11,6 +10,7 @@
 
 #include "macros.h"
 #include "char_16seg_led_spi.h"
+#include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
 
@@ -23,7 +23,7 @@ spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 
 
-// TODO: Proper fan control, proper enable pin handling (dimming)
+// TODO: Proper enable pin handling (dimming)
 
 
 void display_init() {
@@ -40,26 +40,6 @@ void display_init() {
     gpio_set_direction(CONFIG_16SEG_LED_EN_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_16SEG_LED_EN_IO, 0, CONFIG_16SEG_LED_EN_INV);
     #endif
-    
-    ledc_timer_config_t fan_timer = {
-        .duty_resolution = LEDC_TIMER_8_BIT,
-        .freq_hz = 25000,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_num = LEDC_TIMER_0,
-        .clk_cfg = LEDC_AUTO_CLK
-    };
-    ledc_timer_config(&fan_timer);
-
-    ledc_channel_config_t fan_channel = {
-        .channel    = LEDC_CHANNEL_0,
-        .duty       = 0,
-        .gpio_num   = 4,
-        .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_sel  = LEDC_TIMER_0
-    };
-    ledc_channel_config(&fan_channel);
-    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 128);
-    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
 
     // Init SPI peripheral
     spi_bus_config_t buscfg = {
@@ -169,7 +149,6 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
  - Add brightness control (also in canvas interface)
  - Display multiline text field in canvas
  */
-
 void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     uint8_t prevWasLetter = 0;
     uint16_t decPointMergeCnt = 0;
@@ -211,6 +190,20 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
         .tx_buffer = frame,
     };
     ESP_ERROR_CHECK(spi_device_polling_transmit(spi, &spi_trans));
+}
+
+uint8_t display_get_fan_speed(uint8_t* frameBuf, uint16_t frameBufSize) {
+    // Calculates the required fan speed based on the number of active segments in the framebuffer
+    uint32_t numActiveSegments = 0;
+    for (uint16_t i = 0; i < frameBufSize; i++) {
+        numActiveSegments += count_set_bits(frameBuf[i]);
+    }
+
+    // Dividing by (frameBufSize * 5) instead of * 8 to reach maximum fan speed
+    // with less than literally every segment lit up
+    uint16_t speed = (255 * numActiveSegments) / (frameBufSize * 5);
+    if (speed > 255) speed = 255;
+    return (uint8_t)speed;
 }
 
 #endif

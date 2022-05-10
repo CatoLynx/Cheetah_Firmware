@@ -233,3 +233,49 @@ config DISPLAY_FRAMEBUF_BITS_PER_CHAR
         How many bits of data are to be stored per character. Used for framebuffer size calculation.
 
 endmenu
+
+
+menu "Fan Configuration"
+
+config FAN_ENABLED
+    bool "Use fan"
+    default false
+    help
+        Enable fan control
+
+config FAN_PWM_TIMER_NUM
+    depends on FAN_ENABLED
+    int "Fan PWM timer number"
+    default 0
+    help
+        LEDC timer number for fan PWM (0 to 3)
+
+config FAN_PWM_CHANNEL_NUM
+    depends on FAN_ENABLED
+    int "Fan PWM channel number"
+    default 0
+    help
+        LEDC channel number for fan PWM (0 to 7)
+
+config FAN_PWM_GPIO_NUM
+    depends on FAN_ENABLED
+    int "Fan PWM GPIO number"
+    default 0
+    help
+        GPIO number for fan PWM
+
+config FAN_PWM_FREQ
+    depends on FAN_ENABLED
+    int "Fan PWM frequency (Hz)"
+    default 25000
+    help
+        PWM frequency for fan PWM
+
+config FAN_SPEED_ADJUST_DELAY
+    depends on FAN_ENABLED
+    int "Fan speed adjust delay in ms"
+    default 100
+    help
+        How many milliseconds between each fan speed adjustment step. There are 256 steps in total. Minimum is 10.
+
+endmenu
