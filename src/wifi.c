@@ -3,6 +3,7 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "macros.h"
 
 #include "wifi.h"
 #include "settings_secret.h"
@@ -11,6 +12,10 @@
 
 
 static uint16_t s_retry_num = 0;
+
+#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
+#endif
 
 
 static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
@@ -60,6 +65,11 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case IP_EVENT_STA_GOT_IP: {
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+                #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+                char temp[19];
+                sprintf(temp, "IP=" IPSTR, IP2STR(&event->ip_info.ip));
+                strncpy((char*)display_char_buffer, temp, DISPLAY_CHARBUF_SIZE);
+                #endif
                 s_retry_num = 0;
                 break;
             }
@@ -96,6 +106,9 @@ void wifi_init_ap(void) {
 
     ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s",
              CONFIG_PROJ_AP_SSID, CONFIG_PROJ_AP_PASS);
+    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    strncpy((char*)display_char_buffer, "AP MODE", DISPLAY_CHARBUF_SIZE);
+    #endif
 }
 
 void wifi_init(void) {
@@ -108,22 +121,39 @@ void wifi_init(void) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = STA_SSID,
-            .password = STA_PASS,
-            /* Setting a password implies station will connect to all security modes including WEP/WPA.
-             * However these modes are deprecated and not advisable to be used. Incase your Access point
-             * doesn't support WPA2, these mode can be enabled by commenting below line */
-	        .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+    wifi_config_t wifi_config;
+    if (strlen(STA_PASS) != 0) {
+        wifi_config = (wifi_config_t){
+            .sta = {
+                .ssid = STA_SSID,
+                .password = STA_PASS,
+                /* Setting a password implies station will connect to all security modes including WEP/WPA.
+                * However these modes are deprecated and not advisable to be used. Incase your Access point
+                * doesn't support WPA2, these mode can be enabled by commenting below line */
+                .threshold.authmode = WIFI_AUTH_WPA2_PSK,
 
-            .pmf_cfg = {
-                .capable = false,
-                .required = false
+                .pmf_cfg = {
+                    .capable = false,
+                    .required = false
+                },
             },
-        },
-    };
+        };
+    } else {
+        wifi_config = (wifi_config_t){
+            .sta = {
+                .ssid = STA_SSID,
+
+                .pmf_cfg = {
+                    .capable = false,
+                    .required = false
+                },
+            },
+        };
+    }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);
+    #endif
 }
