@@ -1,7 +1,9 @@
+Import("env")
+
 import shutil
 
-print("Removing compiled Browser_OTA component to update compile date and time")
+print("Removing compiled Browser OTA component to update compile date and time")
 try:
-    shutil.rmtree(".pio/build/esp-wrover-kit/components/Browser_OTA")
+    shutil.rmtree(".pio/build/{}/components/browser_ota".format(env["PIOENV"]))
 except FileNotFoundError:
-    pass
+    print("File not found")
