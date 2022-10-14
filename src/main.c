@@ -145,7 +145,11 @@ void app_main(void) {
     #endif
     
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE, &display_brightness);
+    browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+    #endif
+
+    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+    browser_canvas_register_brightness(&server, &display_brightness);
     #endif
 
     xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);

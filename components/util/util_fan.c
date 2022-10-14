@@ -4,6 +4,9 @@
 #include "freertos/task.h"
 
 
+#if defined(CONFIG_FAN_ENABLED)
+
+
 ledc_timer_config_t fan_timer = {
     .duty_resolution = LEDC_TIMER_8_BIT,
     .freq_hz = CONFIG_FAN_PWM_FREQ,
@@ -77,3 +80,5 @@ void fan_speed_adjust_task(void* arg) {
         }
     }
 }
+
+#endif
