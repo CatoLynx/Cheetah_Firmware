@@ -38,175 +38,93 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
     {"fields": [{"name": "sta_ssid", "type": 12, "value": "ABCDEFGHIJ"}, {"name": "sta_pass", "type": 12, "value": "1234567890"}]}
     */
 
+    cJSON* json = cJSON_CreateObject();
+    cJSON* fields_arr = cJSON_AddArrayToObject(json, "fields");
+
     uint16_t num_fields = sizeof(config_entries) / sizeof(config_entries[0]);
 
-    size_t resp_len = 15; // {"fields": []} + NUL
-    size_t valueLen = 0;
     for (uint16_t i = 0; i < num_fields; i++) {
-        resp_len += 37; // {"name": "", "type": XX, "value": }, 
-        resp_len += strlen(config_entries[i].key);
-        if (config_entries[i].dataType == STR) {
-            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLen));
-            resp_len += valueLen + 2; // plus ""
-        } else if (config_entries[i].dataType == BLOB) {
+        cJSON* entry = cJSON_CreateObject();
+        cJSON_AddStringToObject(entry, "name", config_entries[i].key);
+        cJSON_AddNumberToObject(entry, "type", config_entries[i].dataType);
+
+        if (config_entries[i].dataType == BLOB) {
             // Not yet implemented
-            resp_len += 4; // Just return null
+        } else if (config_entries[i].dataType == STR) {
+            // Query string length
+            size_t valueLength;
+            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLength));
+            // Allocate buffer for value
+            char* value = malloc(valueLength);
+            // Read value
+            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, value, &valueLength));
+            cJSON_AddStringToObject(entry, "value", value);
+            // Free allocated memory
+            free(value);
         } else {
-            // Numerical values, just allocate conservatively for the highest possible value
+            // Numerical value
             switch(config_entries[i].dataType) {
                 case I8: {
-                    resp_len += 4; // -128
+                    int8_t value;
+                    ESP_ERROR_CHECK(nvs_get_i8(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case U8: {
-                    resp_len += 3; // 255
+                    uint8_t value;
+                    ESP_ERROR_CHECK(nvs_get_u8(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case I16: {
-                    resp_len += 6; // -32768
+                    int16_t value;
+                    ESP_ERROR_CHECK(nvs_get_i16(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case U16: {
-                    resp_len += 5; // 65535
+                    uint16_t value;
+                    ESP_ERROR_CHECK(nvs_get_u16(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case I32: {
-                    resp_len += 11; // -2147483648
+                    int32_t value;
+                    ESP_ERROR_CHECK(nvs_get_i32(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case U32: {
-                    resp_len += 10; // 4294967295
+                    uint32_t value;
+                    ESP_ERROR_CHECK(nvs_get_u32(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case I64: {
-                    resp_len += 20; // -9223372036854775808
+                    int64_t value;
+                    ESP_ERROR_CHECK(nvs_get_i64(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 case U64: {
-                    resp_len += 20; // 18446744073709551615
+                    uint64_t value;
+                    ESP_ERROR_CHECK(nvs_get_u64(config_nvs_handle, config_entries[i].key, &value));
+                    cJSON_AddNumberToObject(entry, "value", value);
                     break;
                 }
                 default: break;
             }
         }
+        cJSON_AddItemToArray(fields_arr, entry);
     }
 
-    char* resp = malloc(resp_len);
-    memset(resp, 0x00, resp_len);
-    uint32_t resp_ptr = 0;
-
-    strcpy(resp + resp_ptr, "{\"fields\": [");
-    resp_ptr += 12;
-
-    for (uint16_t i = 0; i < num_fields; i++) {
-        strcpy(resp + resp_ptr, "{\"name\": \"");
-        resp_ptr += 10;
-
-        strcpy(resp + resp_ptr, config_entries[i].key);
-        resp_ptr += strlen(config_entries[i].key);
-
-        strcpy(resp + resp_ptr, "\", \"type\": ");
-        resp_ptr += 11;
-
-        sprintf(resp + resp_ptr, "%u", config_entries[i].dataType); // Writes NUL but we'll overwrite it in the next strcpy
-        resp_ptr += 2; // They're all >= 10 and <= 99, so two characters
-
-        strcpy(resp + resp_ptr, ", \"value\": ");
-        resp_ptr += 11;
-
-        if (config_entries[i].dataType == STR) {
-            strcpy(resp + resp_ptr, "\"");
-            resp_ptr += 1;
-
-            valueLen = resp_len - resp_ptr; // length pointer for nvs_get_str must be initialized with target buffer size
-            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, resp + resp_ptr, &valueLen)); // Writes NUL but we'll overwrite it in the next strcpy
-            if (valueLen > 0) resp_ptr += valueLen - 1; // -1 to ignore NUL
-            
-            strcpy(resp + resp_ptr, "\"");
-            resp_ptr += 1;
-        } else if (config_entries[i].dataType == BLOB) {
-            // Not yet implemented
-            strcpy(resp + resp_ptr, "null");
-            resp_ptr += 4;
-        } else {
-            // Numerical values
-            switch(config_entries[i].dataType) {
-                case I8: {
-                    int8_t res;
-                    ESP_ERROR_CHECK(nvs_get_i8(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%d", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += int_num_digits(res, 1);
-                    break;
-                }
-                case U8: {
-                    uint8_t res;
-                    ESP_ERROR_CHECK(nvs_get_u8(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%u", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += uint_num_digits(res);
-                    break;
-                }
-                case I16: {
-                    int16_t res;
-                    ESP_ERROR_CHECK(nvs_get_i16(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%d", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += int_num_digits(res, 1);
-                    break;
-                }
-                case U16: {
-                    uint16_t res;
-                    ESP_ERROR_CHECK(nvs_get_u16(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%u", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += uint_num_digits(res);
-                    break;
-                }
-                case I32: {
-                    int32_t res;
-                    ESP_ERROR_CHECK(nvs_get_i32(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%d", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += int_num_digits(res, 1);
-                    break;
-                }
-                case U32: {
-                    uint32_t res;
-                    ESP_ERROR_CHECK(nvs_get_u32(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%u", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += uint_num_digits(res);
-                    break;
-                }
-                case I64: {
-                    int64_t res;
-                    ESP_ERROR_CHECK(nvs_get_i64(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%lld", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += int_num_digits(res, 1);
-                    break;
-                }
-                case U64: {
-                    uint64_t res;
-                    ESP_ERROR_CHECK(nvs_get_u64(config_nvs_handle, config_entries[i].key, &res));
-                    sprintf(resp + resp_ptr, "%llu", res); // Writes NUL but we'll overwrite it in the next strcpy
-                    resp_ptr += uint_num_digits(res);
-                    break;
-                }
-                default: break;
-            }
-        }
-
-        strcpy(resp + resp_ptr, "}");
-        resp_ptr += 1;
-
-        if (i < num_fields - 1) {
-            strcpy(resp + resp_ptr, ", ");
-            resp_ptr += 2;
-        }
-    }
-
-    strcpy(resp + resp_ptr, "]}");
-    resp_ptr += 2;
+    char *resp = cJSON_Print(json);
 
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, resp, strlen(resp));
-    free(resp);
+    cJSON_Delete(json);
+    cJSON_free(resp);
     return ESP_OK;
 }
 
