@@ -128,6 +128,137 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t config_post_update_handler(httpd_req_t *req) {
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+
+    cJSON* fields_arr = cJSON_GetObjectItem(json, "fields");
+    if (!cJSON_IsArray(fields_arr)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+
+    cJSON* entry = NULL;
+    cJSON_ArrayForEach(entry, fields_arr) {
+        if (!cJSON_IsObject(entry)) {
+            cJSON_Delete(json);
+            return abortRequest(req, "500 Internal Server Error");
+        }
+
+        cJSON* field_name = cJSON_GetObjectItem(entry, "name");
+        if (!cJSON_IsString(field_name)) {
+            cJSON_Delete(json);
+            return abortRequest(req, "500 Internal Server Error");
+        }
+        char* fieldName = cJSON_GetStringValue(field_name);
+
+        cJSON* field_type = cJSON_GetObjectItem(entry, "type");
+        if (!cJSON_IsNumber(field_type)) {
+            cJSON_Delete(json);
+            return abortRequest(req, "500 Internal Server Error");
+        }
+        config_data_type_t fieldType = (config_data_type_t)(int)cJSON_GetNumberValue(field_type);
+
+        cJSON* field_value = cJSON_GetObjectItem(entry, "value");
+        switch(fieldType) {
+            case I8:
+            case U8:
+            case I16:
+            case U16:
+            case I32:
+            case U32:
+            case I64:
+            case U64: {
+                if (!cJSON_IsNumber(field_value)) {
+                    cJSON_Delete(json);
+                    return abortRequest(req, "500 Internal Server Error");
+                }
+                break;
+            }
+            case STR: {
+                if (!cJSON_IsString(field_value)) {
+                    cJSON_Delete(json);
+                    return abortRequest(req, "500 Internal Server Error");
+                }
+                break;
+            }
+            default: {
+                cJSON_Delete(json);
+                return abortRequest(req, "500 Internal Server Error");
+            }
+        }
+
+        switch(fieldType) {
+            case I8: {
+                int8_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_i8(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case U8: {
+                uint8_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_u8(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case I16: {
+                int16_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_i16(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case U16: {
+                uint16_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_u16(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case I32: {
+                int32_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_i32(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case U32: {
+                uint32_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_u32(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case I64: {
+                int64_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_i64(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case U64: {
+                uint64_t value = cJSON_GetNumberValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_u64(config_nvs_handle, fieldName, value));
+                break;
+            }
+            case STR: {
+                char* value = cJSON_GetStringValue(field_value);
+                ESP_ERROR_CHECK(nvs_set_str(config_nvs_handle, fieldName, value));
+                break;
+            }
+            default: {
+                cJSON_Delete(json);
+                return abortRequest(req, "500 Internal Server Error");
+            }
+        }
+    }
+
+    nvs_commit(config_nvs_handle);
+    cJSON_Delete(json);
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
 static const httpd_uri_t config_get = {
     .uri       = "/config",
     .method    = HTTP_GET,
@@ -140,12 +271,19 @@ static const httpd_uri_t config_get_fields = {
     .handler   = config_get_fields_handler
 };
 
+static const httpd_uri_t config_post_update = {
+    .uri       = "/config/update",
+    .method    = HTTP_POST,
+    .handler   = config_post_update_handler
+};
+
 void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     config_nvs_handle = *nvsHandle;
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
     httpd_register_uri_handler(*server, &config_get);
     httpd_register_uri_handler(*server, &config_get_fields);
+    httpd_register_uri_handler(*server, &config_post_update);
     config_server = server;
 }
 
@@ -154,4 +292,5 @@ void browser_config_deinit(void) {
     ESP_LOGI(LOG_TAG, "Unregistering URI handlers");
     httpd_unregister_uri_handler(*config_server, config_get.uri, config_get.method);
     httpd_unregister_uri_handler(*config_server, config_get_fields.uri, config_get_fields.method);
+    httpd_unregister_uri_handler(*config_server, config_post_update.uri, config_post_update.method);
 }

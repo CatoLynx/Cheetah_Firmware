@@ -12,13 +12,15 @@
     <h1>xatLabs Cheetah</h1>
     <h3>Configuration</h3>
 
-    <form action="/config/update" method="post">
+    <form id="config-data" action="/config/update" method="post">
       <table id="config-fields">
-        <tbody>
-          
-        </tbody>
+        <tbody></tbody>
       </table>
     </form>
+    <br>
+    <input type="button" id="btn-save" value="Save">
+    <br>
+    <span id="update-status"></span>
 
     <script type="text/javascript">
       var fieldTypes = {
@@ -76,6 +78,28 @@
         console.log(errorThrown);
       }
 
+      function postUpdate() {
+        var formData = getConfigData();
+        $.ajax({
+          type: "POST",
+          contentType: "application/json",
+          url: "/config/update",
+          data: JSON.stringify(formData),
+          success: onPostUpdateSuccess,
+          error: onPostUpdateError
+        });
+      }
+
+      function onPostUpdateSuccess(data, textStatus, jqXHR) {
+        $("#update-status").text("Config saved!");
+      }
+
+      function onPostUpdateError(jqXHR, textStatus, errorThrown) {
+        console.log("Error updating config!");
+        console.log(errorThrown);
+        $("#update-status").text("Error updating config!");
+      }
+
       function buildForm(fields) {
         for(var field of fields) {
           if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field["type"]]) != -1) {
@@ -95,16 +119,45 @@
             // Not yet implemented
             var field_element = $('<span>BLOB data type not supported</span>');
           }
+          
+          var type_element = $('<input type="hidden">');
+          type_element.prop("name", field["name"] + "_type");
+          type_element.val(field["type"]);
 
           var td_name = $("<td>" + field["name"] + "</td>");
-          var td_field = $("<td>").append(field_element);
+          var td_field = $("<td>").append(field_element).append(type_element);
           var tr = $("<tr>").append(td_name).append(td_field);
           $("#config-fields").find("tbody").append(tr);
         }
       }
 
+      function getConfigData() {
+        var inputs = $("#config-fields input");
+        var field_array = [];
+        for (var i = 0; i < inputs.length; i += 2) {
+          var field_name = $(inputs[i]).prop("name");
+          var field_type = parseInt($(inputs[i+1]).val());
+          if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field_type]) != -1) {
+            // Numerical field
+            var field_value = parseInt($(inputs[i]).val());
+          } else {
+            var field_value = $(inputs[i]).val();
+          }
+          var entry = {"name": field_name, "type": field_type, "value": field_value};
+          field_array.push(entry);
+        }
+        var json = {"fields": field_array};
+        return json;
+      }
+
+      function onSave() {
+        $("#update-status").text("Saving config...");
+        postUpdate();
+      }
+
       function onReady() {
         getFields();
+        $("#btn-save").click(onSave);
       }
 
       $(document).ready(onReady);
