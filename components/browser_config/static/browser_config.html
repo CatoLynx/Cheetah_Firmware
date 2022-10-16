@@ -1,0 +1,113 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Configuration</title>
+    <link rel="icon" href="/favicon.ico">
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <script src="/jquery.min.js"></script>
+  </head>
+
+  <body style="font-family: Arial; background-color: #ccc;">
+    <h1>xatLabs Cheetah</h1>
+    <h3>Configuration</h3>
+
+    <form action="/config/update" method="post">
+      <table id="config-fields">
+        <tbody>
+          
+        </tbody>
+      </table>
+    </form>
+
+    <script type="text/javascript">
+      var fieldTypes = {
+        10: "I8",
+        11: "I16",
+        12: "I32",
+        13: "I64",
+        14: "U8",
+        15: "U16",
+        16: "U32",
+        17: "U64",
+        18: "STR",
+        19: "BLOB"
+      };
+
+      var fieldMinValues = {
+        10: -0x80,
+        11: -0x8000,
+        12: -0x80000000,
+        13: -0x8000000000000000,
+        14: 0,
+        15: 0,
+        16: 0,
+        17: 0
+      };
+
+      var fieldMaxValues = {
+        10: 0x7F,
+        11: 0x7FFF,
+        12: 0x7FFFFFFF,
+        13: 0x7FFFFFFFFFFFFFFF,
+        14: 0xFF,
+        15: 0xFFFF,
+        16: 0xFFFFFFFF,
+        17: 0xFFFFFFFFFFFFFFFF
+      };
+
+      function getFields() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/config/fields.json",
+          success: onGetFieldsSuccess,
+          error: onGetFieldsError
+        });
+      }
+
+      function onGetFieldsSuccess(data, textStatus, jqXHR) {
+        console.log(data);
+        buildForm(data["fields"]);
+      }
+      
+      function onGetFieldsError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting fields!");
+        console.log(errorThrown);
+      }
+
+      function buildForm(fields) {
+        for(var field of fields) {
+          if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field["type"]]) != -1) {
+            // Numerical field
+            var field_element = $('<input type="number">');
+            field_element.prop("name", field["name"]);
+            field_element.prop("step", 1);
+            field_element.prop("min", fieldMinValues[field["type"]]);
+            field_element.prop("max", fieldMaxValues[field["type"]]);
+            field_element.val(field["value"]);
+          } else if (fieldTypes[field["type"]] == "STR") {
+            // String field
+            var field_element = $('<input type="text">');
+            field_element.prop("name", field["name"]);
+            field_element.val(field["value"]);
+          } else if (fieldTypes[field["type"]] == "BLOB") {
+            // Not yet implemented
+            var field_element = $('<span>BLOB data type not supported</span>');
+          }
+
+          var td_name = $("<td>" + field["name"] + "</td>");
+          var td_field = $("<td>").append(field_element);
+          var tr = $("<tr>").append(td_name).append(td_field);
+          $("#config-fields").find("tbody").append(tr);
+        }
+      }
+
+      function onReady() {
+        getFields();
+      }
+
+      $(document).ready(onReady);
+    </script>
+  </body>
+</html>
