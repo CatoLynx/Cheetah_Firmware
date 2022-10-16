@@ -10,6 +10,8 @@
 
 #define LOG_TAG "WiFi"
 
+// TODO: Use sta_retries from VNS instead of CONFIG_PROJ_STA_MAX_RECONNECTS
+
 
 static uint16_t s_retry_num = 0;
 
@@ -30,6 +32,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case WIFI_EVENT_STA_CONNECTED: {
                 wifi_event_sta_connected_t* event = (wifi_event_sta_connected_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Connected to %s", event->ssid);
+                s_retry_num = 0;
                 break;
             }
             
@@ -111,7 +114,17 @@ void wifi_init_ap(void) {
     #endif
 }
 
-void wifi_init(void) {
+void wifi_init(nvs_handle_t* nvsHandle) {
+    // Read STA SSID and password from NVS
+    size_t ssid_len = 33;
+    size_t pass_len = 65;
+    char sta_ssid[33];
+    char sta_pass[65];
+    memset(sta_ssid, 0x00, ssid_len);
+    memset(sta_pass, 0x00, pass_len);
+    nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &ssid_len);
+    nvs_get_str(*nvsHandle, "sta_pass", sta_pass, &pass_len);
+
     // Init WiFi in STA mode, AP will be automatically used as fallback
     esp_netif_create_default_wifi_sta();
 
@@ -121,12 +134,16 @@ void wifi_init(void) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
+    // If no SSID is stored, go straight to AP mode
+    if (strlen(sta_pass) == 0) {
+        wifi_init_ap();
+        return;
+    }
+
     wifi_config_t wifi_config;
-    if (strlen(STA_PASS) != 0) {
+    if (strlen(sta_pass) != 0) {
         wifi_config = (wifi_config_t){
             .sta = {
-                .ssid = STA_SSID,
-                .password = STA_PASS,
                 /* Setting a password implies station will connect to all security modes including WEP/WPA.
                 * However these modes are deprecated and not advisable to be used. Incase your Access point
                 * doesn't support WPA2, these mode can be enabled by commenting below line */
@@ -138,21 +155,23 @@ void wifi_init(void) {
                 },
             },
         };
+        memcpy(wifi_config.sta.ssid, sta_ssid, ssid_len);
+        memcpy(wifi_config.sta.password, sta_pass, pass_len);
     } else {
         wifi_config = (wifi_config_t){
             .sta = {
-                .ssid = STA_SSID,
-
                 .pmf_cfg = {
                     .capable = false,
                     .required = false
                 },
             },
         };
+        memcpy(wifi_config.sta.ssid, sta_ssid, ssid_len);
     }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);
     #endif
