@@ -1,3 +1,5 @@
 Support mapping framebuffer to actual display format (e.g. half-panel layouts)
 Add font renderer
 Add font support (via filesystem?)
+Check 8bpp vs. 1bpp configs for all display types. (e.g. BROSE flipdot is using 8bpp even though it should use 1bpp)
+Add buffer conversions for all combinations (needed e.g. in tpm2net receiver)

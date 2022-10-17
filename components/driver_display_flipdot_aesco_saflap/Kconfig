@@ -1,0 +1,27 @@
+menu "AESCO SAFLAP Flipdot Configuration"
+
+config SAFLAP_NUM_PANELS_X
+    int "Number of panels in X direction"
+    default 5
+    help
+        Total number of flipdot panels connected in X direction
+
+config SAFLAP_NUM_PANELS_Y
+    int "Number of panels in Y direction"
+    default 3
+    help
+        Total number of flipdot panels connected in Y direction
+
+config SAFLAP_DATA_IO
+    int "Data GPIO"
+    default 0
+    help
+        GPIO pin for sending data to the display
+
+config SAFLAP_DATA_IO_INVERT
+    bool "Data GPIO Invert"
+    default 0
+    help
+        Invert data GPIO pin
+
+endmenu

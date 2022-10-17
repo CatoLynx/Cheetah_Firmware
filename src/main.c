@@ -24,6 +24,8 @@
 #include "driver_display_flipdot_lawo_aluma.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_BROSE)
 #include "driver_display_flipdot_brose.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_SAFLAP)
+#include "driver_display_flipdot_aesco_saflap.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER) || defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
 #include "driver_display_led_shift_register.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_AESYS_I2S)

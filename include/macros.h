@@ -21,12 +21,16 @@
     #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
         #define DISPLAY_FRAME_TYPE "1bpp"
         #define DISPLAY_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
+        #define DISPLAY_FRAME_HEIGHT_BYTES DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT, 8)
+        #define BUFFER_VAL(buf, x, y) ((buf[(x * DISPLAY_FRAME_HEIGHT_BYTES) + (y / 8)] >> (y % 8)) & 1)
     #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
         #define DISPLAY_FRAME_TYPE "8bpp"
         #define DISPLAY_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_8BPP
+        #define DISPLAY_FRAME_HEIGHT_BYTES CONFIG_DISPLAY_FRAME_HEIGHT
     #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
         #define DISPLAY_FRAME_TYPE "24bpp"
         #define DISPLAY_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
+        #define DISPLAY_FRAME_HEIGHT_BYTES (CONFIG_DISPLAY_FRAME_HEIGHT * 3)
     #endif
 #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     #define DISPLAY_TYPE "character"
@@ -39,6 +43,8 @@
     #define DISPLAY_DRIVER "flipdot_lawo_aluma"
 #elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_BROSE)
     #define DISPLAY_DRIVER "flipdot_brose"
+#elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_SAFLAP)
+    #define DISPLAY_DRIVER "flipdot_saflap"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER)
     #define DISPLAY_DRIVER "led_shift_register"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)

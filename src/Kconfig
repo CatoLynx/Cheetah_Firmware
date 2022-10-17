@@ -136,6 +136,10 @@ choice DISPLAY_DRIVER
         depends on DISPLAY_TYPE_PIXEL
         bool "BROSE flipdot"
 
+    config DISPLAY_DRIVER_FLIPDOT_SAFLAP
+        depends on DISPLAY_TYPE_PIXEL
+        bool "AESCO SAFLAP flipdot"
+
     config DISPLAY_DRIVER_LED_SHIFT_REGISTER
         depends on DISPLAY_TYPE_PIXEL
         bool "Generic shift-register based LED display"
