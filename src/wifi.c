@@ -10,7 +10,7 @@
 
 #define LOG_TAG "WiFi"
 
-// TODO: Use sta_retries from VNS instead of CONFIG_PROJ_STA_MAX_RECONNECTS
+// TODO: Use sta_retries from NVS instead of CONFIG_PROJ_STA_MAX_RECONNECTS
 
 
 static uint16_t s_retry_num = 0;
@@ -184,6 +184,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
+    ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_PROJ_HOSTNAME));
 
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);

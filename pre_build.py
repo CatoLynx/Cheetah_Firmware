@@ -1,9 +1,9 @@
 Import("env")
 
-import shutil
+import os
 
-print("Removing compiled Browser OTA component to update compile date and time")
+print("Removing compiled main/httpd component to update compile date and time")
 try:
-    shutil.rmtree(".pio/build/{}/components/browser_ota".format(env["PIOENV"]))
+    os.remove(".pio/build/{}/src/httpd.o".format(env["PIOENV"]))
 except FileNotFoundError:
     print("File not found")

@@ -3,13 +3,15 @@
   <head>
     <meta charset="UTF-8">
     <title>OTA Update</title>
-    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" href="/img/favicon.ico">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <script src="/jquery.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/util.js"></script>
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
     <h1>xatLabs Cheetah</h1>
+    <h2 id="hostname">&nbsp;</h2>
     <h3 id="fw-version">&nbsp;</h3>
 
     <input type="file" id="file-firmware" accept=".bin" />
@@ -88,16 +90,6 @@
           error: onGetStatusError
         });
       }
-      
-      function getFWVersion() {
-        $.ajax({
-          type: "GET",
-          dataType: "json",
-          url: "/ota/version",
-          success: onGetFWVersionSuccess,
-          error: onGetFWVersionError
-        });
-      }
 
       function verifyOTA() {
         $.ajax({
@@ -140,12 +132,14 @@
         setTimeout(getStatus, 2000);
       }
 
-      function onGetFWVersionSuccess(data, textStatus, jqXHR) {
+      function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
+        document.title += " - " + data['hostname'];
+        $("#hostname").html(data['hostname']);
         $("#fw-version").html("Compiled: " + data['compile_date'] + " " + data['compile_time']);
       }
 
-      function onGetFWVersionError(jqXHR, textStatus, errorThrown) {
-        $("#fw-version").html("Failed to load firmware version info");
+      function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
+        $("#fw-version").html("Failed to load device info");
       }
 
       function onVerifyOTASuccess(data, textStatus, jqXHR) {
@@ -160,7 +154,7 @@
         $("#file-firmware").change(onFileSelected);
         $("#btn-submit").click(startUpdate);
         $("#btn-verify").click(verifyOTA);
-        getFWVersion();
+        getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
       }
 
       $(document).ready(onReady);

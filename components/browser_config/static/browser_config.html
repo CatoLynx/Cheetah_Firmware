@@ -3,13 +3,15 @@
   <head>
     <meta charset="UTF-8">
     <title>Configuration</title>
-    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" href="/img/favicon.ico">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <script src="/jquery.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/util.js"></script>
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
     <h1>xatLabs Cheetah</h1>
+    <h2 id="hostname">&nbsp;</h2>
     <h3>Configuration</h3>
 
     <form id="config-data" action="/config/update" method="post">
@@ -149,6 +151,15 @@
         var json = {"fields": field_array};
         return json;
       }
+      
+      function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
+        document.title += " - " + data['hostname'];
+        $("#hostname").html(data['hostname']);
+      }
+
+      function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
+        
+      }
 
       function onSave() {
         $("#update-status").text("Saving config...");
@@ -156,6 +167,7 @@
       }
 
       function onReady() {
+        getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getFields();
         $("#btn-save").click(onSave);
       }

@@ -3,12 +3,14 @@
   <head>
     <meta charset="UTF-8">
     <title>Pixel Canvas</title>
-    <link rel="icon" href="/favicon.ico">
+    <link rel="icon" href="/img/favicon.ico">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <script src="/jquery.min.js"></script>
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/util.js"></script>
   </head>
 
   <body style="font-family: Arial; background-color: #ccc;">
+    <h2 id="hostname">&nbsp;</h2>
     <div id="canvas-container" style="display: none;">
       <canvas id="pixel-canvas">
         If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
@@ -349,7 +351,7 @@
           $.ajax({
             type: "GET",
             dataType: "json",
-            url: "/display_info",
+            url: "/info/display.json",
             success: onGetDisplayInfoSuccess,
             error: onGetDisplayInfoError
           });
@@ -406,6 +408,15 @@
         console.log(errorThrown);
       }
       
+      function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
+        document.title += " - " + data['hostname'];
+        $("#hostname").html(data['hostname']);
+      }
+
+      function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
+        
+      }
+      
       function onForegroundColorChange(event) {
         fgColor = limitColorRange($("#fg-color").val());
         $("#fg-color").val(fgColor);
@@ -419,6 +430,7 @@
       }
 
       function onReady() {
+        getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getDisplayInfo();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);

@@ -2,6 +2,7 @@
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "httpd.h"
+#include "cJSON.h"
 
 #include "macros.h"
 
@@ -12,6 +13,8 @@ extern const uint8_t favicon_ico_start[] asm("_binary_favicon_ico_start");
 extern const uint8_t favicon_ico_end[]   asm("_binary_favicon_ico_end");
 extern const uint8_t jquery_min_js_start[] asm("_binary_jquery_min_js_start");
 extern const uint8_t jquery_min_js_end[]   asm("_binary_jquery_min_js_end");
+extern const uint8_t util_js_start[] asm("_binary_util_js_start");
+extern const uint8_t util_js_end[]   asm("_binary_util_js_end");
 
 
 static esp_err_t favicon_get_handler(httpd_req_t *req) {
@@ -26,46 +29,82 @@ static esp_err_t jquery_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static esp_err_t ip_get_handler(httpd_req_t *req) {
+static esp_err_t util_js_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "application/javascript");
+    httpd_resp_send(req, (const char *)util_js_start, (util_js_end - util_js_start)-1);
+    return ESP_OK;
+}
+
+static esp_err_t device_info_get_handler(httpd_req_t *req) {
     tcpip_adapter_ip_info_t ip_info;
     tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
     char ip_str[16];
     sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
-    httpd_resp_set_type(req, "text/plain");
-    httpd_resp_send(req, ip_str, strlen(ip_str));
+
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "ip", ip_str);
+    cJSON_AddStringToObject(json, "hostname", CONFIG_PROJ_HOSTNAME);
+    cJSON_AddStringToObject(json, "compile_date", __DATE__);
+    cJSON_AddStringToObject(json, "compile_time", __TIME__);
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
     return ESP_OK;
 }
 
 static esp_err_t display_info_get_handler(httpd_req_t *req) {
-    char resp[300];
-    sprintf(resp, "{\"type\": \"%s\", \"driver\": \"%s\", \"width\": %d, \"height\": %d, \"frame_width\": %d, \"frame_height\": %d, \"viewport_offset_x\": %d, \"viewport_offset_y\": %d, \"frame_type\": \"%s\", \"framebuf_size\": %d, \"brightness_control\": %d}",
-            DISPLAY_TYPE, DISPLAY_DRIVER, CONFIG_DISPLAY_WIDTH, CONFIG_DISPLAY_HEIGHT, DISPLAY_FRAME_WIDTH, DISPLAY_FRAME_HEIGHT, DISPLAY_VIEWPORT_OFFSET_X, DISPLAY_VIEWPORT_OFFSET_Y, DISPLAY_FRAME_TYPE, DISPLAY_FRAMEBUF_SIZE, DISPLAY_HAS_BRIGHTNESS_CONTROL);
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "type", DISPLAY_TYPE);
+    cJSON_AddStringToObject(json, "driver", DISPLAY_DRIVER);
+    cJSON_AddNumberToObject(json, "width", CONFIG_DISPLAY_WIDTH);
+    cJSON_AddNumberToObject(json, "height", CONFIG_DISPLAY_HEIGHT);
+    cJSON_AddNumberToObject(json, "frame_width", DISPLAY_FRAME_WIDTH);
+    cJSON_AddNumberToObject(json, "frame_height", DISPLAY_FRAME_HEIGHT);
+    cJSON_AddNumberToObject(json, "viewport_offset_x", DISPLAY_VIEWPORT_OFFSET_X);
+    cJSON_AddNumberToObject(json, "viewport_offset_y", DISPLAY_VIEWPORT_OFFSET_Y);
+    cJSON_AddStringToObject(json, "frame_type", DISPLAY_FRAME_TYPE);
+    cJSON_AddNumberToObject(json, "framebuf_size", DISPLAY_FRAMEBUF_SIZE);
+    cJSON_AddBoolToObject  (json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
+
+    char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
     return ESP_OK;
 }
 
 static const httpd_uri_t favicon_get = {
-    .uri       = "/favicon.ico",
+    .uri       = "/img/favicon.ico",
     .method    = HTTP_GET,
     .handler   = favicon_get_handler
 };
 
 static const httpd_uri_t jquery_get = {
-    .uri       = "/jquery.min.js",
+    .uri       = "/js/jquery.min.js",
     .method    = HTTP_GET,
     .handler   = jquery_get_handler
 };
 
-static const httpd_uri_t ip_get = {
-    .uri       = "/ip",
+static const httpd_uri_t util_js_get = {
+    .uri       = "/js/util.js",
     .method    = HTTP_GET,
-    .handler   = ip_get_handler
+    .handler   = util_js_get_handler
+};
+
+static const httpd_uri_t device_info_get = {
+    .uri       = "/info/device.json",
+    .method    = HTTP_GET,
+    .handler   = device_info_get_handler
 };
 
 static const httpd_uri_t display_info_get = {
-    .uri       = "/display_info",
+    .uri       = "/info/display.json",
     .method    = HTTP_GET,
     .handler   = display_info_get_handler
 };
@@ -85,13 +124,20 @@ httpd_handle_t httpd_init(void) {
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
     httpd_register_uri_handler(server, &favicon_get);
     httpd_register_uri_handler(server, &jquery_get);
-    httpd_register_uri_handler(server, &ip_get);
+    httpd_register_uri_handler(server, &util_js_get);
+    httpd_register_uri_handler(server, &device_info_get);
     httpd_register_uri_handler(server, &display_info_get);
 
     return server;
 }
 
 void httpd_deinit(httpd_handle_t server) {
+    ESP_LOGI(LOG_TAG, "Unregistering URI handlers");
+    httpd_unregister_uri_handler(server, favicon_get.uri, favicon_get.method);
+    httpd_unregister_uri_handler(server, jquery_get.uri, jquery_get.method);
+    httpd_unregister_uri_handler(server, util_js_get.uri, util_js_get.method);
+    httpd_unregister_uri_handler(server, device_info_get.uri, device_info_get.method);
+    httpd_unregister_uri_handler(server, display_info_get.uri, display_info_get.method);
     ESP_LOGI(LOG_TAG, "Stopping HTTP server");
     httpd_stop(server);
 }

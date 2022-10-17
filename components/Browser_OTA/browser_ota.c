@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "sys/param.h"
+#include "cJSON.h"
 
 #include "browser_ota.h"
 #include "util_httpd.h"
@@ -183,18 +184,17 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_status_get_handler(httpd_req_t *req) {
-    char resp[100];
-    sprintf(resp, "{\"payload_length\": %d, \"received\": %d, \"success\": %d}", ota_payload_length, ota_rx_len, ota_success);
-    httpd_resp_set_type(req, "application/json");
-    httpd_resp_send(req, resp, strlen(resp));
-    return ESP_OK;
-}
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "payload_length", ota_payload_length);
+    cJSON_AddNumberToObject(json, "received", ota_rx_len);
+    cJSON_AddBoolToObject  (json, "success", ota_success);
 
-static esp_err_t ota_version_get_handler(httpd_req_t *req) {
-    char resp[100];
-    sprintf(resp, "{\"compile_date\": \"%s\", \"compile_time\": \"%s\"}", __DATE__, __TIME__);
+    char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
     return ESP_OK;
 }
 
@@ -235,12 +235,6 @@ static const httpd_uri_t ota_status_get = {
     .handler   = ota_status_get_handler
 };
 
-static const httpd_uri_t ota_version_get = {
-    .uri       = "/ota/version",
-    .method    = HTTP_GET,
-    .handler   = ota_version_get_handler
-};
-
 static const httpd_uri_t ota_verify_get = {
     .uri       = "/ota/verify",
     .method    = HTTP_GET,
@@ -255,7 +249,6 @@ void browser_ota_init(httpd_handle_t* server) {
     httpd_register_uri_handler(*server, &ota_length_post);
     httpd_register_uri_handler(*server, &ota_post);
     httpd_register_uri_handler(*server, &ota_status_get);
-    httpd_register_uri_handler(*server, &ota_version_get);
     httpd_register_uri_handler(*server, &ota_verify_get);
     ota_server = server;
     
@@ -273,6 +266,5 @@ void browser_ota_deinit(void) {
     httpd_unregister_uri_handler(*ota_server, ota_length_post.uri, ota_length_post.method);
     httpd_unregister_uri_handler(*ota_server, ota_post.uri, ota_post.method);
     httpd_unregister_uri_handler(*ota_server, ota_status_get.uri, ota_status_get.method);
-    httpd_unregister_uri_handler(*ota_server, ota_version_get.uri, ota_version_get.method);
     httpd_unregister_uri_handler(*ota_server, ota_verify_get.uri, ota_verify_get.method);
 }
