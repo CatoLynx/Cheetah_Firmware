@@ -9,6 +9,7 @@
 
 #include "flipdot_brose.h"
 #include "util_gpio.h"
+#include "macros.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_BROSE)
 
@@ -126,44 +127,48 @@ void display_flip() {
     gpio_pulse(CONFIG_BROSE_PAN_E_IO, 1, CONFIG_BROSE_FLIP_PULSE_WIDTH, CONFIG_BROSE_FLIP_PAUSE_LENGTH);
 }
 
-void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    uint16_t prev_p, p, x, y;
+void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+    uint16_t prev_p, p, x, y_byte, y;
     prev_p = 0xFFFF;
     if(!display_dirty && prevFrame) {
         for(uint16_t i = 0; i < frameBufSize; i++) {
-            if((frame[i] > 127) == (prevFrame[i] > 127)) continue;
-            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
-            y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
-            p = x / CONFIG_BROSE_PANEL_WIDTH;
-            x %= CONFIG_BROSE_PANEL_WIDTH;
-            if (p != prev_p) {
-                //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
-                //display_select_panel(p);
-                prev_p = p;
+            x = (i / DISPLAY_FRAME_HEIGHT_BYTES);
+            y_byte = i % DISPLAY_FRAME_HEIGHT_BYTES;
+            for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
+                y = (y_byte * 8) + y_bit;
+                if(BUFFER_VAL(frame, x, y) == BUFFER_VAL(prevFrame, x, y)) continue;
+                p = x / CONFIG_BROSE_PANEL_WIDTH;
+                if (p != prev_p) {
+                    //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
+                    //display_select_panel(p);
+                    prev_p = p;
+                }
+                display_select_color(BUFFER_VAL(frame, x, y));
+                display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
+                display_select_row(y);
+                ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+                display_flip();
             }
-            display_select_color(frame[i] > 127);
-            display_select_column(x);
-            display_select_row(y);
-            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
-            display_flip();
         }
         memcpy(prevFrame, frame, frameBufSize);
     } else {
         for(uint16_t i = 0; i < frameBufSize; i++) {
-            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
-            y = i % CONFIG_DISPLAY_FRAME_HEIGHT;
-            p = x / CONFIG_BROSE_PANEL_WIDTH;
-            x %= CONFIG_BROSE_PANEL_WIDTH;
-            if (p != prev_p) {
-                //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
-                //display_select_panel(p);
-                prev_p = p;
+            x = (i / DISPLAY_FRAME_HEIGHT_BYTES);
+            y_byte = i % DISPLAY_FRAME_HEIGHT_BYTES;
+            for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
+                y = (y_byte * 8) + y_bit;
+                p = x / CONFIG_BROSE_PANEL_WIDTH;
+                if (p != prev_p) {
+                    //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
+                    //display_select_panel(p);
+                    prev_p = p;
+                }
+                display_select_color(BUFFER_VAL(frame, x, y));
+                display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
+                display_select_row(y);
+                ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+                display_flip();
             }
-            display_select_color(frame[i] > 127);
-            display_select_column(x);
-            display_select_row(y);
-            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
-            display_flip();
         }
         if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);
         display_dirty = 0;
