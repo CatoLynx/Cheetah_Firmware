@@ -4,12 +4,13 @@
     <meta charset="UTF-8">
     <title>OTA Update</title>
     <link rel="icon" href="/img/favicon.ico">
+    <link rel="stylesheet" href="/css/simple.css">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
     <script src="/js/jquery.min.js"></script>
     <script src="/js/util.js"></script>
   </head>
 
-  <body style="font-family: Arial; background-color: #ccc;">
+  <body>
     <h1>xatLabs Cheetah</h1>
     <h2 id="hostname">&nbsp;</h2>
     <h3 id="fw-version">&nbsp;</h3>
@@ -17,10 +18,10 @@
     <input type="file" id="file-firmware" accept=".bin" />
     <div id="div-file-info">&nbsp;</div>
     <input type="submit" id="btn-submit" value="Update Firmware">
-    <div id="div-upload-progress">&nbsp;</div>
-    <div id="div-wait" style="display: none;"><img src="/ota/spinner.gif"> Update finished, restart pending. Reloading in a few seconds...</div>
+    <span id="upload-progress">&nbsp;</span>
+    <span id="wait" style="display: none;"><img src="/ota/spinner.gif"> Update finished, restart pending. Reloading in a few seconds...</span><br>
     <input type="submit" id="btn-verify" value="Mark OTA partition as valid">
-    <div id="verify-status">&nbsp;</div>
+    <span id="verify-status">&nbsp;</span>
 
     <script type="text/javascript">
       function setPayloadLength() {
@@ -51,7 +52,7 @@
         if (evt.lengthComputable) {
           var percentComplete = (evt.loaded / evt.total) * 100;
           var x = Math.floor(percentComplete);
-          $("#div-upload-progress").html("Upload progress: " + x + "%");
+          $("#upload-progress").html("Upload progress: " + x + "%");
         } else {
           console.log("Cannot compute progress!");
         }
@@ -59,7 +60,7 @@
 
       function onUploadSuccess(evt) {
         console.log("Upload succeeded!");
-        $("#div-wait").show();
+        $("#wait").show();
         getStatus();
       }
 
@@ -136,6 +137,10 @@
         document.title += " - " + data['hostname'];
         $("#hostname").html(data['hostname']);
         $("#fw-version").html("Compiled: " + data['compile_date'] + " " + data['compile_time']);
+        if(data['app_verified']) {
+          $("#btn-verify").hide();
+          $("#verify-status").hide();
+        }
       }
 
       function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
@@ -144,6 +149,10 @@
 
       function onVerifyOTASuccess(data, textStatus, jqXHR) {
         $("#verify-status").html("OTA partition verified!");
+        setTimeout(function() {
+          $("#btn-verify").hide();
+          $("#verify-status").hide();
+        }, 3000);
       }
 
       function onVerifyOTAError(jqXHR, textStatus, errorThrown) {

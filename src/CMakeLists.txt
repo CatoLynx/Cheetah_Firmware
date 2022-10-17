@@ -9,3 +9,4 @@ idf_component_register(SRCS           ${app_sources}
 target_add_binary_data(${COMPONENT_TARGET} "static/favicon.ico" TEXT)
 target_add_binary_data(${COMPONENT_TARGET} "static/jquery.min.js" TEXT)
 target_add_binary_data(${COMPONENT_TARGET} "static/util.js" TEXT)
+target_add_binary_data(${COMPONENT_TARGET} "static/simple.css" TEXT)

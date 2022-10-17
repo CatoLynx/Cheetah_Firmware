@@ -3,6 +3,7 @@
 #include "esp_wifi.h"
 #include "httpd.h"
 #include "cJSON.h"
+#include "esp_ota_ops.h"
 
 #include "macros.h"
 
@@ -15,6 +16,8 @@ extern const uint8_t jquery_min_js_start[] asm("_binary_jquery_min_js_start");
 extern const uint8_t jquery_min_js_end[]   asm("_binary_jquery_min_js_end");
 extern const uint8_t util_js_start[] asm("_binary_util_js_start");
 extern const uint8_t util_js_end[]   asm("_binary_util_js_end");
+extern const uint8_t simple_css_start[] asm("_binary_simple_css_start");
+extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
 
 
 static esp_err_t favicon_get_handler(httpd_req_t *req) {
@@ -35,17 +38,28 @@ static esp_err_t util_js_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t simplecss_get_handler(httpd_req_t *req) {
+    httpd_resp_set_type(req, "text/css");
+    httpd_resp_send(req, (const char *)simple_css_start, (simple_css_end - simple_css_start)-1);
+    return ESP_OK;
+}
+
 static esp_err_t device_info_get_handler(httpd_req_t *req) {
     tcpip_adapter_ip_info_t ip_info;
     tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
     char ip_str[16];
     sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
 
+    const esp_partition_t *partition = esp_ota_get_running_partition();
+    esp_ota_img_states_t ota_state;
+    ESP_ERROR_CHECK(esp_ota_get_state_partition(partition, &ota_state));
+
     cJSON* json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "ip", ip_str);
     cJSON_AddStringToObject(json, "hostname", CONFIG_PROJ_HOSTNAME);
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
+    cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
 
     char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
@@ -97,6 +111,12 @@ static const httpd_uri_t util_js_get = {
     .handler   = util_js_get_handler
 };
 
+static const httpd_uri_t simplecss_get = {
+    .uri       = "/css/simple.css",
+    .method    = HTTP_GET,
+    .handler   = simplecss_get_handler
+};
+
 static const httpd_uri_t device_info_get = {
     .uri       = "/info/device.json",
     .method    = HTTP_GET,
@@ -125,6 +145,7 @@ httpd_handle_t httpd_init(void) {
     httpd_register_uri_handler(server, &favicon_get);
     httpd_register_uri_handler(server, &jquery_get);
     httpd_register_uri_handler(server, &util_js_get);
+    httpd_register_uri_handler(server, &simplecss_get);
     httpd_register_uri_handler(server, &device_info_get);
     httpd_register_uri_handler(server, &display_info_get);
 
@@ -136,6 +157,7 @@ void httpd_deinit(httpd_handle_t server) {
     httpd_unregister_uri_handler(server, favicon_get.uri, favicon_get.method);
     httpd_unregister_uri_handler(server, jquery_get.uri, jquery_get.method);
     httpd_unregister_uri_handler(server, util_js_get.uri, util_js_get.method);
+    httpd_unregister_uri_handler(server, simplecss_get.uri, simplecss_get.method);
     httpd_unregister_uri_handler(server, device_info_get.uri, device_info_get.method);
     httpd_unregister_uri_handler(server, display_info_get.uri, display_info_get.method);
     ESP_LOGI(LOG_TAG, "Stopping HTTP server");
