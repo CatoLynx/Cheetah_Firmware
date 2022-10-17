@@ -116,14 +116,27 @@ void wifi_init_ap(void) {
 
 void wifi_init(nvs_handle_t* nvsHandle) {
     // Read STA SSID and password from NVS
+    esp_err_t ret;
+    uint8_t sta_credentials_valid = 1;
     size_t ssid_len = 33;
     size_t pass_len = 65;
     char sta_ssid[33];
     char sta_pass[65];
     memset(sta_ssid, 0x00, ssid_len);
     memset(sta_pass, 0x00, pass_len);
-    nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &ssid_len);
-    nvs_get_str(*nvsHandle, "sta_pass", sta_pass, &pass_len);
+    ret = nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &ssid_len);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        sta_credentials_valid = 0;
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
+    ret = nvs_get_str(*nvsHandle, "sta_pass", sta_pass, &pass_len);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        sta_credentials_valid = 0;
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
+    if (strlen(sta_ssid) == 0) sta_credentials_valid = 0;
 
     // Init WiFi in STA mode, AP will be automatically used as fallback
     esp_netif_create_default_wifi_sta();
@@ -134,8 +147,8 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
-    // If no SSID is stored, go straight to AP mode
-    if (strlen(sta_pass) == 0) {
+    // If no valid credentials are stored, go straight to AP mode
+    if (!sta_credentials_valid) {
         wifi_init_ap();
         return;
     }

@@ -53,63 +53,108 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
         } else if (config_entries[i].dataType == STR) {
             // Query string length
             size_t valueLength;
-            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLength));
-            // Allocate buffer for value
-            char* value = malloc(valueLength);
-            // Read value
-            ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, value, &valueLength));
-            cJSON_AddStringToObject(entry, "value", value);
-            // Free allocated memory
-            free(value);
+            esp_err_t ret = nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLength);
+            if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                cJSON_AddStringToObject(entry, "value", "");
+            } else {
+                ESP_ERROR_CHECK(ret);
+                // Allocate buffer for value
+                char* value = malloc(valueLength);
+                // Read value
+                ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, value, &valueLength));
+                cJSON_AddStringToObject(entry, "value", value);
+                // Free allocated memory
+                free(value);
+            }
         } else {
             // Numerical value
             switch(config_entries[i].dataType) {
                 case I8: {
                     int8_t value;
-                    ESP_ERROR_CHECK(nvs_get_i8(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_i8(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case U8: {
                     uint8_t value;
-                    ESP_ERROR_CHECK(nvs_get_u8(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_u8(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case I16: {
                     int16_t value;
-                    ESP_ERROR_CHECK(nvs_get_i16(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_i16(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case U16: {
                     uint16_t value;
-                    ESP_ERROR_CHECK(nvs_get_u16(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_u16(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case I32: {
                     int32_t value;
-                    ESP_ERROR_CHECK(nvs_get_i32(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_i32(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case U32: {
                     uint32_t value;
-                    ESP_ERROR_CHECK(nvs_get_u32(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_u32(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case I64: {
                     int64_t value;
-                    ESP_ERROR_CHECK(nvs_get_i64(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_i64(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 case U64: {
                     uint64_t value;
-                    ESP_ERROR_CHECK(nvs_get_u64(config_nvs_handle, config_entries[i].key, &value));
-                    cJSON_AddNumberToObject(entry, "value", value);
+                    esp_err_t ret = nvs_get_u64(config_nvs_handle, config_entries[i].key, &value);
+                    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                        cJSON_AddNumberToObject(entry, "value", 0);
+                    } else {
+                        ESP_ERROR_CHECK(ret);
+                        cJSON_AddNumberToObject(entry, "value", value);
+                    }
                     break;
                 }
                 default: break;
