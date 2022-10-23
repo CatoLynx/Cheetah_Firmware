@@ -52,7 +52,13 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
 
     const esp_partition_t *partition = esp_ota_get_running_partition();
     esp_ota_img_states_t ota_state;
-    ESP_ERROR_CHECK(esp_ota_get_state_partition(partition, &ota_state));
+    esp_err_t ret = esp_ota_get_state_partition(partition, &ota_state);
+    if (ret == ESP_ERR_NOT_SUPPORTED) {
+        // Happens when trying to get the OTA state but we're running the factory app
+        ota_state = ESP_OTA_IMG_VALID;
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
 
     cJSON* json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "ip", ip_str);
