@@ -80,8 +80,14 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(json, "frame_height", DISPLAY_FRAME_HEIGHT);
     cJSON_AddNumberToObject(json, "viewport_offset_x", DISPLAY_VIEWPORT_OFFSET_X);
     cJSON_AddNumberToObject(json, "viewport_offset_y", DISPLAY_VIEWPORT_OFFSET_Y);
-    cJSON_AddStringToObject(json, "frame_type", DISPLAY_FRAME_TYPE);
     cJSON_AddNumberToObject(json, "framebuf_size", DISPLAY_FRAMEBUF_SIZE);
+    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    cJSON_AddStringToObject(json, "frame_type", "char");
+    cJSON_AddNumberToObject(json, "charbuf_size", DISPLAY_CHARBUF_SIZE);
+    #else
+    cJSON_AddStringToObject(json, "frame_type", DISPLAY_FRAME_TYPE);
+    cJSON_AddNullToObject(json, "charbuf_size");
+    #endif
     cJSON_AddBoolToObject  (json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
 
     char *resp = cJSON_Print(json);

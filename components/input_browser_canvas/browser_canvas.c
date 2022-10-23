@@ -2,6 +2,8 @@
 #include "esp_netif.h"
 #include <string.h>
 #include "sys/param.h"
+#include "mbedtls/base64.h"
+#include "cJSON.h"
 
 #include "browser_canvas.h"
 #include "util_httpd.h"
@@ -31,12 +33,77 @@ static esp_err_t canvas_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t canvas_update_post_handler(httpd_req_t *req) {
-    return post_recv_handler(LOG_TAG, req, canvas_output_buffer, canvas_output_buffer_size);
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+
+    cJSON* buffer_field = cJSON_GetObjectItem(json, "buffer");
+    if (!cJSON_IsString(buffer_field)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+    size_t b64_len = 0;
+    char* buffer_str = cJSON_GetStringValue(buffer_field);
+    size_t buffer_str_len = strlen(buffer_str);
+    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+        // because this will always be returned when checking size
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    } else {
+        b64_len = 0;
+        result = mbedtls_base64_decode(canvas_output_buffer, canvas_output_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        if (result != 0) {
+            cJSON_Delete(json);
+            return abortRequest(req, "500 Internal Server Error");
+        }
+    }
+
+    cJSON_Delete(json);
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
 }
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static esp_err_t canvas_set_brightness_post_handler(httpd_req_t *req) {
-    return post_recv_handler(LOG_TAG, req, canvas_brightness, 1);
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+
+    cJSON* brightness_field = cJSON_GetObjectItem(json, "brightness");
+    if (!cJSON_IsNumber(brightness_field)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+    *canvas_brightness = (uint8_t)cJSON_GetNumberValue(brightness_field);
+
+    cJSON_Delete(json);
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
 }
 #endif
 
@@ -47,14 +114,14 @@ static const httpd_uri_t canvas_get = {
 };
 
 static const httpd_uri_t canvas_update_post = {
-    .uri       = "/canvas/update",
+    .uri       = "/canvas/update.json",
     .method    = HTTP_POST,
     .handler   = canvas_update_post_handler
 };
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static const httpd_uri_t canvas_set_brightness_post = {
-    .uri       = "/canvas/set_brightness",
+    .uri       = "/canvas/brightness.json",
     .method    = HTTP_POST,
     .handler   = canvas_set_brightness_post_handler
 };

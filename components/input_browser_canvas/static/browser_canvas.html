@@ -43,6 +43,7 @@
             viewport_offset_y: 0,
             frame_type: "",
             framebuf_size: 204,
+            charbuf_size: 96,
             brightness_control: 1
           };
       
@@ -290,13 +291,13 @@
             }
           }
         } else if (display_info["type"] == "character") {
-          let framebuf = new Array(display_info["framebuf_size"]);
+          let framebuf = new Array(display_info["charbuf_size"]);
           let val = "";
           $("#text-input").val().split("\n").forEach(function(e) {
             val += e.substring(0, display_info["width"]).padEnd(display_info["width"], " ");
           });
           let valLen = val.length;
-          for (let i = 0; i < display_info["framebuf_size"]; i++) {
+          for (let i = 0; i < display_info["charbuf_size"]; i++) {
             if (i >= valLen) {
               framebuf[i] = 0;
             } else {
@@ -309,39 +310,37 @@
       }
 
       function updateDisplay() {
-        let fb = getFramebuffer();
+        let buffer_b64 = btoa(new TextDecoder().decode(new Uint8Array(getFramebuffer())));
         if (_CANVASDEBUG) {
           console.log(fb);
           setTimeout(onUpdateDisplaySuccess, 250);
         } else {
           if(updateInProgress) return;
           updateInProgress = true;
-          let fb_blob = new Blob([new Uint8Array(fb).buffer], {type: "application/octet-stream"});
-          var formData = new FormData();
-          formData.set("frame", fb_blob, "frame");
-          var xhr = new XMLHttpRequest();
-          xhr.upload.addEventListener("load", onUpdateDisplaySuccess, false);
-          xhr.upload.addEventListener("error", onUpdateDisplayError, false);
-          xhr.open("POST", "/canvas/update");
-          xhr.responseType = "blob";
-          xhr.send(formData);
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/update.json",
+            data: JSON.stringify({"buffer": buffer_b64}),
+            success: onUpdateDisplaySuccess,
+            error: onUpdateDisplayError
+          });
         }
       }
 
       function updateBrightness() {
-        let brightness = $("#brightness-input").val();
+        let brightness = parseInt($("#brightness-input").val());
         if (_CANVASDEBUG) {
           console.log("Setting brightness to " + brightness);
         } else {
-          let fb_blob = new Blob([new Uint8Array([brightness]).buffer], {type: "application/octet-stream"});
-          var formData = new FormData();
-          formData.set("frame", fb_blob, "frame");
-          var xhr = new XMLHttpRequest();
-          xhr.upload.addEventListener("load", onSetBrightnessSuccess, false);
-          xhr.upload.addEventListener("error", onSetBrightnessError, false);
-          xhr.open("POST", "/canvas/set_brightness");
-          xhr.responseType = "blob";
-          xhr.send(formData);
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/brightness.json",
+            data: JSON.stringify({"brightness": brightness}),
+            success: onSetBrightnessSuccess,
+            error: onSetBrightnessError
+          });
         }
       }
 
