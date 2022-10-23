@@ -310,7 +310,7 @@
       }
 
       function updateDisplay() {
-        let buffer_b64 = btoa(new TextDecoder().decode(new Uint8Array(getFramebuffer())));
+        let buffer_b64 = btoa(String.fromCharCode.apply(null, getFramebuffer()));
         if (_CANVASDEBUG) {
           console.log(fb);
           setTimeout(onUpdateDisplaySuccess, 250);
