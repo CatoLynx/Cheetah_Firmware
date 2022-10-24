@@ -34,6 +34,8 @@
 #include "driver_display_char_segment_lcd_spi.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_SPI)
 #include "driver_display_char_16seg_led_spi.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_KRONE_9000)
+#include "driver_display_char_krone_9000.h"
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL)

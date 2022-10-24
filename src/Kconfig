@@ -159,6 +159,10 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_CHAR_16SEG_LED_SPI
         depends on DISPLAY_TYPE_CHARACTER
         bool "16-segment LED (using SPI peripheral)"
+        
+    config DISPLAY_DRIVER_CHAR_KRONE_9000
+        depends on DISPLAY_TYPE_CHARACTER
+        bool "KRONE 9000 Split-Flap (using UART peripheral)"
 endchoice
 
 config DISPLAY_WIDTH

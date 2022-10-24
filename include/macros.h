@@ -55,4 +55,6 @@
     #define DISPLAY_DRIVER "char_seg_lcd_spi"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_SPI)
     #define DISPLAY_DRIVER "char_16seg_led_spi"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_KRONE_9000)
+    #define DISPLAY_DRIVER "char_krone_9000"
 #endif
