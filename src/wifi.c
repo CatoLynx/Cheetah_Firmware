@@ -71,6 +71,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
                 char temp[19];
                 sprintf(temp, "IP=" IPSTR, IP2STR(&event->ip_info.ip));
+                memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
                 strncpy((char*)display_char_buffer, temp, DISPLAY_CHARBUF_SIZE);
                 #endif
                 s_retry_num = 0;
@@ -110,6 +111,7 @@ void wifi_init_ap(void) {
     ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s",
              CONFIG_PROJ_AP_SSID, CONFIG_PROJ_AP_PASS);
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
     strncpy((char*)display_char_buffer, "AP MODE", DISPLAY_CHARBUF_SIZE);
     #endif
 }
@@ -187,6 +189,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_PROJ_HOSTNAME));
 
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
     strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);
     #endif
 }
