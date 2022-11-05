@@ -22,6 +22,7 @@ config_entry_t config_entries[] = {
     {.key = "sta_ssid", .dataType = STR},
     {.key = "sta_pass", .dataType = STR},
     {.key = "sta_retries", .dataType = U8},
+    {.key = "tg_bot_token", .dataType = STR},
 };
 
 

@@ -1,4 +1,5 @@
 #include "util_generic.h"
+#include <ctype.h>
 
 uint8_t count_set_bits(uint8_t byte) {
   static const uint8_t NIBBLE_LOOKUP[16] =  {
@@ -29,4 +30,11 @@ uint8_t uint_num_digits(uint64_t n) {
       result++;
   }
   return result;
+}
+
+void str_toUpper(char* str) {
+  while (*str) {
+    *str = toupper((unsigned char) *str);
+    str++;
+  }
 }

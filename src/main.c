@@ -9,14 +9,15 @@
 #include "esp_ota_ops.h"
 
 #include "artnet.h"
+#include "browser_canvas.h"
 #include "browser_config.h"
 #include "browser_ota.h"
-#include "browser_canvas.h"
 #include "httpd.h"
 #include "macros.h"
+#include "telegram_bot.h"
 #include "tpm2net.h"
-#include "wifi.h"
 #include "ethernet.h"
+#include "wifi.h"
 #include "util_fan.h"
 #include "util_gpio.h"
 
@@ -157,6 +158,7 @@ void app_main(void) {
     
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+    telegram_bot_init(&nvs_handle, display_char_buffer, DISPLAY_CHARBUF_SIZE);
     #endif
 
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
