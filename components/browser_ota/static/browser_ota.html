@@ -19,7 +19,10 @@
     <div id="div-file-info">&nbsp;</div>
     <input type="submit" id="btn-submit" value="Update Firmware">
     <span id="upload-progress">&nbsp;</span>
-    <span id="wait" style="display: none;"><img src="/ota/spinner.gif"> Update finished, restart pending. Reloading in a few seconds...</span><br>
+    <span id="wait-update" style="display: none;"><img src="/ota/spinner.gif"> Update finished, restart pending. Reloading in a few seconds...</span><br>
+    <input type="submit" id="btn-restart" value="Restart">
+    <span id="restart-status">&nbsp;</span>
+    <span id="wait-restart" style="display: none;"><img src="/ota/spinner.gif"> Restart pending. Reloading in a few seconds...</span><br>
     <input type="submit" id="btn-verify" value="Mark OTA partition as valid">
     <span id="verify-status">&nbsp;</span>
 
@@ -60,7 +63,7 @@
 
       function onUploadSuccess(evt) {
         console.log("Upload succeeded!");
-        $("#wait").show();
+        $("#wait-update").show();
         getStatus();
       }
 
@@ -99,6 +102,16 @@
           url: "/ota/verify",
           success: onVerifyOTASuccess,
           error: onVerifyOTAError
+        });
+      }
+
+      function restartSystem() {
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/ota/restart",
+          success: onRestartSystemSuccess,
+          error: onRestartSystemError
         });
       }
       
@@ -159,10 +172,20 @@
         $("#verify-status").html("Failed to verify OTA partition");
       }
 
+      function onRestartSystemSuccess(data, textStatus, jqXHR) {
+        $("#wait-restart").show();
+        setTimeout(window.location.reload.bind(window.location), 3000);
+      }
+
+      function onRestartSystemError(jqXHR, textStatus, errorThrown) {
+        $("#restart-status").html("Failed to restart system!");
+      }
+
       function onReady() {
         $("#file-firmware").change(onFileSelected);
         $("#btn-submit").click(startUpdate);
         $("#btn-verify").click(verifyOTA);
+        $("#btn-restart").click(restartSystem);
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
       }
 
