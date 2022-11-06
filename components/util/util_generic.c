@@ -40,35 +40,55 @@ void str_toUpper(char* str) {
   }
 }
 
-void str_filterAllowed(char* out, char* in, char* allowedChars) {
+void str_filterAllowed(char* out, char* in, char* allowedChars, bool allowLineBreaks) {
   char* allowedCharsOrig = allowedChars;
   while (*in) {
     allowedChars = allowedCharsOrig;
-    while (*allowedChars) {
-      if (*allowedChars == *in) {
-        *out = *in;
-        out++;
-        break;
+    if (allowLineBreaks && *in == '\n') {
+      *out = *in;
+      out++;
+    } else {
+      while (*allowedChars) {
+        if (*allowedChars == *in) {
+          *out = *in;
+          out++;
+          break;
+        }
+        allowedChars++;
       }
-      allowedChars++;
     }
     in++;
   }
 }
 
-void str_filterDisallowed(char* out, char* in, char* disallowedChars) {
+void str_filterDisallowed(char* out, char* in, char* disallowedChars, bool allowLineBreaks) {
   uint8_t match = 0;
   char* disallowedCharsOrig = disallowedChars;
   while (*in) {
     disallowedChars = disallowedCharsOrig;
-    while (*disallowedChars) {
-      if (*disallowedChars == *in) {
-        match = 1;
-        break;
+    if (allowLineBreaks && *in == '\n') {
+      *out = *in;
+      out++;
+    } else {
+      while (*disallowedChars) {
+        if (*disallowedChars == *in) {
+          match = 1;
+          break;
+        }
+        disallowedChars++;
       }
-      disallowedChars++;
+      if (!match) {
+        *out = *in;
+        out++;
+      }
     }
-    if (!match) {
+    in++;
+  }
+}
+
+void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax, bool allowLineBreaks) {
+  while (*in) {
+    if ((allowLineBreaks && *in == '\n') || (*in >= rangeMin && *in <= rangeMax)) {
       *out = *in;
       out++;
     }
@@ -76,9 +96,9 @@ void str_filterDisallowed(char* out, char* in, char* disallowedChars) {
   }
 }
 
-void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax) {
+void str_filterRangeDisallowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax, bool allowLineBreaks) {
   while (*in) {
-    if (*in >= rangeMin && *in <= rangeMax) {
+    if ((allowLineBreaks && *in == '\n') || !(*in >= rangeMin && *in <= rangeMax)) {
       *out = *in;
       out++;
     }
@@ -86,11 +106,30 @@ void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t range
   }
 }
 
-void str_filterRangeDisallowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax) {
-  while (*in) {
-    if (!(*in >= rangeMin && *in <= rangeMax)) {
+void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t charsPerLine) {
+  uint16_t curLine = 0;
+  uint16_t curCol = 0;
+  uint16_t charCount = 0;
+  uint16_t maxChars = numLines * charsPerLine;
+  while (*in && charCount < maxChars) {
+    if (*in == '\n') {
+      while (curCol < charsPerLine) {
+        *out = ' ';
+        out++;
+        charCount++;
+        curCol++;
+      }
+      curLine++;
+      curCol = 0;
+    } else {
       *out = *in;
       out++;
+      charCount++;
+      curCol++;
+      if (curCol >= charsPerLine) {
+        curLine++;
+        curCol = 0;
+      }
     }
     in++;
   }

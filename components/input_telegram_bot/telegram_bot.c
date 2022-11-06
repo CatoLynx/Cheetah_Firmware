@@ -7,6 +7,7 @@
 #include "telegram_bot.h"
 #include "util_nvs.h"
 #include "util_generic.h"
+#include "macros.h"
 
 
 #define LOG_TAG "TGBot"
@@ -320,16 +321,17 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 #endif
 
                 #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
-                str_filterAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR);
+                str_filterAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
-                str_filterDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR);
+                str_filterDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
-                str_filterRangeAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX);
+                str_filterRangeAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE)
-                str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX);
+                str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
                 #endif
 
-                strncpy((char*)output_buffer, filteredText, output_buffer_size);
+                memset(output_buffer, 0x00, output_buffer_size);
+                str_convertLineBreaks((char*)output_buffer, filteredText, DISPLAY_FRAME_HEIGHT, DISPLAY_FRAME_WIDTH);
                 free(filteredText);
 
                 telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Done!");
