@@ -4,9 +4,6 @@
 #include "nvs.h"
 #include "cJSON.h"
 
-#define TG_POLLING_TIMEOUT 60 // Polling timeout in seconds
-#define TG_MESSAGE_LIMIT 10   // How many messages to get max.
-
 
 typedef enum {
     TG_GET_ME,

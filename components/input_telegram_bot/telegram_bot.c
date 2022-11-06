@@ -155,14 +155,14 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
         }
 
         case TG_GET_UPDATES: {
-            sprintf(url, "https://api.telegram.org/bot%s/getUpdates?allowed_updates=[\"message\"]&limit=%u&offset=%u&timeout=%u", apiToken, TG_MESSAGE_LIMIT, last_update_id + 1, TG_POLLING_TIMEOUT);
+            sprintf(url, "https://api.telegram.org/bot%s/getUpdates?allowed_updates=[\"message\"]&limit=%u&offset=%u&timeout=%u", apiToken, CONFIG_TG_BOT_MESSAGE_LIMIT, last_update_id + 1, CONFIG_TG_BOT_POLLING_TIMEOUT);
             config.url = url;
-            config.timeout_ms = (TG_POLLING_TIMEOUT + 2) * 1000;
+            config.timeout_ms = (CONFIG_TG_BOT_POLLING_TIMEOUT + 2) * 1000;
             break;
         }
 
         case TG_SEND_MESSAGE: {
-            sprintf(url, "https://api.telegram.org/bot%s/sendMessage?allowed_updates=[\"message\"]&limit=%u&offset=%u&timeout=%u", apiToken, TG_MESSAGE_LIMIT, last_update_id + 1, TG_POLLING_TIMEOUT);
+            sprintf(url, "https://api.telegram.org/bot%s/sendMessage", apiToken);
             config.url = url;
             config.method = HTTP_METHOD_POST;
             break;
@@ -234,6 +234,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
             }
             if (cJSON_IsString(field_username)) {
                 char* username = cJSON_GetStringValue(field_username);
+                str_toUpper(username);
                 memset(output_buffer, 0x00, output_buffer_size);
                 sprintf((char*)output_buffer, "USERNAME=%s", username);
             }
@@ -311,8 +312,25 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 }
 
                 char* text = cJSON_GetStringValue(field_text);
+                char* filteredText = malloc(strlen(text) + 1);
+                memset(filteredText, 0x00, strlen(text) + 1);
+
+                #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
                 str_toUpper(text);
-                strncpy((char*)output_buffer, text, output_buffer_size);
+                #endif
+
+                #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
+                str_filterAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR);
+                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
+                str_filterDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR);
+                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
+                str_filterRangeAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX);
+                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE)
+                str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX);
+                #endif
+
+                strncpy((char*)output_buffer, filteredText, output_buffer_size);
+                free(filteredText);
 
                 telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Done!");
             }

@@ -1,5 +1,6 @@
 #include "util_generic.h"
 #include <ctype.h>
+#include <string.h>
 
 uint8_t count_set_bits(uint8_t byte) {
   static const uint8_t NIBBLE_LOOKUP[16] =  {
@@ -36,5 +37,61 @@ void str_toUpper(char* str) {
   while (*str) {
     *str = toupper((unsigned char) *str);
     str++;
+  }
+}
+
+void str_filterAllowed(char* out, char* in, char* allowedChars) {
+  char* allowedCharsOrig = allowedChars;
+  while (*in) {
+    allowedChars = allowedCharsOrig;
+    while (*allowedChars) {
+      if (*allowedChars == *in) {
+        *out = *in;
+        out++;
+        break;
+      }
+      allowedChars++;
+    }
+    in++;
+  }
+}
+
+void str_filterDisallowed(char* out, char* in, char* disallowedChars) {
+  uint8_t match = 0;
+  char* disallowedCharsOrig = disallowedChars;
+  while (*in) {
+    disallowedChars = disallowedCharsOrig;
+    while (*disallowedChars) {
+      if (*disallowedChars == *in) {
+        match = 1;
+        break;
+      }
+      disallowedChars++;
+    }
+    if (!match) {
+      *out = *in;
+      out++;
+    }
+    in++;
+  }
+}
+
+void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax) {
+  while (*in) {
+    if (*in >= rangeMin && *in <= rangeMax) {
+      *out = *in;
+      out++;
+    }
+    in++;
+  }
+}
+
+void str_filterRangeDisallowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax) {
+  while (*in) {
+    if (!(*in >= rangeMin && *in <= rangeMax)) {
+      *out = *in;
+      out++;
+    }
+    in++;
   }
 }

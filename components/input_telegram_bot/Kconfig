@@ -1,0 +1,70 @@
+menu "Telegram Bot Configuration"
+
+config TG_BOT_POLLING_TIMEOUT
+    int "Polling timeout in seconds"
+    default 60
+    help
+        Telegram Bot API polling timeout
+
+config TG_BOT_MESSAGE_LIMIT
+    int "Max messages to fetch"
+    default 10
+    help
+        Maximum number of messages to fetch at once from the API
+
+config TG_BOT_FORCE_UPPERCASE
+    bool "Force uppercase characters"
+    default false
+
+choice TG_BOT_CHARSET_METHOD
+    bool "Charset Method"
+    default TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR
+
+    config TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR
+        bool "Allowed Characters String"
+    
+    config TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR
+        bool "Disallowed Characters String"
+
+    config TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE
+        bool "Allowed Characters Range"
+    
+    config TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE
+        bool "Disallowed Characters Range"
+endchoice
+
+config TG_BOT_ALLOWED_CHARACTERS_STR
+depends on TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR
+    string "Allowed Characters String"
+    default ""
+    help
+        All the characters that are allowed for display
+
+config TG_BOT_DISALLOWED_CHARACTERS_STR
+depends on TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR
+    string "Disallowed Characters String"
+    default ""
+    help
+        All the characters that are allowed for display
+
+config TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN
+depends on TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE
+    int "Allowed Characters Range Min"
+    default 32
+
+config TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX
+depends on TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE
+    int "Allowed Characters Range Max"
+    default 127
+
+config TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN
+depends on TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE
+    int "Disallowed Characters Range Min"
+    default 32
+
+config TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX
+depends on TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE
+    int "Disallowed Characters Range Max"
+    default 127
+
+endmenu
