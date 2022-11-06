@@ -33,3 +33,4 @@ void str_filterDisallowed(char* out, char* in, char* disallowedChars, bool allow
 void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax, bool allowLineBreaks);
 void str_filterRangDisallowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax, bool allowLineBreaks);
 void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t charsPerLine);
+void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen);

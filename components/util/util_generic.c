@@ -134,3 +134,18 @@ void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t char
     in++;
   }
 }
+
+void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen) {
+  uint16_t i = 0;
+  while (*in && i < inLen) {
+    for (uint16_t i = 0; i < interval; i++) {
+      if (!*in) break;
+      *out = *in;
+      out++;
+      in++;
+      i++;
+    }
+    *out = '\n';
+    out++;
+  }
+}
