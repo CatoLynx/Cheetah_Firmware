@@ -1,0 +1,43 @@
+menu "TCP Logging Server"
+
+config TCP_LOG_ENABLED
+    bool "TCP Logging Server enabled"
+    default 0
+
+config TCP_LOG_PORT
+    depends on TCP_LOG_ENABLED
+    int "TCP Port to listen on"
+    default 1337
+
+config TCP_LOG_BACKLOG
+    depends on TCP_LOG_ENABLED
+    int "Maximum number of pending connections"
+    default 5
+
+config TCP_LOG_BUFFER_SIZE
+    depends on TCP_LOG_ENABLED
+    int "Log message buffer size"
+    default 100
+
+config TCP_LOG_KEEPALIVE_IDLE
+    depends on TCP_LOG_ENABLED
+    int "TCP keep-alive idle time (seconds)"
+    default 1
+    help
+        Keep-alive idle time. In idle time without receiving any data from peer, will send keep-alive probe packet.
+
+config TCP_LOG_KEEPALIVE_INTERVAL
+    depends on TCP_LOG_ENABLED
+    int "TCP keep-alive interval time (seconds)"
+    default 1
+    help
+        Keep-alive probe packet interval time.
+
+config TCP_LOG_KEEPALIVE_COUNT
+    depends on TCP_LOG_ENABLED
+    int "TCP keep-alive packet retry send count"
+    default 3
+    help
+        Keep-alive probe packet retry count.
+
+endmenu

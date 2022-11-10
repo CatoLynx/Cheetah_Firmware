@@ -13,6 +13,7 @@
 #include "browser_config.h"
 #include "browser_ota.h"
 #include "httpd.h"
+#include "logging_tcp.h"
 #include "macros.h"
 #include "telegram_bot.h"
 #include "tpm2net.h"
@@ -116,6 +117,10 @@ static void display_refresh_task(void* arg) {
 
 
 void app_main(void) {
+    #if defined(CONFIG_TCP_LOG_ENABLED)
+    tcp_log_init();
+    #endif
+
     nvs_handle_t nvs_handle;
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
@@ -135,6 +140,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     wifi_init(&nvs_handle);
+
+    #if defined(CONFIG_TCP_LOG_ENABLED)
+    tcp_log_start();
+    #endif
 
     #if defined(CONFIG_ETHERNET_ENABLED)
     ethernet_init();
