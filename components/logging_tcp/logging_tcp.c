@@ -9,6 +9,9 @@
 #include "logging_tcp.h"
 
 
+#if defined(CONFIG_TCP_LOG_ENABLED)
+
+
 static uint8_t numClientTasks = 0;
 static tcp_log_message_t logBuf[CONFIG_TCP_LOG_BUFFER_SIZE];
 static uint16_t logBufWritePtr = 0;
@@ -158,3 +161,5 @@ void tcp_log_client_handler_task(void* arg) {
     // printf("Client handlers running: %u\n", numClientTasks);
     vTaskDelete(NULL);
 }
+
+#endif
