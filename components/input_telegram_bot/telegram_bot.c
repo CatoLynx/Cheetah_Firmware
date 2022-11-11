@@ -128,9 +128,12 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
         free(apiToken);
     }
     apiToken = get_string_from_nvs(nvsHandle, "tg_bot_token");
-    if (apiToken != NULL) apiTokenInited = 1;
-    
-    xTaskCreate(telegram_bot_task, "telegram_bot", 4096, NULL, 5, &telegram_bot_task_handle);
+    if (apiToken != NULL) {
+        apiTokenInited = 1;
+        if (strlen(apiToken) != 0) {
+            xTaskCreate(telegram_bot_task, "telegram_bot", 4096, NULL, 5, &telegram_bot_task_handle);
+        }
+    }
 }
 
 void telegram_bot_deinit() {
