@@ -91,9 +91,11 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
             if (ret != ESP_OK) {
                 memset(output_buffer, 0x00, output_buffer_size);
                 if (err_desc == NULL) {
-                    sprintf((char*)output_buffer, "TELEGRAM API FAIL %u", err_status);
+                    ESP_LOGE(LOG_TAG,  "Error status %u", err_status);
+                    // sprintf((char*)output_buffer, "TELEGRAM API FAIL %u", err_status);
                 } else {
-                    strncpy((char*)output_buffer, err_desc, output_buffer_size);
+                    ESP_LOGE(LOG_TAG,  "Error: %s", err_desc);
+                    // strncpy((char*)output_buffer, err_desc, output_buffer_size);
                     err_desc = NULL;
                 }
                 return ret;
@@ -140,7 +142,6 @@ void telegram_bot_deinit() {
 
 void telegram_bot_task(void* arg) {
     while (1) {
-        //strncpy((char*)output_buffer, "GET_UPDATES", output_buffer_size);
         if (wifi_gotIP) telegram_bot_send_request(TG_GET_UPDATES);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
@@ -221,7 +222,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
                 esp_http_client_get_content_length(client));
     } else {
         ESP_LOGE(LOG_TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
-        sprintf((char*)output_buffer, "GET FAILED %s", esp_err_to_name(err));
+        // sprintf((char*)output_buffer, "GET FAILED %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
 }
@@ -265,7 +266,8 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 char* username = cJSON_GetStringValue(field_username);
                 str_toUpper(username);
                 memset(output_buffer, 0x00, output_buffer_size);
-                sprintf((char*)output_buffer, "USERNAME=%s", username);
+                ESP_LOGI(LOG_TAG, "Telegram Username: @%s", username);
+                // sprintf((char*)output_buffer, "USERNAME=%s", username);
             }
             break;
         }
