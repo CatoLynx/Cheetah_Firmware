@@ -21,6 +21,7 @@ static char sta_ssid[33];
 static char sta_pass[65];
 static char ap_ssid[33];
 static char ap_pass[65];
+uint8_t wifi_gotIP = 0;
 
 extern char hostname[63];
 
@@ -46,6 +47,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             }
             
             case WIFI_EVENT_STA_DISCONNECTED: {
+                wifi_gotIP = 0;
                 wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Disconnected from %s", event->ssid);
                 if (s_retry_num < sta_retries) {
@@ -75,6 +77,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     } else if (event_base == IP_EVENT) {
         switch(event_id) {
             case IP_EVENT_STA_GOT_IP: {
+                wifi_gotIP = 1;
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
                 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)

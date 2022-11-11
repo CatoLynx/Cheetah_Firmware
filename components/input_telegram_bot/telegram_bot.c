@@ -23,6 +23,8 @@ char* err_desc = NULL;
 uint8_t* output_buffer;
 size_t output_buffer_size = 0;
 
+extern uint8_t wifi_gotIP;
+
 
 esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
     static char *resp_buf;
@@ -139,7 +141,7 @@ void telegram_bot_deinit() {
 void telegram_bot_task(void* arg) {
     while (1) {
         //strncpy((char*)output_buffer, "GET_UPDATES", output_buffer_size);
-        telegram_bot_send_request(TG_GET_UPDATES);
+        if (wifi_gotIP) telegram_bot_send_request(TG_GET_UPDATES);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
@@ -191,6 +193,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
             cJSON_AddStringToObject(json, "text", text);
             cJSON_AddStringToObject(json, "parse_mode", "MarkdownV2");
             post_data = cJSON_Print(json);
+            ESP_LOGV(LOG_TAG, "POST Data: %s", post_data);
 
             esp_http_client_set_header(client, "Content-Type", "application/json");
             esp_http_client_set_post_field(client, post_data, strlen(post_data));
@@ -224,6 +227,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
 }
 
 esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON* json) {
+    ESP_LOGD(LOG_TAG, "Processing response");
     cJSON* field_ok = cJSON_GetObjectItem(json, "ok");
     if (field_ok == NULL) {
         err_status = 16;
@@ -235,6 +239,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
         err_status = error_code;
         cJSON* field_error_desc = cJSON_GetObjectItem(json, "description");
         err_desc = cJSON_GetStringValue(field_error_desc);
+        ESP_LOGE(LOG_TAG, "Telegram API Error %d: %s", error_code, err_desc);
         return ESP_FAIL;
     }
 
@@ -244,6 +249,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
         return ESP_FAIL;
     }
 
+    ESP_LOGD(LOG_TAG, "Endpoint: %d", (int)endpoint);
     switch(endpoint) {
         case TG_GET_ME: {
             if (!cJSON_IsObject(result)) {
@@ -270,6 +276,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 return ESP_FAIL;
             }
             uint16_t arraySize = cJSON_GetArraySize(result);
+            ESP_LOGD(LOG_TAG, "Got %u messages", arraySize);
 
             for (uint16_t i = 0; i < arraySize; i++) {
                 cJSON* item = cJSON_GetArrayItem(result, i);
@@ -338,6 +345,8 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 char* filteredText = malloc(strlen(text) + 1);
                 memset(filteredText, 0x00, strlen(text) + 1);
 
+                ESP_LOGD(LOG_TAG, "Filtering message text");
+
                 #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
                 str_toUpper(text);
                 #endif
@@ -352,20 +361,26 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
                 #endif
 
+                ESP_LOGD(LOG_TAG, "Converting message for display");
                 memset(output_buffer, 0x00, output_buffer_size);
                 str_convertLineBreaks((char*)output_buffer, filteredText, DISPLAY_FRAME_HEIGHT, DISPLAY_FRAME_WIDTH);
                 free(filteredText);
 
+                ESP_LOGD(LOG_TAG, "Converting output buffer for Telegram reply");
+                ESP_LOGD(LOG_TAG, "Free Heap: %u", esp_get_free_heap_size());
                 char* formattedOutput = malloc(output_buffer_size + DISPLAY_FRAME_HEIGHT); // + DISPLAY_FRAME_HEIGHT to get one newline character per line
+                ESP_LOGV(LOG_TAG, "formattedOutput = %p", formattedOutput);
                 memset(formattedOutput, 0x00, output_buffer_size + DISPLAY_FRAME_HEIGHT);
+                ESP_LOGV(LOG_TAG, "str_insertLineBreaks");
                 str_insertLineBreaks(formattedOutput, (char*)output_buffer, DISPLAY_FRAME_WIDTH, output_buffer_size);
 
-                char* tgText = malloc(output_buffer_size + DISPLAY_FRAME_HEIGHT + 100); // + DISPLAY_FRAME_HEIGHT to get one newline character per line, + 100 for the text
-                memset(tgText, 0x00, output_buffer_size + DISPLAY_FRAME_HEIGHT + 100);
-                sprintf(tgText, "Current display text:\n\n`%s`", formattedOutput);
+                ESP_LOGD(LOG_TAG, "Sending reply");
+                char* tgText;
+                asprintf(&tgText, "Current display text:\n\n`%s`", formattedOutput);
                 telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, tgText);
                 free(formattedOutput);
                 free(tgText);
+                ESP_LOGD(LOG_TAG, "Message processing finished");
             }
             break;
         }

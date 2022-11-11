@@ -1,6 +1,7 @@
 #include "util_generic.h"
 #include <ctype.h>
 #include <string.h>
+#include "esp_log.h"
 
 uint8_t count_set_bits(uint8_t byte) {
   static const uint8_t NIBBLE_LOOKUP[16] =  {
@@ -136,16 +137,18 @@ void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t char
 }
 
 void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen) {
-  uint16_t i = 0;
-  while (*in && i < inLen) {
-    for (uint16_t n = 0; i < interval; n++) {
+  uint16_t inPos = 0;
+  while (*in && inPos < inLen) {
+    for (uint16_t n = 0; n < interval; n++) {
       if (!*in) break;
       *out = *in;
       out++;
       in++;
-      i++;
+      inPos++;
     }
-    *out = '\n';
-    out++;
+    if (inPos < inLen) {
+        *out = '\n';
+        out++;
+    }
   }
 }
