@@ -5,9 +5,10 @@
 #include "esp_http_client.h"
 
 #include "telegram_bot.h"
-#include "util_nvs.h"
-#include "util_generic.h"
 #include "macros.h"
+#include "util_buffer.h"
+#include "util_generic.h"
+#include "util_nvs.h"
 
 
 #define LOG_TAG "TGBot"
@@ -346,18 +347,20 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                     return ESP_FAIL;
                 }
 
-                char* text = cJSON_GetStringValue(field_text);
-                char* filteredText = malloc(strlen(text) + 1);
-                memset(filteredText, 0x00, strlen(text) + 1);
+                char* text_utf8 = cJSON_GetStringValue(field_text);
+                
+
+                char* filteredText_utf8 = malloc(strlen(text_utf8) + 1);
+                memset(filteredText_utf8, 0x00, strlen(text_utf8) + 1);
 
                 ESP_LOGD(LOG_TAG, "Filtering message text");
 
                 #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
-                str_toUpper(text);
+                str_toUpper(text_utf8); // TODO: Handle UTF-8 correctly
                 #endif
 
                 #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
-                str_filterAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
+                str_filterAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
                 str_filterDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
@@ -366,10 +369,17 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
                 #endif
 
+                char* filteredText_iso88591 = malloc(strlen(filteredText_utf8) + 1); // Text can only be same length or less in ISO-8859-1
+                memset(filteredText_iso88591, 0x00, strlen(filteredText_utf8) + 1);
+                ESP_LOGD(LOG_TAG, "Converting message text from UTF-8 to ISO-8859-1");
+                buffer_utf8_to_iso88591(filteredText_iso88591, filteredText_utf8);
+                ESP_LOGD(LOG_TAG, "Result: %s", filteredText_iso88591);
+
                 ESP_LOGD(LOG_TAG, "Converting message for display");
                 memset(output_buffer, 0x00, output_buffer_size);
-                str_convertLineBreaks((char*)output_buffer, filteredText, DISPLAY_FRAME_HEIGHT, DISPLAY_FRAME_WIDTH);
-                free(filteredText);
+                str_convertLineBreaks((char*)output_buffer, filteredText_iso88591, DISPLAY_FRAME_HEIGHT, DISPLAY_FRAME_WIDTH);
+                free(filteredText_utf8);
+                free(filteredText_iso88591);
 
                 ESP_LOGD(LOG_TAG, "Converting output buffer for Telegram reply");
                 ESP_LOGD(LOG_TAG, "Free Heap: %u", esp_get_free_heap_size());
@@ -382,7 +392,14 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 ESP_LOGD(LOG_TAG, "Sending reply");
                 char* tgText;
                 asprintf(&tgText, "Current display text:\n\n`%s`", formattedOutput);
-                telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, tgText);
+
+                char* tgText_utf8 = malloc(strlen(tgText) * 2 + 1); // Text can be at most twice as long in UTF-8
+                memset(tgText_utf8, 0x00, strlen(tgText) * 2 + 1);
+                ESP_LOGD(LOG_TAG, "Converting reply text from ISO-8859-1 to UTF-8");
+                buffer_iso88591_to_utf8(tgText_utf8, tgText);
+                ESP_LOGD(LOG_TAG, "Result: %s", tgText_utf8);
+                telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, tgText_utf8);
+                free(tgText_utf8);
                 free(formattedOutput);
                 free(tgText);
                 ESP_LOGD(LOG_TAG, "Message processing finished");
