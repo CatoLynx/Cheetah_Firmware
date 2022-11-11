@@ -362,11 +362,11 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
                 str_filterAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
-                str_filterDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
+                str_filterDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
-                str_filterRangeAllowed(filteredText, text, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX, true);
+                str_filterRangeAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX, true);
                 #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE)
-                str_filterRangeDisallowed(filteredText, text, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
+                str_filterRangeDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
                 #endif
 
                 char* filteredText_iso88591 = malloc(strlen(filteredText_utf8) + 1); // Text can only be same length or less in ISO-8859-1
