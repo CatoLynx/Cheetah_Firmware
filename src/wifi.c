@@ -10,10 +10,19 @@
 
 #define LOG_TAG "WiFi"
 
-// TODO: Use sta_retries from NVS instead of CONFIG_PROJ_STA_MAX_RECONNECTS
-
 
 static uint16_t s_retry_num = 0;
+static uint8_t sta_retries = 0;
+static size_t sta_ssid_len = 33;
+static size_t sta_pass_len = 65;
+static size_t ap_ssid_len = 33;
+static size_t ap_pass_len = 65;
+static char sta_ssid[33];
+static char sta_pass[65];
+static char ap_ssid[33];
+static char ap_pass[65];
+
+extern char hostname[63];
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
 extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
@@ -39,10 +48,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case WIFI_EVENT_STA_DISCONNECTED: {
                 wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Disconnected from %s", event->ssid);
-                if (s_retry_num < CONFIG_PROJ_STA_MAX_RECONNECTS) {
+                if (s_retry_num < sta_retries) {
                     esp_wifi_connect();
                     s_retry_num++;
-                    ESP_LOGI(LOG_TAG, "Reconnecting to %s, attempt %d of %d", event->ssid, s_retry_num, CONFIG_PROJ_STA_MAX_RECONNECTS);
+                    ESP_LOGI(LOG_TAG, "Reconnecting to %s, attempt %d of %d", event->ssid, s_retry_num, sta_retries);
                 } else {
                     wifi_init_ap();
                 }
@@ -71,7 +80,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
                 char temp[19];
                 sprintf(temp, "IP=" IPSTR, IP2STR(&event->ip_info.ip));
-                memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
                 strncpy((char*)display_char_buffer, temp, DISPLAY_CHARBUF_SIZE);
                 #endif
                 s_retry_num = 0;
@@ -93,14 +101,16 @@ void wifi_init_ap(void) {
 
     wifi_config_t wifi_config = {
         .ap = {
-            .ssid = CONFIG_PROJ_AP_SSID,
-            .ssid_len = strlen(CONFIG_PROJ_AP_SSID),
-            .password = CONFIG_PROJ_AP_PASS,
+            .ssid_len = strlen(ap_ssid),
             .max_connection = 3,
             .authmode = WIFI_AUTH_WPA_WPA2_PSK
         },
     };
-    if (strlen(CONFIG_PROJ_AP_SSID) == 0) {
+    ap_ssid[ap_ssid_len - 1] = 0x00;
+    ap_pass[ap_pass_len - 1] = 0x00;
+    strncpy((char*)wifi_config.ap.ssid, ap_ssid, ap_ssid_len - 1);
+    strncpy((char*)wifi_config.ap.password, ap_pass, ap_pass_len - 1);
+    if (strlen(ap_pass) == 0) {
         wifi_config.ap.authmode = WIFI_AUTH_OPEN;
     }
 
@@ -108,37 +118,63 @@ void wifi_init_ap(void) {
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s",
-             CONFIG_PROJ_AP_SSID, CONFIG_PROJ_AP_PASS);
+    ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s", ap_ssid, ap_pass);
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
     strncpy((char*)display_char_buffer, "AP MODE", DISPLAY_CHARBUF_SIZE);
     #endif
 }
 
 void wifi_init(nvs_handle_t* nvsHandle) {
-    // Read STA SSID and password from NVS
+    // Read STA and AP SSID and password from NVS
     esp_err_t ret;
     uint8_t sta_credentials_valid = 1;
-    size_t ssid_len = 33;
-    size_t pass_len = 65;
-    char sta_ssid[33];
-    char sta_pass[65];
-    memset(sta_ssid, 0x00, ssid_len);
-    memset(sta_pass, 0x00, pass_len);
-    ret = nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &ssid_len);
+    memset(sta_ssid, 0x00, sta_ssid_len);
+    memset(sta_pass, 0x00, sta_pass_len);
+    memset(ap_ssid, 0x00, ap_ssid_len);
+    memset(ap_pass, 0x00, ap_pass_len);
+    ret = nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &sta_ssid_len);
     if (ret == ESP_ERR_NVS_NOT_FOUND) {
         sta_credentials_valid = 0;
     } else {
         ESP_ERROR_CHECK(ret);
     }
-    ret = nvs_get_str(*nvsHandle, "sta_pass", sta_pass, &pass_len);
+    ret = nvs_get_str(*nvsHandle, "sta_pass", sta_pass, &sta_pass_len);
     if (ret == ESP_ERR_NVS_NOT_FOUND) {
         sta_credentials_valid = 0;
     } else {
         ESP_ERROR_CHECK(ret);
     }
     if (strlen(sta_ssid) == 0) sta_credentials_valid = 0;
+    ret = nvs_get_u8(*nvsHandle, "sta_retries", &sta_retries);
+
+    ESP_LOGI(LOG_TAG, "Getting AP SSID from NVS");
+    ret = nvs_get_str(*nvsHandle, "ap_ssid", ap_ssid, &ap_ssid_len);
+    ap_ssid_len = 33; // Reset after nvs_get_str modified it
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGI(LOG_TAG, "AP SSID not found in NVS");
+        ap_ssid[ap_ssid_len - 1] = 0x00;
+        strncpy(ap_ssid, CONFIG_PROJ_DEFAULT_AP_SSID, ap_ssid_len - 1);
+        ESP_LOGI(LOG_TAG, "Fallback: %s", ap_ssid);
+    } else {
+        if (strlen(ap_ssid) == 0) {
+            ap_ssid[ap_ssid_len - 1] = 0x00;
+            strncpy(ap_ssid, CONFIG_PROJ_DEFAULT_AP_SSID, ap_ssid_len - 1);
+            ESP_LOGI(LOG_TAG, "AP SSID strlen is 0, Fallback: %s", ap_ssid);
+        }
+        ESP_ERROR_CHECK(ret);
+    }
+    ret = nvs_get_str(*nvsHandle, "ap_pass", ap_pass, &ap_pass_len);
+    ap_pass_len = 65; // Reset after nvs_get_str modified it
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ap_pass[ap_pass_len - 1] = 0x00;
+        strncpy(ap_pass, CONFIG_PROJ_DEFAULT_AP_PASS, ap_pass_len - 1);
+    } else {
+        if (strlen(ap_pass) == 0) {
+            ap_pass[ap_pass_len - 1] = 0x00;
+            strncpy(ap_pass, CONFIG_PROJ_DEFAULT_AP_PASS, ap_pass_len - 1);
+        }
+        ESP_ERROR_CHECK(ret);
+    }
 
     // Init WiFi in STA mode, AP will be automatically used as fallback
     esp_netif_create_default_wifi_sta();
@@ -170,8 +206,10 @@ void wifi_init(nvs_handle_t* nvsHandle) {
                 },
             },
         };
-        memcpy(wifi_config.sta.ssid, sta_ssid, ssid_len);
-        memcpy(wifi_config.sta.password, sta_pass, pass_len);
+        sta_ssid[sta_ssid_len - 1] = 0x00;
+        sta_pass[sta_pass_len - 1] = 0x00;
+        strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
+        strncpy((char*)wifi_config.sta.password, sta_pass, sta_pass_len - 1);
     } else {
         wifi_config = (wifi_config_t){
             .sta = {
@@ -181,15 +219,15 @@ void wifi_init(nvs_handle_t* nvsHandle) {
                 },
             },
         };
-        memcpy(wifi_config.sta.ssid, sta_ssid, ssid_len);
+        sta_ssid[sta_ssid_len - 1] = 0x00;
+        strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
     }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, CONFIG_PROJ_HOSTNAME));
+    ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname));
 
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    memset((char*)display_char_buffer, 0x00, DISPLAY_CHARBUF_SIZE);
     strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);
     #endif
 }

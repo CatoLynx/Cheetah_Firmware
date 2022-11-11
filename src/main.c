@@ -81,6 +81,9 @@ uint8_t display_prevBrightness = 0;
 uint8_t display_brightness = 255;
 #endif
 
+size_t hostname_length = 64;
+char hostname[64];
+
 
 static void display_refresh_task(void* arg) {
     while (1) {
@@ -132,6 +135,19 @@ void app_main(void) {
     ret = nvs_open("cheetah", NVS_READWRITE, &nvs_handle);
     ESP_ERROR_CHECK(ret);
 
+    ret = nvs_get_str(nvs_handle, "hostname", hostname, &hostname_length);
+    hostname_length = 64; // Reset after nvs_get_str modified it
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        hostname[hostname_length - 1] = 0x00;
+        strncpy(hostname, CONFIG_PROJ_DEFAULT_HOSTNAME, hostname_length - 1);
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
+    if (strlen(hostname) == 0) {
+        hostname[hostname_length - 1] = 0x00;
+        strncpy(hostname, CONFIG_PROJ_DEFAULT_HOSTNAME, hostname_length - 1);
+    }
+
     #if defined(CONFIG_FAN_ENABLED)
     ESP_ERROR_CHECK(fan_init());
     #endif
@@ -150,8 +166,8 @@ void app_main(void) {
     #endif
 
     ESP_ERROR_CHECK(mdns_init());
-    mdns_hostname_set(CONFIG_PROJ_HOSTNAME);
-    mdns_instance_name_set(CONFIG_PROJ_HOSTNAME);
+    mdns_hostname_set(hostname);
+    mdns_instance_name_set(hostname);
 
     httpd_handle_t server = httpd_init();
     browser_ota_init(&server);

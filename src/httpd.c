@@ -19,6 +19,8 @@ extern const uint8_t util_js_end[]   asm("_binary_util_js_end");
 extern const uint8_t simple_css_start[] asm("_binary_simple_css_start");
 extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
 
+extern char hostname[63];
+
 
 static esp_err_t favicon_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/x-icon");
@@ -62,7 +64,7 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
 
     cJSON* json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "ip", ip_str);
-    cJSON_AddStringToObject(json, "hostname", CONFIG_PROJ_HOSTNAME);
+    cJSON_AddStringToObject(json, "hostname", hostname);
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
     cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));

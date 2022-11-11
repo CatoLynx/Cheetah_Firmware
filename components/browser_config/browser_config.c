@@ -19,9 +19,12 @@ extern const uint8_t browser_config_html_end[]   asm("_binary_browser_config_htm
 // List of config options to present
 nvs_handle_t config_nvs_handle;
 config_entry_t config_entries[] = {
+    {.key = "hostname", .dataType = STR},
     {.key = "sta_ssid", .dataType = STR},
     {.key = "sta_pass", .dataType = STR},
     {.key = "sta_retries", .dataType = U8},
+    {.key = "ap_ssid", .dataType = STR},
+    {.key = "ap_pass", .dataType = STR},
     {.key = "tg_bot_token", .dataType = STR},
 };
 

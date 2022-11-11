@@ -1,30 +1,23 @@
 menu "Project Configuration"
 
-config PROJ_HOSTNAME
-    string "Device Hostname"
-    default "esp32"
+config PROJ_DEFAULT_HOSTNAME
+    string "Default/Fallback Device Hostname"
+    default "xatlabs-cheetah"
     help
-        This sets the network hostname used by the device.
+        This sets the network hostname used by the device if none is stored in NVS.
 
-config PROJ_STA_MAX_RECONNECTS
-    int "STA WiFi Max. Reconnects"
-    default 5
+config PROJ_DEFAULT_AP_SSID
+    string "Default/Fallback AP WiFi SSID"
+    default "xatLabs Cheetah"
     help
-        How often to try to reconnect to the STA WiFi.
+        SSID (network name) to create when STA connection fails, used if none is stored in NVS.
 
-config PROJ_AP_SSID
-    string "AP WiFi SSID"
+config PROJ_DEFAULT_AP_PASS
+    string "Default/Fallback AP WiFi password"
     default ""
     help
-        SSID (network name) to create when STA connection fails.
-
-config PROJ_AP_PASS
-    string "AP WiFi password"
-    default ""
-    help
-        WiFi password (WPA or WPA2) to use.
-
-        Can be left blank if the network has no security set.
+        AP WiFi password (WPA or WPA2) to use if none is stored in NVS.
+        Leave blank to create an open WiFi.
 
 endmenu
 
