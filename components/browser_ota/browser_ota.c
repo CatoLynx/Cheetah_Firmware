@@ -267,7 +267,7 @@ void browser_ota_init(httpd_handle_t* server) {
     ota_server = server;
     
     ESP_LOGI(LOG_TAG, "Creating restart task");
-    xTaskCreate(&systemRestartTask, "restartTask", 2048, NULL, 5, &systemRestartTaskHandle);
+    xTaskCreatePinnedToCore(&systemRestartTask, "restartTask", 2048, NULL, 5, &systemRestartTaskHandle, 0);
 }
 
 void browser_ota_deinit(void) {

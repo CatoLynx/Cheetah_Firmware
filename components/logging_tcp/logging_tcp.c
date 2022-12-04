@@ -25,7 +25,7 @@ void tcp_log_init() {
 }
 
 void tcp_log_start() {
-    xTaskCreate(tcp_log_server_task, "tcp_log_server", 4096, NULL, 2, NULL);
+    xTaskCreatePinnedToCore(tcp_log_server_task, "tcp_log_server", 4096, NULL, 2, NULL, 0;
 }
 
 int tcp_log_vprintf(const char* format, va_list args) {
@@ -117,7 +117,7 @@ void tcp_log_server_task(void* arg) {
         char taskName[CONFIG_FREERTOS_MAX_TASK_NAME_LEN];
         snprintf(taskName, CONFIG_FREERTOS_MAX_TASK_NAME_LEN, "tcp_log_%u", clientSock);
 #pragma GCC diagnostic pop
-        xTaskCreate(tcp_log_client_handler_task, taskName, 4096, (void*)clientSock, 1, NULL);
+        xTaskCreatePinnedToCore(tcp_log_client_handler_task, taskName, 4096, (void*)clientSock, 1, NULL, 0);
     }
 }
 

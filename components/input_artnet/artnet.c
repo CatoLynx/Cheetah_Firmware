@@ -132,7 +132,7 @@ void artnet_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmp
     artnet_temp_buffer_size = tmpBufSize;
     artnet_out_buffer = outBuf;
     artnet_out_buffer_size = outBufSize;
-    xTaskCreate(artnet_task, "artnet_server", 4096, NULL, 5, &artnetTaskHandle);
+    xTaskCreatePinnedToCore(artnet_task, "artnet_server", 4096, NULL, 5, &artnetTaskHandle, 0);
 }
 
 void artnet_stop(void) {

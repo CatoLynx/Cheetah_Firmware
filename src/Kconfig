@@ -156,6 +156,10 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_CHAR_KRONE_9000
         depends on DISPLAY_TYPE_CHARACTER
         bool "KRONE 9000 Split-Flap (using UART peripheral)"
+        
+    config DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X
+        depends on DISPLAY_TYPE_CHARACTER
+        bool "16-segment LED (using WS281X)"
 endchoice
 
 config DISPLAY_WIDTH

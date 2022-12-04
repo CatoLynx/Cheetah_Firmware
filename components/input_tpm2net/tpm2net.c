@@ -139,7 +139,7 @@ void tpm2net_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tm
     tpm2net_temp_buffer_size = tmpBufSize;
     tpm2net_out_buffer = outBuf;
     tpm2net_out_buffer_size = outBufSize;
-    xTaskCreate(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle);
+    xTaskCreatePinnedToCore(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle, 0);
 }
 
 void tpm2net_stop(void) {

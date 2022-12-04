@@ -38,6 +38,8 @@
 #include "driver_display_char_16seg_led_spi.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_KRONE_9000)
 #include "driver_display_char_krone_9000.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
+#include "driver_display_char_16seg_led_ws281x.h"
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
@@ -190,9 +192,9 @@ void app_main(void) {
     browser_canvas_register_brightness(&server, &display_brightness);
     #endif
 
-    xTaskCreate(display_refresh_task, "display_refresh", 4096, NULL, 5, NULL);
+    xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
 
     #if defined(CONFIG_FAN_ENABLED)
-    xTaskCreate(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL);
+    xTaskCreatePinnedToCore(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL, 0);
     #endif
 }
