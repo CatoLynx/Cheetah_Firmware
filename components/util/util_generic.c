@@ -1,6 +1,7 @@
 #include "util_generic.h"
 #include <ctype.h>
 #include <string.h>
+#include <sys/time.h>
 #include "esp_log.h"
 
 uint8_t count_set_bits(uint8_t byte) {
@@ -253,4 +254,10 @@ color_rgb_t hsv2rgb(color_hsv_t in) {
         break;
     }
     return out;     
+}
+
+int64_t time_getSystemTime_us() {
+  struct timeval tv_now;
+  gettimeofday(&tv_now, NULL);
+  return (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
 }

@@ -13,6 +13,7 @@
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
+#include "driver_effect_char_colors.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
 
@@ -214,16 +215,11 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t c
     uint16_t cb_i_display = 0;
     color_t color;
     color_rgb_t calcColor_rgb;
-    color_hsv_t calcColor_hsv;
 
     memset(frameBuf, 0x88, frameBufSize);
 
     for (uint16_t cb_i_source = 0; cb_i_source < charBufSize; cb_i_source++) {
-        calcColor_hsv.h = cb_i_display * (360 / charBufSize);
-        calcColor_hsv.s = 1.0;
-        calcColor_hsv.v = 1.0;
-
-        calcColor_rgb = hsv2rgb(calcColor_hsv);
+        calcColor_rgb = effect_sweeping_rainbow(cb_i_display, charBufSize, charBuf[cb_i_source], 100);
 
         color.red = calcColor_rgb.r * 255;
         color.green = calcColor_rgb.g * 255;

@@ -48,3 +48,4 @@ void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t char
 void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen);
 color_hsv_t rgb2hsv(color_rgb_t in);
 color_rgb_t hsv2rgb(color_hsv_t in);
+int64_t time_getSystemTime_us();
