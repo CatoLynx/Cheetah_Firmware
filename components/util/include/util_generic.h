@@ -24,6 +24,18 @@
 #define U32_MAX ((uint32_t)0xFFFFFFFF)
 #define U64_MAX ((uint64_t)0xFFFFFFFFFFFFFFFF)
 
+typedef struct {
+    double r;       // a fraction between 0 and 1
+    double g;       // a fraction between 0 and 1
+    double b;       // a fraction between 0 and 1
+} color_rgb_t;
+
+typedef struct {
+    double h;       // angle in degrees
+    double s;       // a fraction between 0 and 1
+    double v;       // a fraction between 0 and 1
+} color_hsv_t;
+
 uint8_t count_set_bits(uint8_t byte);
 uint8_t int_num_digits(int64_t n, uint8_t includeNegSign);
 uint8_t uint_num_digits(uint64_t n);
@@ -34,3 +46,5 @@ void str_filterRangeAllowed(char* out, char* in, uint8_t rangeMin, uint8_t range
 void str_filterRangDisallowed(char* out, char* in, uint8_t rangeMin, uint8_t rangeMax, bool allowLineBreaks);
 void str_convertLineBreaks(char* out, char* in, uint16_t numLines, uint16_t charsPerLine);
 void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen);
+color_hsv_t rgb2hsv(color_rgb_t in);
+color_rgb_t hsv2rgb(color_hsv_t in);
