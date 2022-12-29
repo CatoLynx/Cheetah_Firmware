@@ -60,3 +60,11 @@
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
     #define DISPLAY_DRIVER "char_16seg_led_ws281x"
 #endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+    #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
+        #define SHADER_INCLUDE "shaders_pixel.h"
+    #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        #define SHADER_INCLUDE "shaders_char.h"
+    #endif
+#endif

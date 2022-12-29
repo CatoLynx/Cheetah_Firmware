@@ -261,3 +261,11 @@ int64_t time_getSystemTime_us() {
   gettimeofday(&tv_now, NULL);
   return (int64_t)tv_now.tv_sec * 1000000L + (int64_t)tv_now.tv_usec;
 }
+
+int32_t map_int32(int32_t in, int32_t inMin, int32_t inMax, int32_t outMin, int32_t outMax) {
+  return (in - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}
+
+double map_double(double in, double inMin, double inMax, double outMin, double outMax) {
+  return (in - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
+}

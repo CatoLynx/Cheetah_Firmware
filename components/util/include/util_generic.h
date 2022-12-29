@@ -49,3 +49,5 @@ void str_insertLineBreaks(char* out, char* in, uint16_t interval, size_t inLen);
 color_hsv_t rgb2hsv(color_rgb_t in);
 color_rgb_t hsv2rgb(color_hsv_t in);
 int64_t time_getSystemTime_us();
+int32_t map_int32(int32_t in, int32_t inMin, int32_t inMax, int32_t outMin, int32_t outMax);
+double map_double(double in, double inMin, double inMax, double outMin, double outMax);

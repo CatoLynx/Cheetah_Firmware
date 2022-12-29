@@ -3,10 +3,14 @@
 #include <string.h>
 #include "sys/param.h"
 #include "mbedtls/base64.h"
-#include "cJSON.h"
 
+#include "macros.h"
 #include "browser_canvas.h"
 #include "util_httpd.h"
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+#include SHADER_INCLUDE
+#endif
 
 // TODO: Sometimes, the last change doesn't get sent
 
@@ -19,6 +23,10 @@ static size_t canvas_output_buffer_size = 0;
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static uint8_t* canvas_brightness;
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+static cJSON** shader_data;
 #endif
 
 // Embedded files - refer to CMakeLists.txt
@@ -107,6 +115,45 @@ static esp_err_t canvas_set_brightness_post_handler(httpd_req_t *req) {
 }
 #endif
 
+static esp_err_t canvas_get_shaders_handler(httpd_req_t *req) {
+    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+    cJSON* json = shader_get_available();
+    #else
+    cJSON* json = cJSON_CreateObject();
+    #endif
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+static esp_err_t canvas_set_shader_post_handler(httpd_req_t *req) {
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, "500 Internal Server Error");
+    }
+
+    *shader_data = json;
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+#endif
+
 static const httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -127,12 +174,27 @@ static const httpd_uri_t canvas_set_brightness_post = {
 };
 #endif
 
+static const httpd_uri_t canvas_get_shaders = {
+    .uri       = "/canvas/shaders.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_get_shaders_handler
+};
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+static const httpd_uri_t canvas_set_shader_post = {
+    .uri       = "/canvas/shader.json",
+    .method    = HTTP_POST,
+    .handler   = canvas_set_shader_post_handler
+};
+#endif
+
 void browser_canvas_init(httpd_handle_t* server, uint8_t* outBuf, size_t bufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_output_buffer = outBuf;
     canvas_output_buffer_size = bufSize;
     httpd_register_uri_handler(*server, &canvas_get);
     httpd_register_uri_handler(*server, &canvas_update_post);
+    httpd_register_uri_handler(*server, &canvas_get_shaders);
     canvas_server = server;
 }
 
@@ -142,9 +204,14 @@ void browser_canvas_stop(void) {
     canvas_output_buffer_size = 0;
     httpd_unregister_uri_handler(*canvas_server, canvas_get.uri, canvas_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_update_post.uri, canvas_update_post.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_set_brightness_post.uri, canvas_set_brightness_post.method);
+    #endif
+    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+    shader_data = NULL;
+    httpd_unregister_uri_handler(*canvas_server, canvas_set_shader_post.uri, canvas_set_shader_post.method);
     #endif
 }
 
@@ -152,5 +219,13 @@ void browser_canvas_stop(void) {
 void browser_canvas_register_brightness(httpd_handle_t* server, uint8_t* brightness) {
     canvas_brightness = brightness;
     httpd_register_uri_handler(*server, &canvas_set_brightness_post);
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData) {
+    shader_data = shaderData;
+    ESP_LOGI(LOG_TAG, "register shaders: %p", shader_data);
+    httpd_register_uri_handler(*server, &canvas_set_shader_post);
 }
 #endif

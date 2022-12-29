@@ -243,6 +243,12 @@ config DISPLAY_HAS_BRIGHTNESS_CONTROL
     help
         Enable brightness control
 
+config DISPLAY_HAS_SHADERS
+    bool "Display has shaders (color effects)"
+    default false
+    help
+        Enable shaders (color effects)
+
 endmenu
 
 

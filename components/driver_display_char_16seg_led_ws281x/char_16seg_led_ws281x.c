@@ -13,7 +13,7 @@
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
-#include "driver_effect_char_colors.h"
+#include "shaders_char.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
 
@@ -23,6 +23,7 @@
 spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 uint8_t display_currentBrightness = 255;
+void* display_currentShader = NULL;
 static const color_t OFF = { 0, 0, 0 };
 
 static const uint8_t ws281x_bit_patterns[4] = {
@@ -80,6 +81,17 @@ esp_err_t display_set_brightness(uint8_t brightness) {
 }
 #else
 esp_err_t display_set_brightness(uint8_t brightness) {
+    return ESP_OK;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+esp_err_t display_set_shader(void* shaderData) {
+    display_currentShader = shaderData;
+    return ESP_OK;
+}
+#else
+esp_err_t display_set_shader(cJSON* shaderData) {
     return ESP_OK;
 }
 #endif
@@ -219,7 +231,7 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t c
     memset(frameBuf, 0x88, frameBufSize);
 
     for (uint16_t cb_i_source = 0; cb_i_source < charBufSize; cb_i_source++) {
-        calcColor_rgb = effect_sweeping_rainbow(cb_i_display, charBufSize, charBuf[cb_i_source], 100);
+        calcColor_rgb = shader_fromJSON(cb_i_display, charBufSize, charBuf[cb_i_source], display_currentShader);
 
         color.red = calcColor_rgb.r * 255;
         color.green = calcColor_rgb.g * 255;

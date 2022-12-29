@@ -23,11 +23,19 @@
       </div>
     </div>
     <div id="text-container" style="display: none;">
+      <label for="text-input">Text</label>
       <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
     </div>
     <div id="brightness-container" style="display: none;">
       <label for="brightness-input">Brightness</label>
       <input type="range" id="brightness-input" name="brightness" min="0" max="255" value="255" />
+    </div>
+    <div id="shader-container" style="display: none;">
+      <label for="shader-select">Shader</label>
+      <select id="shader-select" name="shader-select"></select>
+      <table id="shader-params">
+        <tbody></tbody>
+      </table>
     </div>
 
     <script type="text/javascript">
@@ -48,6 +56,8 @@
           };
       
       var display_info = {};
+      var shader_list = [];
+      var selectedShaderId = 0;
       var pixelWidth = 20;
       var pixelHeight = 20;
       var baseColor = "#000000";
@@ -124,6 +134,61 @@
 
       function drawBrightnessControl() {
         $("#brightness-container").show();
+      }
+
+      function drawShaderControl() {
+        shader_list.forEach(function(shader, i) {
+          $('#shader-select').append($('<option>', {
+              value: i,
+              text: shader["name"]
+          }));
+        });
+
+        drawShaderParameters();
+        $("#shader-select").change(onShaderSelectChange);
+        $("#shader-container").show();
+      }
+
+      function drawShaderParameters() {
+        var selectedShader = shader_list[selectedShaderId];
+        var params = selectedShader["params"];
+        $("#shader-params").find("tbody").empty();
+        if(!params) return;
+
+        for (var paramName of Object.keys(params)) {
+          var paramData = params[paramName];
+
+          var field_element = $('<input type="' + paramData["type"] + '">');
+          field_element.prop("name", paramName);
+          for (var propName of Object.keys(paramData)) {
+            if (propName == "type") continue;
+            field_element.prop(propName, paramData[propName]);
+          }
+          field_element.change(updateShader);
+
+          var td_name = $("<td>" + paramName + "</td>");
+          var td_field = $("<td>").append(field_element);
+
+          switch (paramData["type"]) {
+            case "range": {
+              var value_display = $('<span>');
+              value_display.prop("id", "display-" + paramName);
+              value_display.text(field_element.val());
+              field_element.change(function(event) {
+                value_display.text(field_element.val());
+              });
+              td_field.append(value_display);
+              break;
+            }
+
+            case "color": {
+              field_element.val("#ffffff");
+            }
+          }
+
+          var tr = $("<tr>").append(td_name).append(td_field);
+          $("#shader-params").find("tbody").append(tr);
+        }
       }
 
       function drawPixel(x, y, color) {
@@ -225,6 +290,39 @@
         let rgb = hexToRGB(color);
         let lum = Math.round(rgb["r"] * 0.2126 + rgb["g"] * 0.7152 + rgb["b"] * 0.0722);
         return lum > 255 ? 255 : lum;
+      }
+
+      function getShaders() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/shaders.json",
+          success: onGetShadersSuccess,
+          error: onGetShadersError
+        });
+      }
+
+      function getShaderData() {
+        var data = {
+          shader: parseInt($("#shader-select").val()),
+          params: {}
+        };
+
+        var inputs = $("#shader-params input");
+        for (var i = 0; i < inputs.length; i++) {
+          var field_name = $(inputs[i]).prop("name");
+          var field_type = $(inputs[i]).prop("type");
+          if (["range", "number"].includes(field_type)) {
+            // Numerical field
+            var field_value = parseInt($(inputs[i]).val());
+          } else if (field_type == "color") {
+            var field_value = hexToRGB($(inputs[i]).val());
+          } else {
+            var field_value = $(inputs[i]).val();
+          }
+          data["params"][field_name] = field_value;
+        }
+        return data;
       }
 
       function getFramebuffer() {
@@ -344,6 +442,24 @@
         }
       }
 
+      function updateShader() {
+        var payload = getShaderData();
+
+        if (_CANVASDEBUG) {
+          console.log("Shader data:");
+          console.log(payload);
+        } else {
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/shader.json",
+            data: JSON.stringify(payload),
+            success: onSetShaderSuccess,
+            error: onSetShaderError
+          });
+        }
+      }
+
       function getDisplayInfo() {
         if (_CANVASDEBUG) {
           onGetDisplayInfoSuccess(_CANVASDEBUGINFO);
@@ -407,6 +523,15 @@
         console.log("Error setting brightness!");
         console.log(errorThrown);
       }
+
+      function onSetShaderSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetShaderError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting shader!");
+        console.log(errorThrown);
+      }
       
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
@@ -415,6 +540,17 @@
 
       function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
         
+      }
+
+      function onGetShadersSuccess(data, textStatus, jqXHR) {
+        if(!("shaders" in data)) return;
+        shader_list = data["shaders"];
+        drawShaderControl();
+      }
+
+      function onGetShadersError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting shaders!");
+        console.log(errorThrown);
       }
       
       function onForegroundColorChange(event) {
@@ -429,9 +565,16 @@
         localStorage.setItem("bgColor", bgColor);
       }
 
+      function onShaderSelectChange(event) {
+        selectedShaderId = parseInt($("#shader-select").val());
+        drawShaderParameters();
+        updateShader();
+      }
+
       function onReady() {
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getDisplayInfo();
+        getShaders();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
         $("#fg-color").val(fgColor);

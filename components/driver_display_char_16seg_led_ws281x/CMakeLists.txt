@@ -1,3 +1,3 @@
 idf_component_register(SRCS         char_16seg_led_ws281x.c
                        INCLUDE_DIRS include
-                       REQUIRES     util driver_effect_char_colors)
+                       REQUIRES     util shaders_char)

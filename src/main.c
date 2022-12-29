@@ -7,6 +7,7 @@
 #include "nvs_flash.h"
 #include "esp_system.h"
 #include "esp_ota_ops.h"
+#include "cJSON.h"
 
 #include "artnet.h"
 #include "browser_canvas.h"
@@ -83,6 +84,11 @@ uint8_t display_prevBrightness = 0;
 uint8_t display_brightness = 255;
 #endif
 
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+cJSON* display_prevShader = NULL;
+cJSON* display_shader = NULL;
+#endif
+
 size_t hostname_length = 64;
 char hostname[64];
 
@@ -112,6 +118,18 @@ static void display_refresh_task(void* arg) {
         if (display_brightness != display_prevBrightness) {
             display_set_brightness(display_brightness);
             display_prevBrightness = display_brightness;
+        }
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+        if (display_shader != display_prevShader) {
+            display_set_shader(display_shader);
+            
+            // Delete previous shader data if necessary
+            if (display_prevShader != NULL) {
+                cJSON_Delete(display_prevShader);
+            }
+            display_prevShader = display_shader;
         }
         #endif
 
@@ -190,6 +208,11 @@ void app_main(void) {
 
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     browser_canvas_register_brightness(&server, &display_brightness);
+    #endif
+
+    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+    ESP_LOGI("MAIN", "register shaders: %p", display_shader);
+    browser_canvas_register_shaders(&server, &display_shader);
     #endif
 
     xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
