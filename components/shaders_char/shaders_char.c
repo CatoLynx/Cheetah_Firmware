@@ -44,7 +44,17 @@ cJSON* shader_get_available() {
     // Shader: Static Rainbow
     shader_entry = cJSON_CreateObject();
     cJSON_AddStringToObject(shader_entry, "name", "static_rainbow");
-    cJSON_AddNullToObject(shader_entry, "params");
+    params = cJSON_CreateObject();
+
+        // Parameter: Repeats
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "number");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 1);
+        cJSON_AddItemToObject(params, "repeats", param);
+    
+    cJSON_AddItemToObject(shader_entry, "params", params);
     cJSON_AddItemToArray(shaders_arr, shader_entry);
 
     // Shader: Sweeping Rainbow
@@ -57,7 +67,16 @@ cJSON* shader_get_available() {
         cJSON_AddStringToObject(param, "type", "range");
         cJSON_AddNumberToObject(param, "min", 1);
         cJSON_AddNumberToObject(param, "max", 1000);
+        cJSON_AddNumberToObject(param, "value", 1);
         cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Repeats
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "number");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 1);
+        cJSON_AddItemToObject(params, "repeats", param);
 
     cJSON_AddItemToObject(shader_entry, "params", params);
     cJSON_AddItemToArray(shaders_arr, shader_entry);
@@ -79,9 +98,10 @@ cJSON* shader_get_available() {
 
         // Parameter: Repeats
         param = cJSON_CreateObject();
-        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddStringToObject(param, "type", "number");
         cJSON_AddNumberToObject(param, "min", 1);
         cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 1);
         cJSON_AddItemToObject(params, "repeats", param);
 
     cJSON_AddItemToObject(shader_entry, "params", params);
@@ -94,17 +114,21 @@ color_rgb_t shader_static(uint16_t cb_i_display, uint16_t charBufSize, uint8_t c
     return color;
 }
 
-color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character) {
+color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint8_t repeats) {
     color_hsv_t calcColor_hsv;
-    calcColor_hsv.h = cb_i_display * (360 / charBufSize);
+    uint16_t span = charBufSize / repeats;
+    if (span == 0) span = 1;
+    calcColor_hsv.h = (cb_i_display % span) * (360 / span);
     calcColor_hsv.s = 1.0;
     calcColor_hsv.v = 1.0;
     return hsv2rgb(calcColor_hsv);
 }
 
-color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint16_t speed) {
+color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint16_t speed, uint8_t repeats) {
     color_hsv_t calcColor_hsv;
-    calcColor_hsv.h = cb_i_display * (360 / charBufSize);
+    uint16_t span = charBufSize / repeats;
+    if (span == 0) span = 1;
+    calcColor_hsv.h = (cb_i_display % span) * (360 / span);
     calcColor_hsv.h += speed * time_getSystemTime_us() / 1000000;
     calcColor_hsv.h = (uint16_t)calcColor_hsv.h % 360;
     calcColor_hsv.s = 1.0;
@@ -159,7 +183,11 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
         }
         
         case STATIC_RAINBOW: {
-            color_rgb_t color = shader_static_rainbow(cb_i_display, charBufSize, character);
+            cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
+            if (!cJSON_IsNumber(repeats_field)) return fallback;
+            uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+
+            color_rgb_t color = shader_static_rainbow(cb_i_display, charBufSize, character, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }
@@ -168,7 +196,12 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
             if (!cJSON_IsNumber(speed_field)) return fallback;
             uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
-            color_rgb_t color = shader_sweeping_rainbow(cb_i_display, charBufSize, character, speed);
+            
+            cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
+            if (!cJSON_IsNumber(repeats_field)) return fallback;
+            uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+
+            color_rgb_t color = shader_sweeping_rainbow(cb_i_display, charBufSize, character, speed, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }

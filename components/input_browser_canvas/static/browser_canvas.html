@@ -175,7 +175,7 @@
               value_display.prop("id", "display-" + paramName);
               value_display.text(field_element.val());
               field_element.change(function(event) {
-                value_display.text(field_element.val());
+                $("#display-" + $(event.target).prop("name")).text($(event.target).val());
               });
               td_field.append(value_display);
               break;
