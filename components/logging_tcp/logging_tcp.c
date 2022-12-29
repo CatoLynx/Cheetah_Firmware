@@ -25,7 +25,7 @@ void tcp_log_init() {
 }
 
 void tcp_log_start() {
-    xTaskCreatePinnedToCore(tcp_log_server_task, "tcp_log_server", 4096, NULL, 2, NULL, 0;
+    xTaskCreatePinnedToCore(tcp_log_server_task, "tcp_log_server", 4096, NULL, 2, NULL, 0);
 }
 
 int tcp_log_vprintf(const char* format, va_list args) {
