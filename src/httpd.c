@@ -22,6 +22,13 @@ extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
 extern char hostname[63];
 
 
+static esp_err_t root_get_handler(httpd_req_t *req) {
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", "/canvas");
+    httpd_resp_send(req, NULL, 0);
+    return ESP_OK;
+}
+
 static esp_err_t favicon_get_handler(httpd_req_t *req) {
     httpd_resp_set_type(req, "image/x-icon");
     httpd_resp_send(req, (const char *)favicon_ico_start, favicon_ico_end - favicon_ico_start);
@@ -107,6 +114,12 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static const httpd_uri_t root_get = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = root_get_handler
+};
+
 static const httpd_uri_t favicon_get = {
     .uri       = "/img/favicon.ico",
     .method    = HTTP_GET,
@@ -156,6 +169,7 @@ httpd_handle_t httpd_init(void) {
     }
 
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
+    httpd_register_uri_handler(server, &root_get);
     httpd_register_uri_handler(server, &favicon_get);
     httpd_register_uri_handler(server, &jquery_get);
     httpd_register_uri_handler(server, &util_js_get);
@@ -168,6 +182,7 @@ httpd_handle_t httpd_init(void) {
 
 void httpd_deinit(httpd_handle_t server) {
     ESP_LOGI(LOG_TAG, "Unregistering URI handlers");
+    httpd_unregister_uri_handler(server, root_get.uri, root_get.method);
     httpd_unregister_uri_handler(server, favicon_get.uri, favicon_get.method);
     httpd_unregister_uri_handler(server, jquery_get.uri, jquery_get.method);
     httpd_unregister_uri_handler(server, util_js_get.uri, util_js_get.method);
