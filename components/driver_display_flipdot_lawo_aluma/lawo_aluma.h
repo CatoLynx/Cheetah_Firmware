@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_system.h"
+#include "nvs.h"
 
 #define PIN_CS		18	// Colour select
 #define PIN_EL		21	// Enable left half panel
@@ -18,7 +19,7 @@
 #define FLIP_PULSE_WIDTH_US		350
 #define LATCH_PULSE_WIDTH_US	10
 
-void display_init();
+void display_init(nvs_handle_t* nvsHandle);
 void display_set_address(uint8_t address);
 void display_select_row(uint8_t address);
 void display_select_column(uint8_t address);

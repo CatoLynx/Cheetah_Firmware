@@ -34,7 +34,7 @@ static const uint8_t rowLookupTableBlack[28] = {
 
 static uint8_t currentColor = 0;
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

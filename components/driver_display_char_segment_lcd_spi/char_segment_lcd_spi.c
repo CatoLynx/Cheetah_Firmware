@@ -26,7 +26,7 @@ spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

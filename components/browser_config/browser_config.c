@@ -26,6 +26,7 @@ config_entry_t config_entries[] = {
     {.key = "ap_ssid", .dataType = STR},
     {.key = "ap_pass", .dataType = STR},
     {.key = "tg_bot_token", .dataType = STR},
+    {.key = "disp_led_gamma", .dataType = U16},
 };
 
 

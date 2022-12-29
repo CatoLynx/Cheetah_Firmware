@@ -193,7 +193,7 @@ void app_main(void) {
     browser_ota_init(&server);
     browser_config_init(&server, &nvs_handle);
 
-    display_init();
+    display_init(&nvs_handle);
 
     #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
     tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);

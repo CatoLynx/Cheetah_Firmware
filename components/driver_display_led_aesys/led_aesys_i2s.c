@@ -32,7 +32,7 @@ uint8_t i2s_buf[I2S_BUF_SIZE];
 #define CONFIG_AESYS_LED_MATRIX_EN_INV 1
 
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

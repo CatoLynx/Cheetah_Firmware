@@ -16,7 +16,7 @@
 #define LOG_TAG "LED-SR"
 
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

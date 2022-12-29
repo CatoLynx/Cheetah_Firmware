@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_system.h"
+#include "nvs.h"
 
 #define WS281X_NUM_LEDS (DISPLAY_CHARBUF_SIZE * 49)
 
@@ -10,7 +11,7 @@ typedef struct {
     uint8_t blue;
 } color_t;
 
-void display_init();
+void display_init(nvs_handle_t* nvsHandle);
 void display_pre_transfer_cb(spi_transaction_t *t);
 void display_post_transfer_cb(spi_transaction_t *t);
 esp_err_t display_set_brightness(uint8_t brightness);

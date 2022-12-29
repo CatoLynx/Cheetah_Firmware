@@ -14,6 +14,7 @@
 #include "util_gpio.h"
 #include "char_16seg_font.h"
 #include "shaders_char.h"
+#include "math.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
 
@@ -33,11 +34,23 @@ static const uint8_t ws281x_bit_patterns[4] = {
 	0xEE,
 };
 
+static uint8_t gammaLUT[256];
 
-void display_init() {
+
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
+
+    // Calculate gamma lookup table
+    uint16_t gammaU16;
+    esp_err_t ret = nvs_get_u16(*nvsHandle, "disp_led_gamma", &gammaU16);
+    if (ret != ESP_OK) gammaU16 = 100;
+    if (gammaU16 == 0) gammaU16 = 100;
+    double gamma = gammaU16 / 100.0;
+    for (uint16_t i = 0; i < 256; i++) {
+        gammaLUT[i] = round(pow(i, gamma) / pow(255, (gamma - 1)));
+    }
 
     // Init SPI peripheral
     spi_bus_config_t buscfg = {
@@ -105,9 +118,9 @@ uint32_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
 }
 
 void display_setLEDColor(uint8_t* frameBuf, uint16_t ledPos, color_t color) {
-    color.red = ((uint16_t)color.red * display_currentBrightness) / 255;
-    color.green = ((uint16_t)color.green * display_currentBrightness) / 255;
-    color.blue = ((uint16_t)color.blue * display_currentBrightness) / 255;
+    color.red = gammaLUT[((uint16_t)color.red * display_currentBrightness) / 255];
+    color.green = gammaLUT[((uint16_t)color.green * display_currentBrightness) / 255];
+    color.blue = gammaLUT[((uint16_t)color.blue * display_currentBrightness) / 255];
 
     frameBuf[ledPos * 12 + 3] = ws281x_bit_patterns[(color.green >> 0) & 0x03];
     frameBuf[ledPos * 12 + 2] = ws281x_bit_patterns[(color.green >> 2) & 0x03];

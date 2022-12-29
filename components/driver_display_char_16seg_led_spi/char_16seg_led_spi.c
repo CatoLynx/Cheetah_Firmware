@@ -43,7 +43,7 @@ ledc_channel_config_t dimming_channel = {
 #endif
 
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

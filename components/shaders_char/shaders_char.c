@@ -139,27 +139,21 @@ static color_rgb_t _color_rgb_from_json(cJSON* json, color_rgb_t fallback) {
 color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, cJSON* shaderData) {
     // Fall back to white in case of error
     color_rgb_t fallback = { .r = 1.0, .g = 1.0, .b = 1.0 };
-    color_rgb_t red = { .r = 1.0, .g = 0.0, .b = 0.0 };
-    color_rgb_t green = { .r = 0.0, .g = 1.0, .b = 0.0 };
-    color_rgb_t blue = { .r = 0.0, .g = 0.0, .b = 1.0 };
-    color_rgb_t yellow = { .r = 1.0, .g = 1.0, .b = 0.0 };
-    color_rgb_t pink = { .r = 1.0, .g = 0.0, .b = 1.0 };
-    color_rgb_t cyan = { .r = 0.0, .g = 1.0, .b = 1.0 };
 
-    if (shaderData == NULL) return pink;
+    if (shaderData == NULL) return fallback;
 
     cJSON* shader_id_field = cJSON_GetObjectItem(shaderData, "shader");
-    if (!cJSON_IsNumber(shader_id_field)) return red;
+    if (!cJSON_IsNumber(shader_id_field)) return fallback;
     enum shader_func shaderId = (enum shader_func)cJSON_GetNumberValue(shader_id_field);
 
     cJSON* params = cJSON_GetObjectItem(shaderData, "params");
-    if (!cJSON_IsObject(params)) return green;
+    if (!cJSON_IsObject(params)) return fallback;
 
     switch (shaderId) {
         case STATIC: {
             cJSON* color_obj = cJSON_GetObjectItem(params, "color");
-            if (!cJSON_IsObject(color_obj)) return blue;
-            color_rgb_t color = _color_rgb_from_json(color_obj, yellow);
+            if (!cJSON_IsObject(color_obj)) return fallback;
+            color_rgb_t color = _color_rgb_from_json(color_obj, fallback);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return shader_static(cb_i_display, charBufSize, character, color);
         }

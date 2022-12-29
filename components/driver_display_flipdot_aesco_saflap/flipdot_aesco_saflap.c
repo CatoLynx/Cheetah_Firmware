@@ -18,7 +18,7 @@
 
 static uint8_t display_dirty = 1;
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

@@ -21,7 +21,7 @@ volatile uint8_t display_currentRow = 0;
 volatile uint8_t display_transferOngoing = false;
 
 
-void display_init() {
+void display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */

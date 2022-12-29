@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_system.h"
+#include "nvs.h"
 
 #define SAFLAP_PANEL_WIDTH 12
 #define SAFLAP_PANEL_HEIGHT 8
@@ -9,7 +10,7 @@
 #define CONFIG_SAFLAP_DATA_IO_INVERT 0
 #endif
 
-void display_init();
+void display_init(nvs_handle_t* nvsHandle);
 void display_shiftBit(uint8_t bit);
 void display_shiftByte(uint8_t byte);
 void display_setNibble(uint8_t panel, uint8_t row, uint8_t nibbleIdx, uint8_t nibbleVal);

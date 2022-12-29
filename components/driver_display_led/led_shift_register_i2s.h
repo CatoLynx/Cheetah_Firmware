@@ -1,6 +1,7 @@
 #pragma once
 
 #include "esp_system.h"
+#include "nvs.h"
 
 #ifndef CONFIG_SR_LED_MATRIX_DATA_INV
 #define CONFIG_SR_LED_MATRIX_DATA_INV 0
@@ -26,7 +27,7 @@
 #define CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV 0
 #endif
 
-void display_init();
+void display_init(nvs_handle_t* nvsHandle);
 void display_enable();
 void display_disable();
 void display_shiftBit(uint8_t byte);
