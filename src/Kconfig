@@ -249,6 +249,17 @@ config DISPLAY_HAS_SHADERS
     help
         Enable shaders (color effects)
 
+
+menu "Quirks"
+
+config DISPLAY_QUIRKS_COMBINING_FULL_STOP
+    bool "Combining full stop"
+    default false
+    help
+        A full stop combines with the previous character if possible.
+
+endmenu
+
 endmenu
 
 

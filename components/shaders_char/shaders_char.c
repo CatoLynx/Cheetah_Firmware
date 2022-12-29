@@ -110,13 +110,13 @@ cJSON* shader_get_available() {
     return json;
 }
 
-color_rgb_t shader_static(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t color) {
+color_rgb_t shader_static(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, color_rgb_t color) {
     return color;
 }
 
-color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint8_t repeats) {
+color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, uint8_t repeats) {
     color_hsv_t calcColor_hsv;
-    uint16_t span = charBufSize / repeats;
+    uint16_t span = displaySize / repeats;
     if (span == 0) span = 1;
     calcColor_hsv.h = (cb_i_display % span) * (360 / span);
     calcColor_hsv.s = 1.0;
@@ -124,9 +124,9 @@ color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, u
     return hsv2rgb(calcColor_hsv);
 }
 
-color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint16_t speed, uint8_t repeats) {
+color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, uint16_t speed, uint8_t repeats) {
     color_hsv_t calcColor_hsv;
-    uint16_t span = charBufSize / repeats;
+    uint16_t span = displaySize / repeats;
     if (span == 0) span = 1;
     calcColor_hsv.h = (cb_i_display % span) * (360 / span);
     calcColor_hsv.h += speed * time_getSystemTime_us() / 1000000;
@@ -136,9 +136,9 @@ color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize,
     return hsv2rgb(calcColor_hsv);
 }
 
-color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t start, color_rgb_t end, uint8_t repeats) {
+color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, color_rgb_t start, color_rgb_t end, uint8_t repeats) {
     color_rgb_t calcColor;
-    uint16_t span = charBufSize / repeats;
+    uint16_t span = displaySize / repeats;
     if (span == 0) span = 1;
     calcColor.r = map_double(cb_i_display % span, 0, span - 1, start.r, end.r);
     calcColor.g = map_double(cb_i_display % span, 0, span - 1, start.g, end.g);
@@ -160,7 +160,7 @@ static color_rgb_t _color_rgb_from_json(cJSON* json, color_rgb_t fallback) {
     return color;
 }
 
-color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, cJSON* shaderData) {
+color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, cJSON* shaderData) {
     // Fall back to white in case of error
     color_rgb_t fallback = { .r = 1.0, .g = 1.0, .b = 1.0 };
 
@@ -179,7 +179,7 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             if (!cJSON_IsObject(color_obj)) return fallback;
             color_rgb_t color = _color_rgb_from_json(color_obj, fallback);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
-            return shader_static(cb_i_display, charBufSize, character, color);
+            return shader_static(cb_i_display, charBufSize, displaySize, character, color);
         }
         
         case STATIC_RAINBOW: {
@@ -187,7 +187,7 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
 
-            color_rgb_t color = shader_static_rainbow(cb_i_display, charBufSize, character, repeats);
+            color_rgb_t color = shader_static_rainbow(cb_i_display, charBufSize, displaySize, character, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }
@@ -201,7 +201,7 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
 
-            color_rgb_t color = shader_sweeping_rainbow(cb_i_display, charBufSize, character, speed, repeats);
+            color_rgb_t color = shader_sweeping_rainbow(cb_i_display, charBufSize, displaySize, character, speed, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }
@@ -219,7 +219,7 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
 
-            color_rgb_t color = shader_linear_gradient(cb_i_display, charBufSize, character, start, end, repeats);
+            color_rgb_t color = shader_linear_gradient(cb_i_display, charBufSize, displaySize, character, start, end, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }

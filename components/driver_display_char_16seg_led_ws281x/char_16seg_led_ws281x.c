@@ -244,7 +244,7 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t c
     memset(frameBuf, 0x88, frameBufSize);
 
     for (uint16_t cb_i_source = 0; cb_i_source < charBufSize; cb_i_source++) {
-        calcColor_rgb = shader_fromJSON(cb_i_display, charBufSize, charBuf[cb_i_source], display_currentShader);
+        calcColor_rgb = shader_fromJSON(cb_i_display, charBufSize, DISPLAY_BUF_SIZE, charBuf[cb_i_source], display_currentShader);
 
         color.red = calcColor_rgb.r * 255;
         color.green = calcColor_rgb.g * 255;

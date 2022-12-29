@@ -374,6 +374,26 @@
         }
       }
 
+      function getActualCharCount(str) {
+        let count = 0;
+        if (display_info["quirks"].includes("combining_full_stop")) {
+          for (var i = 0; i < str.length; i++) {
+            if (i == 0) {
+              count++; // Always count first character
+            } else {
+              if (str[i] == ".") {
+                if (str[i-1] == ".") count++; // Only count full stop if preceded by another full stop
+              } else {
+                count++; // Always count non full stop characters
+              }
+            }
+          }
+        } else {
+          count = str.length;
+        }
+        return count;
+      }
+
       function getFramebuffer() {
         if (display_info["type"] == "pixel") {
           switch(display_info["frame_type"]) {
@@ -441,7 +461,16 @@
           let framebuf = new Array(display_info["charbuf_size"]);
           let val = "";
           $("#text-input").val().split("\n").forEach(function(e) {
-            val += e.substring(0, display_info["width"]).padEnd(display_info["width"], " ");
+            var actualLen = getActualCharCount(e);
+            var excess =  actualLen - display_info["width"];
+            if (excess < 0) {
+              // Need to pad
+              val += e.padEnd(e.length - excess, " ");
+            } else {
+              // Need to cut off
+              var cutoffPos = e.length - excess;
+              val += e.substring(0, cutoffPos);
+            }
           });
           let valLen = val.length;
           for (let i = 0; i < display_info["charbuf_size"]; i++) {

@@ -105,6 +105,16 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     #endif
     cJSON_AddBoolToObject  (json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
 
+    cJSON* quirks_arr = cJSON_CreateArray();
+    cJSON* quirk_entry;
+
+    #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
+    quirk_entry = cJSON_CreateString("combining_full_stop");
+    cJSON_AddItemToArray(quirks_arr, quirk_entry);
+    #endif
+
+    cJSON_AddItemToObject(json, "quirks", quirks_arr);
+
     char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
