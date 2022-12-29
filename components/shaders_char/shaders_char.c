@@ -77,6 +77,13 @@ cJSON* shader_get_available() {
         cJSON_AddStringToObject(param, "type", "color");
         cJSON_AddItemToObject(params, "end", param);
 
+        // Parameter: Repeats
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddItemToObject(params, "repeats", param);
+
     cJSON_AddItemToObject(shader_entry, "params", params);
     cJSON_AddItemToArray(shaders_arr, shader_entry);
 
@@ -105,11 +112,13 @@ color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize,
     return hsv2rgb(calcColor_hsv);
 }
 
-color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t start, color_rgb_t end) {
+color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t start, color_rgb_t end, uint8_t repeats) {
     color_rgb_t calcColor;
-    calcColor.r = map_double(cb_i_display, 0, charBufSize - 1, start.r, end.r);
-    calcColor.g = map_double(cb_i_display, 0, charBufSize - 1, start.g, end.g);
-    calcColor.b = map_double(cb_i_display, 0, charBufSize - 1, start.b, end.b);
+    uint16_t span = charBufSize / repeats;
+    if (span == 0) span = 1;
+    calcColor.r = map_double(cb_i_display % span, 0, span - 1, start.r, end.r);
+    calcColor.g = map_double(cb_i_display % span, 0, span - 1, start.g, end.g);
+    calcColor.b = map_double(cb_i_display % span, 0, span - 1, start.b, end.b);
     return calcColor;
 }
 
@@ -179,7 +188,11 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
             if (!cJSON_IsObject(end_obj)) return fallback;
             color_rgb_t end = _color_rgb_from_json(end_obj, fallback);
 
-            color_rgb_t color = shader_linear_gradient(cb_i_display, charBufSize, character, start, end);
+            cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
+            if (!cJSON_IsNumber(repeats_field)) return fallback;
+            uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+
+            color_rgb_t color = shader_linear_gradient(cb_i_display, charBufSize, character, start, end, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
             return color;
         }
