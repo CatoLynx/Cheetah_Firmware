@@ -40,7 +40,28 @@ static esp_err_t canvas_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static esp_err_t canvas_update_post_handler(httpd_req_t *req) {
+static esp_err_t canvas_buffer_get_handler(httpd_req_t *req) {
+    size_t b64_len = 0;
+    mbedtls_base64_encode(NULL, 0, &b64_len, canvas_output_buffer, canvas_output_buffer_size);
+    size_t b64_bufsize = b64_len;
+    unsigned char* b64_buf = malloc(b64_len);
+    b64_len = 0;
+    mbedtls_base64_encode(b64_buf, b64_bufsize, &b64_len, canvas_output_buffer, canvas_output_buffer_size);
+
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddStringToObject(json, "buffer", (char*)b64_buf);
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    free(b64_buf);
+    return ESP_OK;
+}
+
+static esp_err_t canvas_buffer_post_handler(httpd_req_t *req) {
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
@@ -86,7 +107,20 @@ static esp_err_t canvas_update_post_handler(httpd_req_t *req) {
 }
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-static esp_err_t canvas_set_brightness_post_handler(httpd_req_t *req) {
+static esp_err_t canvas_brightness_get_handler(httpd_req_t *req) {
+    cJSON* json = cJSON_CreateObject();
+    cJSON_AddNumberToObject(json, "brightness", *canvas_brightness);
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+static esp_err_t canvas_brightness_post_handler(httpd_req_t *req) {
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
@@ -160,17 +194,29 @@ static const httpd_uri_t canvas_get = {
     .handler   = canvas_get_handler
 };
 
-static const httpd_uri_t canvas_update_post = {
-    .uri       = "/canvas/update.json",
+static const httpd_uri_t canvas_buffer_get = {
+    .uri       = "/canvas/buffer.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_buffer_get_handler
+};
+
+static const httpd_uri_t canvas_buffer_post = {
+    .uri       = "/canvas/buffer.json",
     .method    = HTTP_POST,
-    .handler   = canvas_update_post_handler
+    .handler   = canvas_buffer_post_handler
 };
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-static const httpd_uri_t canvas_set_brightness_post = {
+static const httpd_uri_t canvas_brightness_get = {
+    .uri       = "/canvas/brightness.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_brightness_get_handler
+};
+
+static const httpd_uri_t canvas_brightness_post = {
     .uri       = "/canvas/brightness.json",
     .method    = HTTP_POST,
-    .handler   = canvas_set_brightness_post_handler
+    .handler   = canvas_brightness_post_handler
 };
 #endif
 
@@ -193,7 +239,8 @@ void browser_canvas_init(httpd_handle_t* server, uint8_t* outBuf, size_t bufSize
     canvas_output_buffer = outBuf;
     canvas_output_buffer_size = bufSize;
     httpd_register_uri_handler(*server, &canvas_get);
-    httpd_register_uri_handler(*server, &canvas_update_post);
+    httpd_register_uri_handler(*server, &canvas_buffer_get);
+    httpd_register_uri_handler(*server, &canvas_buffer_post);
     httpd_register_uri_handler(*server, &canvas_get_shaders);
     canvas_server = server;
 }
@@ -203,11 +250,13 @@ void browser_canvas_stop(void) {
     canvas_output_buffer = NULL;
     canvas_output_buffer_size = 0;
     httpd_unregister_uri_handler(*canvas_server, canvas_get.uri, canvas_get.method);
-    httpd_unregister_uri_handler(*canvas_server, canvas_update_post.uri, canvas_update_post.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_buffer_get.uri, canvas_buffer_get.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_buffer_post.uri, canvas_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
-    httpd_unregister_uri_handler(*canvas_server, canvas_set_brightness_post.uri, canvas_set_brightness_post.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_brightness_get.uri, canvas_brightness_get.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_brightness_post.uri, canvas_brightness_post.method);
     #endif
     #if defined(CONFIG_DISPLAY_HAS_SHADERS)
     shader_data = NULL;
@@ -218,7 +267,8 @@ void browser_canvas_stop(void) {
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 void browser_canvas_register_brightness(httpd_handle_t* server, uint8_t* brightness) {
     canvas_brightness = brightness;
-    httpd_register_uri_handler(*server, &canvas_set_brightness_post);
+    httpd_register_uri_handler(*server, &canvas_brightness_get);
+    httpd_register_uri_handler(*server, &canvas_brightness_post);
 }
 #endif
 

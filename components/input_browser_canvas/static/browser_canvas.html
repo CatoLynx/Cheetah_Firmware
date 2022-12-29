@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Pixel Canvas</title>
+    <title>Canvas</title>
     <link rel="icon" href="/img/favicon.ico">
     <link rel="stylesheet" href="/css/simple.css">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
@@ -302,6 +302,26 @@
         });
       }
 
+      function getFramebufferFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/buffer.json",
+          success: onGetFramebufferFromDisplaySuccess,
+          error: onGetFramebufferFromDisplayError
+        });
+      }
+
+      function getBrightnessFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/brightness.json",
+          success: onGetBrightnessFromDisplaySuccess,
+          error: onGetBrightnessFromDisplayError
+        });
+      }
+
       function getShaderData() {
         var data = {
           shader: parseInt($("#shader-select").val()),
@@ -418,7 +438,7 @@
           $.ajax({
             type: "POST",
             contentType: "application/json",
-            url: "/canvas/update.json",
+            url: "/canvas/buffer.json",
             data: JSON.stringify({"buffer": buffer_b64}),
             success: onUpdateDisplaySuccess,
             error: onUpdateDisplayError
@@ -494,6 +514,7 @@
         }
 
         if(display_info["brightness_control"]) {
+          getBrightnessFromDisplay();
           drawBrightnessControl();
           $("#brightness-input").change(onBrightnessChange);
         }
@@ -552,6 +573,42 @@
         console.log("Error getting shaders!");
         console.log(errorThrown);
       }
+
+      function onGetFramebufferFromDisplaySuccess(data, textStatus, jqXHR) {
+        // TODO: Make this work for pixel displays
+        if (display_info["type"] == "pixel") {
+          switch(display_info["frame_type"]) {
+            case "1bpp": {
+              break;
+            }
+
+            case "8bpp": {
+              break;
+            }
+
+            case "24bpp": {
+              break;
+            }
+          }
+        } else if (display_info["type"] == "character") {
+          let text = atob(data["buffer"]).replaceAll(/[ \x00]*$/g, "");
+          $("#text-input").val(text);
+        }
+      }
+
+      function onGetFramebufferFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting framebuffer from display!");
+        console.log(errorThrown);
+      }
+
+      function onGetBrightnessFromDisplaySuccess(data, textStatus, jqXHR) {
+        $("#brightness-input").val(data["brightness"]);
+      }
+
+      function onGetBrightnessFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting brightness from display!");
+        console.log(errorThrown);
+      }
       
       function onForegroundColorChange(event) {
         fgColor = limitColorRange($("#fg-color").val());
@@ -575,6 +632,7 @@
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getDisplayInfo();
         getShaders();
+        getFramebufferFromDisplay();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
         $("#fg-color").val(fgColor);
