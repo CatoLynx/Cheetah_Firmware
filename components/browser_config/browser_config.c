@@ -6,6 +6,7 @@
 #include "browser_config.h"
 #include "util_httpd.h"
 #include "util_generic.h"
+#include "settings_secret.h"
 
 #define LOG_TAG "BROWSER-CONFIG"
 
@@ -39,6 +40,10 @@ config_entry_t config_entries[] = {
 
 
 static esp_err_t config_get_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+    
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *)browser_config_html_start, browser_config_html_end - browser_config_html_start);
     return ESP_OK;
@@ -50,6 +55,10 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
 
     {"fields": [{"name": "sta_ssid", "type": 12, "value": "ABCDEFGHIJ"}, {"name": "sta_pass", "type": 12, "value": "1234567890"}]}
     */
+
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
 
     cJSON* json = cJSON_CreateObject();
     cJSON* fields_arr = cJSON_AddArrayToObject(json, "fields");
@@ -194,6 +203,10 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
 }
 
 static esp_err_t config_post_update_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
@@ -325,19 +338,19 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static const httpd_uri_t config_get = {
+static httpd_uri_t config_get = {
     .uri       = "/config",
     .method    = HTTP_GET,
     .handler   = config_get_handler
 };
 
-static const httpd_uri_t config_get_fields = {
+static httpd_uri_t config_get_fields = {
     .uri       = "/config/fields.json",
     .method    = HTTP_GET,
     .handler   = config_get_fields_handler
 };
 
-static const httpd_uri_t config_post_update = {
+static httpd_uri_t config_post_update = {
     .uri       = "/config/update",
     .method    = HTTP_POST,
     .handler   = config_post_update_handler
@@ -347,6 +360,16 @@ void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     config_nvs_handle = *nvsHandle;
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
+
+    basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
+    basic_auth_info->username = HTTPD_CONFIG_USERNAME;
+    basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
+    basic_auth_info->realm    = "ESP32 Configuration";
+    
+    config_get.user_ctx = basic_auth_info;
+    config_get_fields.user_ctx = basic_auth_info;
+    config_post_update.user_ctx = basic_auth_info;
+
     httpd_register_uri_handler(*server, &config_get);
     httpd_register_uri_handler(*server, &config_get_fields);
     httpd_register_uri_handler(*server, &config_post_update);

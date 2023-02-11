@@ -1,6 +1,7 @@
 #include "esp_log.h"
 #include <string.h>
 #include "sys/param.h"
+#include "esp_tls_crypto.h"
 
 #include "util_httpd.h"
 
@@ -64,4 +65,61 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
+}
+
+char* http_auth_basic_digest(const char *username, const char *password) {
+    int out;
+    char *user_info = NULL;
+    char *digest = NULL;
+    size_t n = 0;
+    asprintf(&user_info, "%s:%s", username, password);
+    esp_crypto_base64_encode(NULL, 0, &n, (const unsigned char *)user_info, strlen(user_info));
+    digest = calloc(1, 6 + n + 1);
+    strcpy(digest, "Basic ");
+    esp_crypto_base64_encode((unsigned char *)digest + 6, n, (size_t *)&out, (const unsigned char *)user_info, strlen(user_info));
+    free(user_info);
+    return digest;
+}
+
+bool basic_auth_handler(httpd_req_t* req, const char* log_tag) {
+    char* buf = NULL;
+    size_t buf_len = 0;
+    bool authenticated = false;
+
+    basic_auth_info_t* basic_auth_info = req->user_ctx;
+    buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
+
+    char* auth_hdr;
+    asprintf(&auth_hdr, "Basic realm=\"%s\"", basic_auth_info->realm);
+
+    if (buf_len > 1) {
+        buf = calloc(1, buf_len);
+        if (httpd_req_get_hdr_value_str(req, "Authorization", buf, buf_len) == ESP_OK) {
+            ESP_LOGI(log_tag, "Found header => Authorization: %s", buf);
+        } else {
+            ESP_LOGE(log_tag, "No auth value received");
+        }
+
+        char* auth_credentials = http_auth_basic_digest(basic_auth_info->username, basic_auth_info->password);
+        if (strncmp(auth_credentials, buf, buf_len)) {
+            ESP_LOGE(log_tag, "Not authenticated");
+            httpd_resp_set_status(req, HTTPD_401);
+            httpd_resp_set_hdr(req, "Connection", "keep-alive");
+            httpd_resp_set_hdr(req, "WWW-Authenticate", auth_hdr);
+            httpd_resp_send(req, NULL, 0);
+        } else {
+            ESP_LOGI(log_tag, "Authenticated!");
+            authenticated = true;
+        }
+        free(auth_credentials);
+        free(buf);
+    } else {
+        ESP_LOGE(log_tag, "No auth header received");
+        httpd_resp_set_status(req, HTTPD_401);
+        httpd_resp_set_hdr(req, "Connection", "keep-alive");
+        httpd_resp_set_hdr(req, "WWW-Authenticate", auth_hdr);
+        httpd_resp_send(req, NULL, 0);
+    }
+    free(auth_hdr);
+    return authenticated;
 }

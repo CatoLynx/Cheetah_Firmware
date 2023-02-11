@@ -7,6 +7,7 @@
 
 #include "browser_ota.h"
 #include "util_httpd.h"
+#include "settings_secret.h"
 
 #define LOG_TAG "BROWSER-OTA"
 
@@ -39,6 +40,10 @@ static void systemRestartTask(void* arg) {
 }
 
 static esp_err_t ota_get_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, (const char *)browser_ota_html_start, browser_ota_html_end - browser_ota_html_start);
     return ESP_OK;
@@ -51,6 +56,10 @@ static esp_err_t ota_spinner_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_length_post_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     char buf[10];
     size_t length = req->content_len;
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
@@ -74,6 +83,10 @@ static esp_err_t ota_length_post_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_post_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     esp_ota_handle_t ota_handle;        // OTA flash handle
     char ota_buf[1024];                 // OTA data buffer for flashing
     size_t length = req->content_len;   // Total POST payload length
@@ -184,6 +197,10 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_status_get_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     cJSON* json = cJSON_CreateObject();
     cJSON_AddNumberToObject(json, "payload_length", ota_payload_length);
     cJSON_AddNumberToObject(json, "received", ota_rx_len);
@@ -199,6 +216,10 @@ static esp_err_t ota_status_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_verify_get_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     esp_ota_mark_app_valid_cancel_rollback();
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OK", 3);
@@ -206,49 +227,53 @@ static esp_err_t ota_verify_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t ota_restart_get_handler(httpd_req_t *req) {
+    // If authenticated == false, the handler already takes care of the server response
+    bool authenticated = basic_auth_handler(req, LOG_TAG);
+    if (authenticated == false) return ESP_OK;
+
     xEventGroupSetBits(restart_event_group, restart_BIT);
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OK", 3);
     return ESP_OK;
 }
 
-static const httpd_uri_t ota_get = {
+static httpd_uri_t ota_get = {
     .uri       = "/ota",
     .method    = HTTP_GET,
     .handler   = ota_get_handler
 };
 
-static const httpd_uri_t ota_spinner_get = {
+static httpd_uri_t ota_spinner_get = {
     .uri       = "/ota/spinner.gif",
     .method    = HTTP_GET,
     .handler   = ota_spinner_get_handler
 };
 
-static const httpd_uri_t ota_length_post = {
+static httpd_uri_t ota_length_post = {
     .uri       = "/ota/length",
     .method    = HTTP_POST,
     .handler   = ota_length_post_handler
 };
 
-static const httpd_uri_t ota_post = {
+static httpd_uri_t ota_post = {
     .uri       = "/ota",
     .method    = HTTP_POST,
     .handler   = ota_post_handler
 };
 
-static const httpd_uri_t ota_status_get = {
+static httpd_uri_t ota_status_get = {
     .uri       = "/ota/status",
     .method    = HTTP_GET,
     .handler   = ota_status_get_handler
 };
 
-static const httpd_uri_t ota_verify_get = {
+static httpd_uri_t ota_verify_get = {
     .uri       = "/ota/verify",
     .method    = HTTP_GET,
     .handler   = ota_verify_get_handler
 };
 
-static const httpd_uri_t ota_restart_get = {
+static httpd_uri_t ota_restart_get = {
     .uri       = "/ota/restart",
     .method    = HTTP_GET,
     .handler   = ota_restart_get_handler
@@ -257,6 +282,19 @@ static const httpd_uri_t ota_restart_get = {
 void browser_ota_init(httpd_handle_t* server) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
+
+    basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
+    basic_auth_info->username = HTTPD_CONFIG_USERNAME;
+    basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
+    basic_auth_info->realm    = "ESP32 Firmware Update";
+    
+    ota_get.user_ctx = basic_auth_info;
+    ota_length_post.user_ctx = basic_auth_info;
+    ota_post.user_ctx = basic_auth_info;
+    ota_status_get.user_ctx = basic_auth_info;
+    ota_verify_get.user_ctx = basic_auth_info;
+    ota_restart_get.user_ctx = basic_auth_info;
+
     httpd_register_uri_handler(*server, &ota_get);
     httpd_register_uri_handler(*server, &ota_spinner_get);
     httpd_register_uri_handler(*server, &ota_length_post);
