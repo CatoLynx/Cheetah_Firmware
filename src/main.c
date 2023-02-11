@@ -22,6 +22,11 @@
 #include "wifi.h"
 #include "util_fan.h"
 #include "util_gpio.h"
+#include "wg.h"
+
+
+#define LOG_TAG "MAIN"
+
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
 #include "driver_display_flipdot_lawo_aluma.h"
@@ -175,6 +180,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
+    wg_init(&nvs_handle); // Init WireGuard before WiFi to ensure it's ready when WiFI gets an IP
     wifi_init(&nvs_handle);
 
     #if defined(CONFIG_TCP_LOG_ENABLED)
@@ -211,7 +217,7 @@ void app_main(void) {
     #endif
 
     #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-    ESP_LOGI("MAIN", "register shaders: %p", display_shader);
+    ESP_LOGI(LOG_TAG, "register shaders: %p", display_shader);
     browser_canvas_register_shaders(&server, &display_shader);
     #endif
 

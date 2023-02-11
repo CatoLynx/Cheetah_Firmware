@@ -27,6 +27,14 @@ config_entry_t config_entries[] = {
     {.key = "ap_pass", .dataType = STR},
     {.key = "tg_bot_token", .dataType = STR},
     {.key = "disp_led_gamma", .dataType = U16},
+    {.key = "wg_private_key", .dataType = STR},
+    {.key = "wg_public_key", .dataType = STR},
+    {.key = "wg_allowed_ip", .dataType = STR},
+    {.key = "wg_allowed_mask", .dataType = STR},
+    {.key = "wg_listen_port", .dataType = U16},
+    {.key = "wg_endpoint", .dataType = STR},
+    {.key = "wg_endpnt_port", .dataType = U16},
+    {.key = "wg_keepalive", .dataType = U16},
 };
 
 

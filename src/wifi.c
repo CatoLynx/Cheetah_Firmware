@@ -6,7 +6,7 @@
 #include "macros.h"
 
 #include "wifi.h"
-#include "settings_secret.h"
+#include "ntp.h"
 
 #define LOG_TAG "WiFi"
 
@@ -86,6 +86,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 strncpy((char*)display_char_buffer, temp, DISPLAY_CHARBUF_SIZE);
                 #endif
                 s_retry_num = 0;
+                ntp_sync_time();
                 break;
             }
         }
