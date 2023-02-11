@@ -19,22 +19,22 @@ extern const uint8_t browser_config_html_end[]   asm("_binary_browser_config_htm
 // List of config options to present
 nvs_handle_t config_nvs_handle;
 config_entry_t config_entries[] = {
-    {.key = "hostname", .dataType = STR},
-    {.key = "sta_ssid", .dataType = STR},
-    {.key = "sta_pass", .dataType = STR},
-    {.key = "sta_retries", .dataType = U8},
-    {.key = "ap_ssid", .dataType = STR},
-    {.key = "ap_pass", .dataType = STR},
-    {.key = "tg_bot_token", .dataType = STR},
-    {.key = "disp_led_gamma", .dataType = U16},
-    {.key = "wg_private_key", .dataType = STR},
-    {.key = "wg_public_key", .dataType = STR},
-    {.key = "wg_allowed_ip", .dataType = STR},
-    {.key = "wg_allowed_mask", .dataType = STR},
-    {.key = "wg_listen_port", .dataType = U16},
-    {.key = "wg_endpoint", .dataType = STR},
-    {.key = "wg_endpnt_port", .dataType = U16},
-    {.key = "wg_keepalive", .dataType = U16},
+    {.key = "hostname", .dataType = STR, .writeOnly = false},
+    {.key = "sta_ssid", .dataType = STR, .writeOnly = false},
+    {.key = "sta_pass", .dataType = STR, .writeOnly = false},
+    {.key = "sta_retries", .dataType = U8, .writeOnly = false},
+    {.key = "ap_ssid", .dataType = STR, .writeOnly = false},
+    {.key = "ap_pass", .dataType = STR, .writeOnly = false},
+    {.key = "tg_bot_token", .dataType = STR, .writeOnly = true},
+    {.key = "disp_led_gamma", .dataType = U16, .writeOnly = false},
+    {.key = "wg_private_key", .dataType = STR, .writeOnly = true},
+    {.key = "wg_public_key", .dataType = STR, .writeOnly = true},
+    {.key = "wg_allowed_ip", .dataType = STR, .writeOnly = false},
+    {.key = "wg_allowed_mask", .dataType = STR, .writeOnly = false},
+    {.key = "wg_listen_port", .dataType = U16, .writeOnly = false},
+    {.key = "wg_endpoint", .dataType = STR, .writeOnly = false},
+    {.key = "wg_endpnt_port", .dataType = U16, .writeOnly = false},
+    {.key = "wg_keepalive", .dataType = U16, .writeOnly = false},
 };
 
 
@@ -66,18 +66,25 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
         } else if (config_entries[i].dataType == STR) {
             // Query string length
             size_t valueLength;
-            esp_err_t ret = nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLength);
-            if (ret == ESP_ERR_NVS_NOT_FOUND) {
-                cJSON_AddStringToObject(entry, "value", "");
+            if (config_entries[i].writeOnly == true) {
+                // The string "<unchanged>" will also be checked for when receiving field data.
+                // This means that a field can not actually have this value.
+                // This seems acceptable.
+                cJSON_AddStringToObject(entry, "value", "<unchanged>");
             } else {
-                ESP_ERROR_CHECK(ret);
-                // Allocate buffer for value
-                char* value = malloc(valueLength);
-                // Read value
-                ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, value, &valueLength));
-                cJSON_AddStringToObject(entry, "value", value);
-                // Free allocated memory
-                free(value);
+                esp_err_t ret = nvs_get_str(config_nvs_handle, config_entries[i].key, NULL, &valueLength);
+                if (ret == ESP_ERR_NVS_NOT_FOUND) {
+                    cJSON_AddStringToObject(entry, "value", "");
+                } else {
+                    ESP_ERROR_CHECK(ret);
+                    // Allocate buffer for value
+                    char* value = malloc(valueLength);
+                    // Read value
+                    ESP_ERROR_CHECK(nvs_get_str(config_nvs_handle, config_entries[i].key, value, &valueLength));
+                    cJSON_AddStringToObject(entry, "value", value);
+                    // Free allocated memory
+                    free(value);
+                }
             }
         } else {
             // Numerical value
@@ -299,6 +306,7 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
             }
             case STR: {
                 char* value = cJSON_GetStringValue(field_value);
+                if (strcmp(value, "<unchanged>") == 0) break;
                 ESP_ERROR_CHECK(nvs_set_str(config_nvs_handle, fieldName, value));
                 break;
             }

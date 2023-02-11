@@ -20,6 +20,7 @@ typedef enum config_data_type {
 typedef struct config_entry {
     char* key;
     config_data_type_t dataType;
+    bool writeOnly; // If true, fields.json will not contain the actual value. Good for things like passwords or access tokens. Only works for strings at the moment.
 } config_entry_t;
 
 

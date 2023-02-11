@@ -1147,12 +1147,6 @@ CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP=y
 # end of Fan Configuration
 
 #
-# Wireguard Configuration
-#
-# CONFIG_WG_PRIVATE_KEY is not set
-# end of Wireguard Configuration
-
-#
 # 16-segment LED Configuration
 #
 CONFIG_16SEG_LED_SPI_CLK_FREQ=1000000
