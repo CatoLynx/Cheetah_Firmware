@@ -35,25 +35,25 @@ esp_err_t wg_init(nvs_handle_t* nvsHandle) {
     if (ret != ESP_OK) return ret;
 
     char* privateKey = get_string_from_nvs(nvsHandle, "wg_private_key");
-    if (privateKey == NULL) {
+    if (privateKey == NULL || strlen(privateKey) == 0) {
         return ESP_FAIL;
     }
 
     char* publicKey = get_string_from_nvs(nvsHandle, "wg_public_key");
-    if (publicKey == NULL) {
+    if (publicKey == NULL || strlen(publicKey) == 0) {
         free(privateKey);
         return ESP_FAIL;
     }
 
     char* allowedIp = get_string_from_nvs(nvsHandle, "wg_allowed_ip");
-    if (allowedIp == NULL) {
+    if (allowedIp == NULL || strlen(allowedIp) == 0) {
         free(privateKey);
         free(publicKey);
         return ESP_FAIL;
     }
 
     char* allowedIpMask = get_string_from_nvs(nvsHandle, "wg_allowed_mask");
-    if (allowedIpMask == NULL) {
+    if (allowedIpMask == NULL || strlen(allowedIpMask) == 0) {
         free(privateKey);
         free(publicKey);
         free(allowedIp);
@@ -61,7 +61,7 @@ esp_err_t wg_init(nvs_handle_t* nvsHandle) {
     }
 
     char* endpoint = get_string_from_nvs(nvsHandle, "wg_endpoint");
-    if (endpoint == NULL) {
+    if (endpoint == NULL || strlen(endpoint) == 0) {
         free(privateKey);
         free(publicKey);
         free(allowedIp);
@@ -105,4 +105,9 @@ esp_err_t wg_start() {
         wg_started = true;
     }
     return ret;
+}
+
+bool wg_is_up() {
+    if (!wg_initialized) return false;
+    return (esp_wireguardif_peer_is_up(&wg_ctx) == ESP_OK);
 }

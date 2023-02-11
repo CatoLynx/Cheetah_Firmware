@@ -12,6 +12,9 @@
 extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
 #endif
 
+bool ntp_initialized = false;
+bool ntp_started = false;
+
 
 void ntp_sync_cb(struct timeval *tv) {
     ESP_LOGI(LOG_TAG, "NTP time synced");
@@ -23,15 +26,17 @@ void ntp_sync_cb(struct timeval *tv) {
 }
 
 void ntp_init(void) {
+    if (ntp_initialized) return;
     ESP_LOGI(LOG_TAG, "Initializing SNTP");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
     sntp_set_time_sync_notification_cb(ntp_sync_cb);
     sntp_init();
+    ntp_initialized = true;
 }
 
 void ntp_sync_time(void) {
-    ntp_init();
+    if (!ntp_initialized) ntp_init();
 
     int retry = 0;
     const int retry_count = 20;

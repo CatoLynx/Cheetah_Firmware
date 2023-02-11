@@ -4,7 +4,7 @@
 #include "httpd.h"
 #include "cJSON.h"
 #include "esp_ota_ops.h"
-#include "esp_wireguard.h"
+#include "wg.h"
 
 #include "macros.h"
 
@@ -21,8 +21,6 @@ extern const uint8_t simple_css_start[] asm("_binary_simple_css_start");
 extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
 
 extern char hostname[63];
-
-extern wireguard_ctx_t wg_ctx;
 
 
 static esp_err_t root_get_handler(httpd_req_t *req) {
@@ -78,7 +76,7 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
     cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
-    cJSON_AddBoolToObject(json, "wireguard_up", (esp_wireguardif_peer_is_up(&wg_ctx) == ESP_OK));
+    cJSON_AddBoolToObject(json, "wireguard_up", wg_is_up());
 
     char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");
