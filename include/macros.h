@@ -1,5 +1,11 @@
 #define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
 
+#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#define STRCPY_CHARBUF(dst, txt, len) strncpy(dst, txt, len);
+#else
+#define STRCPY_CHARBUF(dst, txt, len)
+#endif
+
 #define DISPLAY_FRAME_WIDTH CONFIG_DISPLAY_FRAME_WIDTH
 #define DISPLAY_FRAME_HEIGHT CONFIG_DISPLAY_FRAME_HEIGHT
 #define DISPLAY_VIEWPORT_OFFSET_X CONFIG_DISPLAY_VIEWPORT_OFFSET_X

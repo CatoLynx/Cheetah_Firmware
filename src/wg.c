@@ -1,13 +1,21 @@
 #include "wg.h"
 #include "esp_log.h"
+#include "macros.h"
+#include <string.h>
 
 
 #define LOG_TAG "WireGuard"
 
 
+#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
+#endif
+
+
 wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
 wireguard_ctx_t wg_ctx = {0};
 bool wg_initialized = false;
+bool wg_started = false;
 
 
 esp_err_t wg_init(nvs_handle_t* nvsHandle) {
@@ -81,7 +89,20 @@ esp_err_t wg_init(nvs_handle_t* nvsHandle) {
 esp_err_t wg_start() {
     if (!wg_initialized) return ESP_FAIL;
     ESP_LOGI(LOG_TAG, "Connecting");
+    if (wg_started) {
+        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        display_char_buffer[0] = 'W';
+        #endif
+        ESP_LOGI(LOG_TAG, "Already connected!");
+        return ESP_OK;
+    }
     esp_err_t ret = esp_wireguard_connect(&wg_ctx);
-    if (ret == ESP_OK) ESP_LOGI(LOG_TAG, "Connected");
+    if (ret == ESP_OK) {
+        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        display_char_buffer[0] = 'W';
+        #endif
+        ESP_LOGI(LOG_TAG, "Connected");
+        wg_started = true;
+    }
     return ret;
 }

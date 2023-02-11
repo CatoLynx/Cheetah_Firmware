@@ -82,8 +82,8 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
                 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
                 char temp[19];
-                sprintf(temp, "IP=" IPSTR, IP2STR(&event->ip_info.ip));
-                strncpy((char*)display_char_buffer, temp, DISPLAY_CHARBUF_SIZE);
+                sprintf(temp, IPSTR, IP2STR(&event->ip_info.ip));
+                STRCPY_CHARBUF((char*)&display_char_buffer[1], temp, DISPLAY_CHARBUF_SIZE-1);
                 #endif
                 s_retry_num = 0;
                 ntp_sync_time();
@@ -123,9 +123,7 @@ void wifi_init_ap(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s", ap_ssid, ap_pass);
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    strncpy((char*)display_char_buffer, "AP MODE", DISPLAY_CHARBUF_SIZE);
-    #endif
+    STRCPY_CHARBUF((char*)&display_char_buffer[1], "AP MODE", DISPLAY_CHARBUF_SIZE-1);
 }
 
 void wifi_init(nvs_handle_t* nvsHandle) {
@@ -231,7 +229,5 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname));
 
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    strncpy((char*)display_char_buffer, "CONNECTING", DISPLAY_CHARBUF_SIZE);
-    #endif
+    STRCPY_CHARBUF((char*)&display_char_buffer[1], "CONNECTING", DISPLAY_CHARBUF_SIZE-1);
 }
