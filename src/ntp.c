@@ -19,7 +19,7 @@ bool ntp_started = false;
 void ntp_sync_cb(struct timeval *tv) {
     ESP_LOGI(LOG_TAG, "NTP time synced");
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    display_char_buffer[0] = 'N';
+    //display_char_buffer[0] = 'N';
     #endif
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     wg_start();
