@@ -10,6 +10,8 @@
 
 #define LOG_TAG "SHD-CHAR-COLOR"
 
+// TODO: Sweeping Rainbow Shader just turns red on speed > 2???
+
 
 // Order of shaders. This is important!
 // This order needs to match the order in which the shaders
