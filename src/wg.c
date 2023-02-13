@@ -109,5 +109,6 @@ esp_err_t wg_start() {
 
 bool wg_is_up() {
     if (!wg_initialized) return false;
+    if (!wg_started) return false;
     return (esp_wireguardif_peer_is_up(&wg_ctx) == ESP_OK);
 }
