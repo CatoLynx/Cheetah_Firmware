@@ -105,15 +105,11 @@ static esp_err_t spiffs_download_get_handler(httpd_req_t *req) {
 
     do {
         /* Read file in chunks into the file buffer */
-        ESP_LOGI(LOG_TAG, "Reading chunk");
         chunk_size = fread(file_buf, 1, 1024, file);
-        ESP_LOGI(LOG_TAG, "Chunk read");
 
         if (chunk_size > 0) {
-            ESP_LOGI(LOG_TAG, "Chunk size > 0");
             /* Send the buffer contents as HTTP response chunk */
             if (httpd_resp_send_chunk(req, file_buf, chunk_size) != ESP_OK) {
-                ESP_LOGI(LOG_TAG, "send chunk err");
                 fclose(file);
                 ESP_LOGE(LOG_TAG, "Failed to send file chunk");
                 /* Abort sending file */
