@@ -70,7 +70,7 @@ static esp_err_t ota_length_post_handler(httpd_req_t *req) {
 
     int ret = httpd_req_recv(req, buf, length);
     if (ret <= 0) {
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
     buf[length] = 0x00;
 
@@ -99,17 +99,17 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
     ota_success = 0;
     esp_err_t err;
 
-    // Abort if OTA payload length has not been announed
+    // Abort if OTA payload length has not been announced
     if(ota_payload_length == 0) {
         ESP_LOGE(LOG_TAG, "Trying to start OTA without announcing OTA payload length, aborting");
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     // OTA partition handle
     const esp_partition_t *update_partition = esp_ota_get_next_update_partition(NULL);
     if(!update_partition) {
         ESP_LOGE(LOG_TAG, "Failed to find a suitable OTA partition, aborting");
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
@@ -122,7 +122,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
                 continue;
             }
             ESP_LOGI(LOG_TAG, "Receive error, aborting");
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
         remaining -= ret;
         ESP_LOGI(LOG_TAG, "Received %d of %d bytes", (length - remaining), length);
@@ -142,14 +142,14 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             if((remaining + body_part_len) < ota_payload_length) {
                 // Expected total payload length is smaller than previously announced
                 ESP_LOGE(LOG_TAG, "POST payload length is smaller than previously announced OTA payload length, aborting");
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
 
             // Initiate OTA
             err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &ota_handle);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to initialise OTA, status %d", err);
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
             ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
 
@@ -158,7 +158,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             err = esp_ota_write(ota_handle, body_start_p, chunk_length);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to write OTA data, status %d", err);
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
             ota_rx_len += chunk_length;
         } else {
@@ -167,7 +167,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             err = esp_ota_write(ota_handle, ota_buf, chunk_length);
             if (err != ESP_OK) {
                 ESP_LOGE(LOG_TAG, "Failed to write OTA data, status %d", err);
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
             ota_rx_len += chunk_length;
         }
@@ -184,11 +184,11 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
             ESP_LOGI(LOG_TAG, "OTA success! Restart flag set.");
         } else {
             ESP_LOGE(LOG_TAG, "Failed to set boot partition, aborting");
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
     } else {
         ESP_LOGE(LOG_TAG, "Failed to end OTA, aborting");
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     // End response

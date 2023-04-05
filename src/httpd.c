@@ -4,8 +4,10 @@
 #include "httpd.h"
 #include "cJSON.h"
 #include "esp_ota_ops.h"
+#include "esp_spiffs.h"
 #include "wg.h"
 
+#include "config_global.h"
 #include "macros.h"
 
 #define LOG_TAG "HTTPD"
@@ -70,6 +72,9 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
         ESP_ERROR_CHECK(ret);
     }
 
+    size_t spiffs_total = 0, spiffs_used = 0;
+    ESP_ERROR_CHECK(esp_spiffs_info(SPIFFS_PARTITION_LABEL, &spiffs_total, &spiffs_used));
+
     cJSON* json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "ip", ip_str);
     cJSON_AddStringToObject(json, "hostname", hostname);
@@ -77,6 +82,8 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
     cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
     cJSON_AddBoolToObject(json, "wireguard_up", wg_is_up());
+    cJSON_AddNumberToObject(json, "spiffs_size", spiffs_total);
+    cJSON_AddNumberToObject(json, "spiffs_free", spiffs_total - spiffs_used);
 
     char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");

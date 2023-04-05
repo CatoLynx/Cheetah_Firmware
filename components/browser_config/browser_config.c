@@ -217,33 +217,33 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
 
     if (!cJSON_IsObject(json)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     cJSON* fields_arr = cJSON_GetObjectItem(json, "fields");
     if (!cJSON_IsArray(fields_arr)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     cJSON* entry = NULL;
     cJSON_ArrayForEach(entry, fields_arr) {
         if (!cJSON_IsObject(entry)) {
             cJSON_Delete(json);
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
 
         cJSON* field_name = cJSON_GetObjectItem(entry, "name");
         if (!cJSON_IsString(field_name)) {
             cJSON_Delete(json);
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
         char* fieldName = cJSON_GetStringValue(field_name);
 
         cJSON* field_type = cJSON_GetObjectItem(entry, "type");
         if (!cJSON_IsNumber(field_type)) {
             cJSON_Delete(json);
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
         config_data_type_t fieldType = (config_data_type_t)(int)cJSON_GetNumberValue(field_type);
 
@@ -259,20 +259,20 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
             case U64: {
                 if (!cJSON_IsNumber(field_value)) {
                     cJSON_Delete(json);
-                    return abortRequest(req, "500 Internal Server Error");
+                    return abortRequest(req, HTTPD_500);
                 }
                 break;
             }
             case STR: {
                 if (!cJSON_IsString(field_value)) {
                     cJSON_Delete(json);
-                    return abortRequest(req, "500 Internal Server Error");
+                    return abortRequest(req, HTTPD_500);
                 }
                 break;
             }
             default: {
                 cJSON_Delete(json);
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
         }
 
@@ -325,7 +325,7 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
             }
             default: {
                 cJSON_Delete(json);
-                return abortRequest(req, "500 Internal Server Error");
+                return abortRequest(req, HTTPD_500);
             }
         }
     }

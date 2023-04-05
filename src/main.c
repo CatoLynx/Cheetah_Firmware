@@ -10,9 +10,11 @@
 #include "esp_spiffs.h"
 #include "cJSON.h"
 
+#include "config_global.h"
 #include "artnet.h"
 #include "browser_canvas.h"
 #include "browser_config.h"
+#include "browser_spiffs.h"
 #include "browser_ota.h"
 #include "httpd.h"
 #include "logging_tcp.h"
@@ -176,7 +178,7 @@ void app_main(void) {
 
     esp_vfs_spiffs_conf_t spiffs_config = {
       .base_path = "/spiffs",
-      .partition_label = NULL,
+      .partition_label = SPIFFS_PARTITION_LABEL,
       .max_files = 5,
       .format_if_mount_failed = true
     };
@@ -225,6 +227,7 @@ void app_main(void) {
     httpd_handle_t server = httpd_init();
     browser_ota_init(&server);
     browser_config_init(&server, &nvs_handle);
+    browser_spiffs_init(&server);
 
     display_init(&nvs_handle);
 

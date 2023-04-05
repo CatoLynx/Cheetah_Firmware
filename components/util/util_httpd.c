@@ -30,7 +30,7 @@ esp_err_t post_recv_handler(const char* log_tag, httpd_req_t *req, uint8_t* dest
                 continue;
             }
             ESP_LOGE(log_tag, "Receive error, aborting");
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
         remaining -= ret;
         ESP_LOGI(log_tag, "Received %d of %d bytes", (length - remaining), length);
@@ -90,7 +90,14 @@ bool basic_auth_handler(httpd_req_t* req, const char* log_tag) {
     buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
 
     char* auth_hdr;
-    asprintf(&auth_hdr, "Basic realm=\"%s\"", basic_auth_info->realm);
+    int ret = asprintf(&auth_hdr, "Basic realm=\"%s\"", basic_auth_info->realm);
+    if (ret == -1) {
+        // asprintf error
+        ESP_LOGE(log_tag, "asprintf call failed!");
+        httpd_resp_set_status(req, HTTPD_500);
+        httpd_resp_send(req, "Internal Server Error", HTTPD_RESP_USE_STRLEN);
+        return false;
+    }
 
     if (buf_len > 1) {
         buf = calloc(1, buf_len);

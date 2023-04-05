@@ -1,0 +1,1 @@
+#define SPIFFS_PARTITION_LABEL "storage"

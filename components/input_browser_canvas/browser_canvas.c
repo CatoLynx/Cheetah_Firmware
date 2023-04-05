@@ -72,13 +72,13 @@ static esp_err_t canvas_buffer_post_handler(httpd_req_t *req) {
 
     if (!cJSON_IsObject(json)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     cJSON* buffer_field = cJSON_GetObjectItem(json, "buffer");
     if (!cJSON_IsString(buffer_field)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
     size_t b64_len = 0;
     char* buffer_str = cJSON_GetStringValue(buffer_field);
@@ -89,13 +89,13 @@ static esp_err_t canvas_buffer_post_handler(httpd_req_t *req) {
         // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
         // because this will always be returned when checking size
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     } else {
         b64_len = 0;
         result = mbedtls_base64_decode(canvas_output_buffer, canvas_output_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
         if (result != 0) {
             cJSON_Delete(json);
-            return abortRequest(req, "500 Internal Server Error");
+            return abortRequest(req, HTTPD_500);
         }
     }
 
@@ -131,13 +131,13 @@ static esp_err_t canvas_brightness_post_handler(httpd_req_t *req) {
 
     if (!cJSON_IsObject(json)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     cJSON* brightness_field = cJSON_GetObjectItem(json, "brightness");
     if (!cJSON_IsNumber(brightness_field)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
     *canvas_brightness = (uint8_t)cJSON_GetNumberValue(brightness_field);
 
@@ -194,7 +194,7 @@ static esp_err_t canvas_shader_post_handler(httpd_req_t *req) {
 
     if (!cJSON_IsObject(json)) {
         cJSON_Delete(json);
-        return abortRequest(req, "500 Internal Server Error");
+        return abortRequest(req, HTTPD_500);
     }
 
     *shader_data = json;
