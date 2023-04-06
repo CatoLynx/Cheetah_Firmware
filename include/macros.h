@@ -2,9 +2,9 @@
 
 #define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
 
-#define SET_MASK(buf, pos) buf[pos/8] |= (1 << (pos%8));
-#define CLEAR_MASK(buf, pos) buf[pos/8] &= ~(1 << (pos%8));
-#define GET_MASK(buf, pos) (!!(buf[pos/8] & (1 << (pos%8))))
+#define SET_MASK(buf, pos) (buf)[(pos)/8] |= (1 << ((pos)%8))
+#define CLEAR_MASK(buf, pos) (buf)[(pos)/8] &= ~(1 << ((pos)%8))
+#define GET_MASK(buf, pos) (!!((buf)[(pos)/8] & (1 << ((pos)%8))))
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
 #define STRCPY_CHARBUF(dst, txt, len) strncpy(dst, txt, len);

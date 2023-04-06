@@ -10,6 +10,7 @@
 
 #include "macros.h"
 #include "util_gpio.h"
+#include "util_disp_selection.h"
 #include "sel_k9000.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)
@@ -20,12 +21,15 @@
 // TODO: Do something with Rx pin?
 
 
-esp_err_t display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, uint16_t* display_num_units) {
     /*
      * Set up all needed peripherals
      */
 
     esp_err_t ret;
+
+    ret = display_selection_loadConfiguration(nvsHandle, display_framebuf_mask, display_num_units, LOG_TAG);
+    if (ret != ESP_OK) return ret;
 
     uart_config_t uart_config = {
         .baud_rate = 4800,
@@ -52,8 +56,6 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
 
 void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     uint8_t cmd_base = 0b10010000;
-
-    if (code == 0x00) code = 0x20; // Replace null bytes with spaces
 
     if (address > 127) cmd_base |= 0b01000000;
     if (code    > 127) cmd_base |= 0b00100000;
@@ -82,6 +84,7 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
     }
     buf[bufSize-1] = 0b10010001; // CMD_SET_ALL
 
+    ESP_LOG_BUFFER_HEX(LOG_TAG, buf, bufSize);
     uart_write_bytes(K9000_SEL_UART, buf, bufSize);
     free(buf);
 

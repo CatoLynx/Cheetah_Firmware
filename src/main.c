@@ -242,7 +242,11 @@ void app_main(void) {
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
 
+    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+    ret = display_init(&nvs_handle, display_framebuf_mask, &display_num_units);
+    #else
     ret = display_init(&nvs_handle);
+    #endif
     if (ret == ESP_OK) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
         tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);

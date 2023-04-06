@@ -28,6 +28,7 @@ config_entry_t config_entries[] = {
     {.key = "ap_pass", .dataType = STR, .writeOnly = false},
     {.key = "tg_bot_token", .dataType = STR, .writeOnly = true},
     {.key = "disp_led_gamma", .dataType = U16, .writeOnly = false},
+    {.key = "sel_conf_file", .dataType = STR, .writeOnly = false},
     {.key = "wg_private_key", .dataType = STR, .writeOnly = true},
     {.key = "wg_public_key", .dataType = STR, .writeOnly = true},
     {.key = "wg_allowed_ip", .dataType = STR, .writeOnly = false},
