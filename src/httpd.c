@@ -8,6 +8,7 @@
 #include "wg.h"
 
 #include "config_global.h"
+#include "util_disp_selection.h"
 #include "macros.h"
 
 #define LOG_TAG "HTTPD"
@@ -23,6 +24,8 @@ extern const uint8_t simple_css_start[] asm("_binary_simple_css_start");
 extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
 
 extern char hostname[63];
+
+nvs_handle_t httpd_nvs_handle;
 
 
 static esp_err_t root_get_handler(httpd_req_t *req) {
@@ -120,7 +123,18 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
 #else
     cJSON_AddNullToObject(json, "charbuf_size");
 #endif
-    cJSON_AddBoolToObject  (json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
+    cJSON_AddBoolToObject(json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
+#if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+    cJSON* sel_config;
+    esp_err_t ret = display_selection_loadConfiguration(&httpd_nvs_handle, &sel_config, LOG_TAG);
+    if (ret != ESP_OK) {
+        cJSON_AddNullToObject(json, "config");
+    } else {
+        cJSON_AddItemToObject(json, "config", sel_config);
+    }
+#else
+    cJSON_AddNullToObject(json, "config");
+#endif
 
     cJSON* quirks_arr = cJSON_CreateArray();
     cJSON* quirk_entry;
@@ -183,9 +197,11 @@ static const httpd_uri_t display_info_get = {
     .handler   = display_info_get_handler
 };
 
-httpd_handle_t httpd_init(void) {
+httpd_handle_t httpd_init(nvs_handle_t* nvsHandle) {
     httpd_handle_t server = NULL;
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    httpd_nvs_handle = *nvsHandle;
 
     config.max_uri_handlers = 32;
 

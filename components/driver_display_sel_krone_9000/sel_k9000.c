@@ -28,7 +28,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
 
     esp_err_t ret;
 
-    ret = display_selection_loadConfiguration(nvsHandle, display_framebuf_mask, display_num_units, LOG_TAG);
+    ret = display_selection_loadAndParseConfiguration(nvsHandle, display_framebuf_mask, display_num_units, LOG_TAG);
     if (ret != ESP_OK) return ret;
 
     uart_config_t uart_config = {

@@ -237,7 +237,7 @@ void app_main(void) {
     mdns_hostname_set(hostname);
     mdns_instance_name_set(hostname);
 
-    httpd_handle_t server = httpd_init();
+    httpd_handle_t server = httpd_init(&nvs_handle);
     browser_ota_init(&server);
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);

@@ -4,11 +4,11 @@
 #include "util_nvs.h"
 #include "macros.h"
 #include <stdio.h>
-#include "cJSON.h"
+
 
 // Load the configuration for a selection-based display from the JSON file in SPIFFS
-// whose name is stored in NVS and set the framebuffer mask and unit count based on the data therein.
-esp_err_t display_selection_loadConfiguration(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, uint16_t* display_num_units, const char* log_tag) {
+// whose name is stored in NVS and store the cJSON object in the given pointer
+esp_err_t display_selection_loadConfiguration(nvs_handle_t* nvsHandle, cJSON** json, const char* log_tag) {
     char* confFile = get_string_from_nvs(nvsHandle, "sel_conf_file");
     if (confFile == NULL) {
         ESP_LOGE(log_tag, "Failed to get configuration file name from NVS");
@@ -49,10 +49,18 @@ esp_err_t display_selection_loadConfiguration(nvs_handle_t* nvsHandle, uint8_t* 
         free(raw_json);
         return ESP_FAIL;
     }
-    cJSON* json = cJSON_Parse(raw_json);
+    *json = cJSON_Parse(raw_json);
     free(raw_json);
-
     fclose(file);
+    return ESP_OK;
+}
+
+// Load the configuration for a selection-based display from the JSON file in SPIFFS
+// whose name is stored in NVS and set the framebuffer mask and unit count based on the data therein.
+esp_err_t display_selection_loadAndParseConfiguration(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, uint16_t* display_num_units, const char* log_tag) {
+    cJSON* json;
+    esp_err_t ret = display_selection_loadConfiguration(nvsHandle, &json, log_tag);
+    if (ret != ESP_OK) return ret;
 
     if (!cJSON_IsObject(json)) {
         ESP_LOGE(log_tag, "No valid JSON object found");
