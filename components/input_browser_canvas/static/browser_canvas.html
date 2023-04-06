@@ -26,6 +26,7 @@
       <label for="text-input">Text</label>
       <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
     </div>
+    <div id="selection-container" style="display: none;"></div>
     <div id="brightness-container" style="display: none;">
       <label for="brightness-input">Brightness</label>
       <input type="range" id="brightness-input" name="brightness" min="0" max="255" value="255" />
@@ -41,19 +42,93 @@
     <script type="text/javascript">
       var _CANVASDEBUG = false;
       var _CANVASDEBUGINFO = {
-            type: "character",
-            driver: "char_16seg_led_spi",
-            width: 24,
-            height: 4,
-            frame_width: 24,
-            frame_height: 4,
-            viewport_offset_x: 0,
-            viewport_offset_y: 0,
-            frame_type: "",
-            framebuf_size: 204,
-            charbuf_size: 96,
-            brightness_control: 1
-          };
+        "type":	"selection",
+        "driver":	"sel_krone_9000",
+        "width":	null,
+        "height":	null,
+        "frame_width":	null,
+        "frame_height":	null,
+        "viewport_offset_x":	null,
+        "viewport_offset_y":	null,
+        "framebuf_size":	256,
+        "frame_type":	"unit",
+        "charbuf_size":	null,
+        "brightness_control":	false,
+        "config":	{
+          "units":	[
+            {
+              "name": "destination",
+              "type":	"text",
+              "flags": ["upper"],
+              "addr":	1,
+              "x":	2,
+              "y":	4,
+              "width":	2,
+              "height":	2,
+              "len":	8,
+              "map":	"alnum"
+            },
+            {
+              "name": "train_type",
+              "type":	"map",
+              "addr":	13,
+              "x":	2,
+              "y":	0,
+              "width":	6,
+              "height":	2,
+              "len":	1,
+              "map":	"trainType"
+            },
+            {
+              "name": "train_number",
+              "type":	"text",
+              "flags": ["upper"],
+              "addr":	100,
+              "x":	8,
+              "y":	0,
+              "width":	2,
+              "height":	2,
+              "len":	5,
+              "map":	"alnum"
+            },
+            {
+              "name": "via",
+              "type":	"map",
+              "addr":	27,
+              "x":	0,
+              "y":	2,
+              "width":	20,
+              "height":	2,
+              "len":	1,
+              "map":	"via"
+            }
+          ],
+          "maps":	{
+            "alnum":	{
+              "0":	null,
+              "1":	"A",
+              "2":  "B",
+            },
+            "trainType":	{
+              "0":	null,
+              "1":	"ICE",
+              "2":	"RB",
+              "3":	"RE",
+              "4":	null,
+              "25":	"VIA"
+            },
+            "via":	{
+              "0":	null,
+              "1":	"Berlin - München",
+              "2":	"Frankfurt - Offenbach",
+              "3":	"Hagen",
+              "4":	"Sonderfahrt!",
+              "25":	"Bremen Hbf"
+            }
+          }
+        },
+        "quirks":	[]
+      };
       
       var display_info = {};
       var shader_list = [];
@@ -130,6 +205,125 @@
         $("#text-input").prop('cols', display_info["width"]);
         $("#text-input").prop('rows', display_info["height"]);
         $("#text-container").show();
+      }
+
+      function drawSelectionInput() {
+        function getUnitByCoordinates(x, y) {
+          let units = display_info["config"]["units"];
+          for (const unit of units) {
+            if ((x >= unit["x"] && x < (unit["x"] + (unit["width"] * unit["len"]))) && (y >= unit["y"] && y < (unit["y"] + unit["height"]))) {
+              return unit;
+            }
+          }
+          return null;
+        }
+
+        $("#selection-container").show();
+        let config = display_info["config"];
+
+        // Calculate the extent of the display
+        let disp_width = 0;
+        let disp_height = 0;
+        for (var i = 0; i < config["units"].length; i++) {
+          let unit = config["units"][i];
+          unit["index"] = i;
+          let unit_max_x = unit["x"] + (unit["width"] * unit["len"]);
+          let unit_max_y = unit["y"] + unit["height"];
+          if (unit_max_x > disp_width) disp_width = unit_max_x;
+          if (unit_max_y > disp_height) disp_height = unit_max_y;
+        }
+
+        // Create the grid
+        let table = $("<table>");
+        table.css("table-layout", "fixed");
+        
+        // Add an invisible first row so we can use colspan
+        let row = $("<tr>");
+        row.css("background-color", "inherit");
+        for (var x = 0; x < (disp_width + 1); x++) {
+          let col = $("<td>");
+          col.css("overflow", "hidden");
+          col.css("padding", 0);
+          col.css("border", "none");
+          let div = $("<div>");
+          div.css("width", "2rem");
+          div.css("height", "2rem");
+          col.append(div);
+          row.append(col);
+        }
+        table.append(row);
+
+        for (var y = 0; y < disp_height; y++) {
+          let row = $("<tr>");
+          row.css("background-color", "inherit");
+
+          // Add an invisible first column so we can use rowspan
+          let col = $("<td>");
+          col.css("overflow", "hidden");
+          col.css("padding", 0);
+          col.css("border", "none");
+          let div = $("<div>");
+          div.css("width", "2rem");
+          div.css("height", "2rem");
+          col.append(div);
+          row.append(col);
+
+          for (var x = 0; x < disp_width; x++) {
+            let unit = getUnitByCoordinates(x, y);
+            if (unit == null) {
+              let col = $("<td>");
+              col.css("overflow", "hidden");
+              col.css("padding", 0);
+              col.css("border", "none");
+              let div = $("<div>");
+              div.css("width", "2rem");
+              div.css("height", "2rem");
+              col.append(div);
+              row.append(col);
+            } else {
+              if (!("drawn" in unit) || unit["drawn"] == false) {
+                let col = $("<td>");
+                col.css("overflow", "hidden");
+                col.css("padding", "0.5rem");
+                col.css("border", "1px solid inherit");
+                col.css("background-color", "#ddd");
+                col.attr("colspan", (unit["width"] * unit["len"]));
+                col.attr("rowspan", unit["height"]);
+                let div = $("<div>");
+                div.css("width", "100%");
+                div.css("height", "100%");
+
+                // This is where the input element gets added
+                let input;
+                if (unit["type"] == "text") {
+                  input = $("<input type=\"text\">");
+                  input.on("input", onTextInputInput);
+                } else if(unit["type"] == "map") {
+                  input = $("<select>");
+                  input.change(updateDisplay);
+                  let map = config["maps"][unit["map"]];
+                  for (const [key, value] of Object.entries(map)) {
+                    let option = $("<option>");
+                    option.attr("value", key);
+                    option.html(value);
+                    input.append(option);
+                  }
+                }
+                input.attr("data-is-unit", "true");
+                input.attr("data-unit-index", unit["index"]);
+                input.css("margin", 0);
+                input.css("width", "100%");
+                div.append(input);
+
+                col.append(div);
+                row.append(col);
+                unit["drawn"] = true;
+              }
+            }
+          }
+          table.append(row);
+        }
+        $("#selection-container").append(table);
       }
 
       function drawBrightnessControl() {
@@ -395,6 +589,15 @@
       }
 
       function getFramebuffer() {
+        function swap(obj){
+          // Swap keys and values in object
+          var ret = {};
+          for(var key in obj){
+            ret[obj[key]] = key;
+          }
+          return ret;
+        }
+        
         if (display_info["type"] == "pixel") {
           switch(display_info["frame_type"]) {
             case "1bpp": {
@@ -482,13 +685,37 @@
             }
           }
           return framebuf;
+        } else if (display_info["type"] == "selection") {
+          let framebuf = new Array(display_info["framebuf_size"]);
+          let inputs = $("[data-is-unit=true]");
+          for (const input of inputs) {
+            let unit_index = parseInt($(input).attr("data-unit-index"));
+            let unit = display_info["config"]["units"][unit_index];
+            let value = $(input).val();
+            if (unit["type"] == "text") {
+              // Convert text to positions using mapping
+              if (unit["flags"].includes("upper")) value = value.toUpperCase();
+              if (unit["flags"].includes("lower")) value = value.toLowerCase();
+
+              let map = swap(display_info["config"]["maps"][unit["map"]]);
+              for (var i = 0; i < unit["len"]; i++) {
+                framebuf[unit["addr"] + i] = parseInt(map[value[i]]) || 0;
+              }
+            } else if(unit["type"] == "map") {
+              // Already mapped
+              framebuf[unit["addr"]] = parseInt(value) || 0;
+            }
+          }
+          return framebuf;
         }
       }
 
       function updateDisplay() {
-        let buffer_b64 = btoa(String.fromCharCode.apply(null, getFramebuffer()));
+        let fb = getFramebuffer();
+        let buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
         if (_CANVASDEBUG) {
           console.log(fb);
+          console.log(buffer_b64);
           setTimeout(onUpdateDisplaySuccess, 250);
         } else {
           if(updateInProgress) return;
@@ -566,6 +793,8 @@
         } else if(display_info["type"] == "character") {
           drawTextInput();
           $("#text-input").on("input", onTextInputInput);
+        } else if(display_info["type"] == "selection") {
+          drawSelectionInput();
         } else {
           console.log("ERROR: Unsupported display type \"" + display_info["type"] + "\"");
           return;
@@ -636,7 +865,7 @@
       }
 
       function onGetFramebufferFromDisplaySuccess(data, textStatus, jqXHR) {
-        // TODO: Make this work for pixel displays
+        // TODO: Make this work for pixel and selection displays
         if (display_info["type"] == "pixel") {
           switch(display_info["frame_type"]) {
             case "1bpp": {
@@ -654,6 +883,8 @@
         } else if (display_info["type"] == "character") {
           let text = atob(data["buffer"]).replaceAll(/[ \x00]*$/g, "");
           $("#text-input").val(text);
+        } else if (display_info["type"] == "selection") {
+          
         }
       }
 
