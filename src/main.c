@@ -49,6 +49,8 @@
 #include "driver_display_char_krone_9000.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
 #include "driver_display_char_16seg_led_ws281x.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)
+#include "driver_display_sel_krone_9000.h"
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
@@ -73,6 +75,15 @@ uint8_t artnet_output_buffer[ARTNET_FRAMEBUF_SIZE] = {0};
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
 uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE] = {0};
+#endif
+
+#if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+// For selection displays, use an additional mask to determine which of the units
+// are present. This is necessary since configuration is done dynamically
+// using a JSON file in SPIFFS. This mask buffer conatins a 1 bit
+// if the unit at the given address is present, otherwise a 0 bit.
+uint8_t display_framebuf_mask[DIV_CEIL(DISPLAY_FRAMEBUF_SIZE, 8)] = {0};
+uint16_t display_num_units = 0;
 #endif
 
 uint8_t display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
@@ -116,6 +127,8 @@ static void display_refresh_task(void* arg) {
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
         display_charbuf_to_framebuf(display_char_buffer, display_output_buffer, DISPLAY_CHARBUF_SIZE, DISPLAY_FRAMEBUF_SIZE);
         display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
+        display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE, display_framebuf_mask, display_num_units);
         #endif
 
         #if defined(CONFIG_FAN_ENABLED)
@@ -240,6 +253,10 @@ void app_main(void) {
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
     telegram_bot_init(&nvs_handle, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+    #endif
+    
+    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+    browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
     #endif
 
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)

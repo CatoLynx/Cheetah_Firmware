@@ -112,6 +112,9 @@ choice DISPLAY_TYPE
     
     config DISPLAY_TYPE_CHARACTER
         bool "Character-based display"
+    
+    config DISPLAY_TYPE_SELECTION
+        bool "Selection-based display"
 endchoice
 
 choice DISPLAY_DRIVER
@@ -160,15 +163,28 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X
         depends on DISPLAY_TYPE_CHARACTER
         bool "16-segment LED (using WS281X)"
+        
+    config DISPLAY_DRIVER_SEL_KRONE_9000
+        depends on DISPLAY_TYPE_SELECTION
+        bool "KRONE 9000 Split-Flap (using UART peripheral)"
 endchoice
 
+config DISPLAY_UNIT_BUF_SIZE
+    depends on DISPLAY_TYPE_SELECTION
+    int "Unit data buffer size"
+    default 256
+    help
+        Size of the data buffer for unit data. Since selection displays are dynamically configured, this should be large enough to cover a large display. One unit is one selection module.
+
 config DISPLAY_WIDTH
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Actual display width"
     default 0
     help
         Actual width of the display, as seen from the outside, in pixels or characters.
 
 config DISPLAY_HEIGHT
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Actual display height"
     default 0
     help
@@ -190,6 +206,7 @@ choice DISPLAY_FRAME_TYPE
 endchoice
 
 config DISPLAY_FRAME_WIDTH
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Display frame width"
     default 0
     help
@@ -197,6 +214,7 @@ config DISPLAY_FRAME_WIDTH
         in case of non-populated columns of pixels/characters or other mapping shenanigans.
 
 config DISPLAY_FRAME_HEIGHT
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Display frame height"
     default 0
     help
@@ -204,6 +222,7 @@ config DISPLAY_FRAME_HEIGHT
         in case of non-populated rows of pixels/characters or other mapping shenanigans.
 
 config DISPLAY_VIEWPORT_OFFSET_X
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Display viewport X offset"
     default 0
     help
@@ -211,6 +230,7 @@ config DISPLAY_VIEWPORT_OFFSET_X
         this specifies the X offset between the viewport and the framebuffer.
 
 config DISPLAY_VIEWPORT_OFFSET_Y
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     int "Display viewport Y offset"
     default 0
     help
@@ -244,6 +264,7 @@ config DISPLAY_HAS_BRIGHTNESS_CONTROL
         Enable brightness control
 
 config DISPLAY_HAS_SHADERS
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
     bool "Display has shaders (color effects)"
     default false
     help

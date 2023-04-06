@@ -11,6 +11,8 @@
 #include "util_nvs.h"
 
 
+#if defined(CONFIG_DISPLAY_TYPE_PIXEL) || defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+
 #define LOG_TAG "TGBot"
 
 static TaskHandle_t telegram_bot_task_handle;
@@ -413,3 +415,5 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
     }
     return ESP_OK;
 }
+
+#endif
