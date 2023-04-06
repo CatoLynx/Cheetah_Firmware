@@ -19,7 +19,7 @@
 #define CONFIG_CSEG_LCD_EN_INV 0
 #endif
 
-void display_init(nvs_handle_t* nvsHandle);
+esp_err_t display_init(nvs_handle_t* nvsHandle);
 void display_pre_transfer_cb(spi_transaction_t *t);
 void display_post_transfer_cb(spi_transaction_t *t);
 void display_enable();

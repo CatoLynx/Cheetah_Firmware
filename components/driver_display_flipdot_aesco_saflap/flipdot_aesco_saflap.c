@@ -18,7 +18,7 @@
 
 static uint8_t display_dirty = 1;
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -27,6 +27,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     gpio_set_direction(CONFIG_SAFLAP_DATA_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_SAFLAP_DATA_IO, 0, CONFIG_SAFLAP_DATA_IO_INVERT);
     display_reset();
+    return ESP_OK;
 }
 
 void display_shiftBit(uint8_t bit) {

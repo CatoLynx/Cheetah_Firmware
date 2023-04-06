@@ -16,7 +16,7 @@
 #define LOG_TAG "LED-SR"
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -62,6 +62,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     gpio_set_direction(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, GPIO_MODE_OUTPUT);
     gpio_set(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, 0, CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV);
     #endif
+    return ESP_OK;
 }
 
 void display_select_row(uint8_t address) {

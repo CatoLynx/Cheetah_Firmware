@@ -43,7 +43,7 @@ ledc_channel_config_t dimming_channel = {
 #endif
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -90,6 +90,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     #endif
 
     display_enable();
+    return ESP_OK;
 }
 
 void display_pre_transfer_cb(spi_transaction_t *t) {

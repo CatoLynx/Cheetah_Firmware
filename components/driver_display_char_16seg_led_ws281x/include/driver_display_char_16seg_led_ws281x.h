@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include "nvs.h"
 
-void display_init(nvs_handle_t* nvsHandle);
+esp_err_t display_init(nvs_handle_t* nvsHandle);
 esp_err_t display_set_brightness(uint8_t brightness);
 esp_err_t display_set_shader(void* shaderData);
 void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize);

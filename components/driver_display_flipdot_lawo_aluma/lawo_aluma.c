@@ -34,7 +34,7 @@ static const uint8_t rowLookupTableBlack[28] = {
 
 static uint8_t currentColor = 0;
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -77,6 +77,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     gpio_set_level(PIN_A3, 0);
     gpio_set_level(PIN_COL_A3, 0);
     gpio_set_level(PIN_LED, 0);
+    return ESP_OK;
 }
 
 void display_set_address(uint8_t address) {

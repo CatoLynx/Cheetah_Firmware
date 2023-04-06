@@ -18,7 +18,7 @@
 
 static uint8_t display_dirty = 1;
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -50,6 +50,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     gpio_set_direction(CONFIG_BROSE_COL_B1_IO, GPIO_MODE_OUTPUT);
     
     display_deselect();
+    return ESP_OK;
 }
 
 void display_select_column(uint8_t address) {

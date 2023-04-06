@@ -3,7 +3,7 @@
 #include "esp_system.h"
 #include "nvs.h"
 
-void display_init(nvs_handle_t* nvsHandle);
+esp_err_t display_init(nvs_handle_t* nvsHandle);
 void display_select_column(uint8_t address);
 void display_select_row(uint8_t address);
 void display_select_color(uint8_t color);

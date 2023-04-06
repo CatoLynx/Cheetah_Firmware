@@ -242,39 +242,40 @@ void app_main(void) {
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
 
-    display_init(&nvs_handle);
+    ret = display_init(&nvs_handle);
+    if (ret == ESP_OK) {
+        #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
+        tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
+        artnet_init(display_output_buffer, artnet_output_buffer, DISPLAY_FRAMEBUF_SIZE, ARTNET_FRAMEBUF_SIZE);
+        browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        #endif
+        
+        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+        telegram_bot_init(&nvs_handle, display_char_buffer, DISPLAY_CHARBUF_SIZE);
+        #endif
+        
+        #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+        browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        #endif
 
-    #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
-    tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
-    artnet_init(display_output_buffer, artnet_output_buffer, DISPLAY_FRAMEBUF_SIZE, ARTNET_FRAMEBUF_SIZE);
-    browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-    #endif
-    
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    browser_canvas_init(&server, display_char_buffer, DISPLAY_CHARBUF_SIZE);
-    telegram_bot_init(&nvs_handle, display_char_buffer, DISPLAY_CHARBUF_SIZE);
-    #endif
-    
-    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
-    browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-    #endif
+        #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+        browser_canvas_register_brightness(&server, &display_brightness);
+        #endif
 
-    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-    browser_canvas_register_brightness(&server, &display_brightness);
-    #endif
+        #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+        ESP_LOGI(LOG_TAG, "register shaders: %p", display_shader);
+        browser_canvas_register_shaders(&server, &display_shader);
+        #endif
 
-    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-    ESP_LOGI(LOG_TAG, "register shaders: %p", display_shader);
-    browser_canvas_register_shaders(&server, &display_shader);
-    #endif
+        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        display_char_buffer[0] = '-';
+        #endif
 
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    display_char_buffer[0] = '-';
-    #endif
+        xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
 
-    xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
-
-    #if defined(CONFIG_FAN_ENABLED)
-    xTaskCreatePinnedToCore(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL, 0);
-    #endif
+        #if defined(CONFIG_FAN_ENABLED)
+        xTaskCreatePinnedToCore(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL, 0);
+        #endif
+    }
 }

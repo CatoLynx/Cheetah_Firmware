@@ -20,7 +20,7 @@
 // TODO: Do something with Rx pin?
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -42,6 +42,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(uart_driver_install(K9000_UART, CONFIG_K9000_RX_BUF_SIZE, CONFIG_K9000_TX_BUF_SIZE, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(K9000_UART, &uart_config));
     ESP_ERROR_CHECK(uart_set_pin(K9000_UART, CONFIG_K9000_TX_IO, CONFIG_K9000_RX_IO, -1, -1));
+    return ESP_OK;
 }
 
 void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {

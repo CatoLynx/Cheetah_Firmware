@@ -20,10 +20,12 @@
 // TODO: Do something with Rx pin?
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
+
+    esp_err_t ret;
 
     uart_config_t uart_config = {
         .baud_rate = 4800,
@@ -39,9 +41,13 @@ void display_init(nvs_handle_t* nvsHandle) {
     if (CONFIG_K9000_SEL_TX_IO >= 0) gpio_set_direction(CONFIG_K9000_SEL_TX_IO, GPIO_MODE_OUTPUT);
     if (CONFIG_K9000_SEL_RX_IO >= 0) gpio_set_direction(CONFIG_K9000_SEL_RX_IO, GPIO_MODE_OUTPUT);
 
-    ESP_ERROR_CHECK(uart_driver_install(K9000_SEL_UART, CONFIG_K9000_SEL_RX_BUF_SIZE, CONFIG_K9000_SEL_TX_BUF_SIZE, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(K9000_SEL_UART, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(K9000_SEL_UART, CONFIG_K9000_SEL_TX_IO, CONFIG_K9000_SEL_RX_IO, -1, -1));
+    ret = uart_driver_install(K9000_SEL_UART, CONFIG_K9000_SEL_RX_BUF_SIZE, CONFIG_K9000_SEL_TX_BUF_SIZE, 0, NULL, 0);
+    if (ret != ESP_OK) return ret;
+    ret = uart_param_config(K9000_SEL_UART, &uart_config);
+    if (ret != ESP_OK) return ret;
+    ret = uart_set_pin(K9000_SEL_UART, CONFIG_K9000_SEL_TX_IO, CONFIG_K9000_SEL_RX_IO, -1, -1);
+    if (ret != ESP_OK) return ret;
+    return ESP_OK;
 }
 
 void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {

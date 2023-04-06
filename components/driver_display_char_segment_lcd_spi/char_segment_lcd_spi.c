@@ -26,7 +26,7 @@ spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -86,6 +86,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfg, 1));
     ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
     #endif
+    return ESP_OK;
 }
 
 void display_pre_transfer_cb(spi_transaction_t *t) {

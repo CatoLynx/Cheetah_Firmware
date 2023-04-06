@@ -30,7 +30,7 @@ uint8_t i2s_buf[I2S_BUF_SIZE];
 uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 14, 13, 12, 11, 10, 9, 15, 16, 17};
 
 
-void display_init(nvs_handle_t* nvsHandle) {
+esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
@@ -91,6 +91,7 @@ void display_init(nvs_handle_t* nvsHandle) {
     bufdesc.size = I2S_BUF_SIZE;
 
     i2s_parallel_setup(&I2S1, &cfg);
+    return ESP_OK;
 }
 
 void _convertBuffer(uint8_t* src) {
