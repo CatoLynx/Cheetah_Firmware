@@ -297,6 +297,7 @@
                 let input;
                 if (unit["type"] == "text") {
                   input = $("<input type=\"text\">");
+                  input.attr("maxlength", unit["len"]);
                   input.on("input", onTextInputInput);
                 } else if(unit["type"] == "map") {
                   input = $("<select>");
