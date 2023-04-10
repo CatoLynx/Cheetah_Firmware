@@ -9,7 +9,6 @@
     <script src="/js/jquery.min.js"></script>
     <script src="/js/util.js"></script>
   </head>
-
   <body>
     <h2 id="hostname">&nbsp;</h2>
     <div id="canvas-container" style="display: none;">
@@ -37,6 +36,11 @@
       <table id="shader-params">
         <tbody></tbody>
       </table>
+    </div>
+    <div>
+      <input type="checkbox" id="check-live-update" />
+      <label for="check-live-update">Live Update</label><br />
+      <input type="button" id="btn-update" value="Update" />
     </div>
 
     <script type="text/javascript">
@@ -143,6 +147,7 @@
       var pixels = new Array(0);
       var buttonPressed = false;
       var updateInProgress = false;
+      var liveUpdate = false;
       
 
       let Pixel = function(x, y, width, height, spacing, color) {
@@ -438,7 +443,7 @@
 
       function onTextInputInput(event) {
         event.preventDefault();
-        updateDisplay();
+        updateDisplay(event);
       }
 
       function onBrightnessChange(event) {
@@ -711,7 +716,13 @@
         }
       }
 
-      function updateDisplay() {
+      function updateDisplay(event) {
+        // If live update is disabled, only allow events from the update button
+        if (!liveUpdate) {
+          if ($(event.target)[0] != $("#btn-update")[0]) {
+            return;
+          }
+        }
         let fb = getFramebuffer();
         let buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
         if (_CANVASDEBUG) {
@@ -950,12 +961,23 @@
         updateShader();
       }
 
+      function onLiveUpdateChange(event) {
+        liveUpdate = $("#check-live-update").is(":checked");
+        if (liveUpdate) {
+          $("#btn-update").hide();
+        } else {
+          $("#btn-update").show();
+        }
+      }
+
       function onReady() {
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getDisplayInfo();
         getShaders();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
+        $("#check-live-update").change(onLiveUpdateChange);
+        $("#btn-update").click(updateDisplay);
         $("#fg-color").val(fgColor);
         $("#bg-color").val(bgColor);
         $("#fg-color").change(onForegroundColorChange);
