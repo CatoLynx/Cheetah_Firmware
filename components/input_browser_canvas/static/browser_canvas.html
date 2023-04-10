@@ -107,7 +107,7 @@
             "alnum":	{
               "0":	null,
               "1":	"A",
-              "2":  "B",
+              "2":  "B"
             },
             "trainType":	{
               "0":	null,
@@ -865,7 +865,7 @@
       }
 
       function onGetFramebufferFromDisplaySuccess(data, textStatus, jqXHR) {
-        // TODO: Make this work for pixel and selection displays
+        // TODO: Make this work for pixel displays
         if (display_info["type"] == "pixel") {
           switch(display_info["frame_type"]) {
             case "1bpp": {
@@ -884,7 +884,26 @@
           let text = atob(data["buffer"]).replaceAll(/[ \x00]*$/g, "");
           $("#text-input").val(text);
         } else if (display_info["type"] == "selection") {
-          
+          let moduleData = Uint8Array.from(atob(data["buffer"]), c => c.charCodeAt(0));
+          for (var i = 0; i < display_info["config"]["units"].length; i++) {
+            let unit = display_info["config"]["units"][i];
+            let input = $("[data-unit-index=" + i + "]");
+            if (unit["type"] == "map") {
+              input.val(moduleData[unit["addr"]]);
+            } else if (unit["type"] == "text") {
+              let text = "";
+              let map = display_info["config"]["maps"][unit["map"]];
+              for (var j = 0; j < unit["len"]; j++) {
+                let code = moduleData[unit["addr"]+j];
+                if (code in map) {
+                  text += map[code];
+                } else {
+                  text += " ";
+                }
+              }
+              input.val(text.trim());
+            }
+          }
         }
       }
 
