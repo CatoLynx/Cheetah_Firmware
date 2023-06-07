@@ -1,0 +1,210 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Selection Display Configuration Editor</title>
+    <link rel="icon" href="/img/favicon.ico">
+    <link rel="stylesheet" href="/css/simple.css">
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    <script src="/js/jquery.min.js"></script>
+    <script src="/js/util.js"></script>
+  </head>
+
+  <body>
+    <h1>xatLabs Cheetah</h1>
+    <h2 id="hostname">&nbsp;</h2>
+    <h3>Selection Display Configuration Editor</h3>
+
+    <h5 style="margin-bottom: 0;">Upload file</h5>
+    <input type="file" id="file-spiffs" accept="*" />
+    <div id="div-file-info">&nbsp;</div>
+    <input type="submit" id="btn-upload" value="Upload File">
+    <span id="upload-progress">&nbsp;</span>
+
+    <h5 style="margin-bottom: 0;">Manage files</h5>
+    <select id="file-list" name="file-list"></select>
+    <input type="submit" id="btn-download-file" value="Download file">
+    <input type="submit" id="btn-delete-file" value="Delete file">
+    <span id="file-operation-status">&nbsp;</span>
+
+    <script type="text/javascript">
+      var spiffs_size = 0;
+      var spiffs_free = 0;
+      var selectedFileName = "";
+
+      function setFileMetadata() {
+        var fileSelect = $("#file-spiffs")[0];
+        if (fileSelect.files && fileSelect.files.length == 1) {
+          var fileData = {
+            "file_name": convertToDOSFilename(fileSelect.files[0].name),
+            "file_size": fileSelect.files[0].size
+          }
+          $.ajax({
+            type: "POST",
+            url: "/spiffs/upload-metadata.json",
+            data: JSON.stringify(fileData),
+            success: onsetFileMetadataSuccess,
+            error: onsetFileMetadataError
+          });
+        } else {
+          window.alert("Please select a file!");
+        }
+      }
+      
+      function getFileList() {
+        $.ajax({
+          type: "GET",
+          url: "/spiffs/files.json",
+          success: onGetFileListSuccess,
+          error: onGetFileListError
+        });
+      }
+      
+      function downloadFile() {
+        selectedFileName = $("#file-list").val();
+        if (selectedFileName) {
+          window.location.href = "/spiffs/download?filename=" + selectedFileName;
+        }
+      }
+      
+      function deleteFile() {
+        selectedFileName = $("#file-list").val();
+        if (selectedFileName) {
+          $.ajax({
+            type: "POST",
+            url: "/spiffs/delete.json",
+            data: JSON.stringify({"file_name": selectedFileName}),
+            success: onDeleteFileSuccess,
+            error: onDeleteFileError
+          });
+        }
+      }
+
+      function startUpload() {
+        setFileMetadata();
+      }
+
+      function uploadFile() {
+        var formData = new FormData();
+        var file = $("#file-spiffs")[0].files[0];
+        formData.set("file", file, file.name);
+        
+        jQuery.ajax({
+          url: "/spiffs/upload",
+          data: formData,
+          cache: false,
+          contentType: false,
+          processData: false,
+          method: "POST",
+          success: onUploadSuccess,
+          error: onUploadError
+        });
+        $("#upload-progress").html("Uploading...");
+      }
+
+      function clearFileOperationStatus() {
+        $("#file-operation-status").html("&nbsp;");
+      }
+      
+      function onUploadSuccess(evt) {
+        console.log("Upload succeeded");
+        var fileSelect = $("#file-spiffs")[0];
+        fileSelect.value = null;
+          $("#div-file-info").html("&nbsp;");
+        $("#upload-progress").html("Upload succeeded!");
+      }
+
+      function onUploadError(evt) {
+        console.log("Upload failed");
+        var fileSelect = $("#file-spiffs")[0];
+        fileSelect.value = null;
+          $("#div-file-info").html("&nbsp;");
+        $("#upload-progress").html("Upload failed!");
+      }
+
+      function onsetFileMetadataSuccess(data, textStatus, jqXHR) {
+        console.log("Successfully set payload size");
+        uploadFile();
+      }
+      
+      function onsetFileMetadataError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting payload length!");
+        console.log(textStatus);
+        console.log(errorThrown);
+      }
+      
+      function onGetFileListSuccess(data, textStatus, jqXHR) {
+        console.log("Successfully got file list");
+        $("#file-list").find('option').remove();
+        for (var filename of data['files']) {
+          $('#file-list').append($('<option>', {
+              value: filename,
+              text: filename
+          }));
+        }
+      }
+      
+      function onGetFileListError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting file list!");
+        console.log(textStatus);
+        console.log(errorThrown);
+      }
+      
+      function onDeleteFileSuccess(data, textStatus, jqXHR) {
+        console.log("Successfully deleted " + selectedFileName);
+        $("#file-list option[value='" + selectedFileName + "']").remove();
+        $("#file-operation-status").html("File deleted");
+        setTimeout(clearFileOperationStatus, 2000);
+      }
+      
+      function onDeleteFileError(jqXHR, textStatus, errorThrown) {
+        console.log("Error deleting file!");
+        console.log(textStatus);
+        console.log(errorThrown);
+        $("#file-operation-status").html("Delete failed!");
+        setTimeout(clearFileOperationStatus, 2000);
+      }
+
+      function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
+        document.title += " - " + data['hostname'];
+        $("#hostname").html(data['hostname']);
+        spiffs_size = data['spiffs_size'];
+        spiffs_free = data['spiffs_free'];
+        $("#spiffs-status").html(Math.round(spiffs_free / 1024) + " kB free, " + Math.round(spiffs_size / 1024) + " kB total");
+      }
+
+      function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
+        
+      }
+
+      function onFileSelected() {
+        var fileSelect = $("#file-spiffs")[0];
+        if (fileSelect.files && fileSelect.files.length == 1) {
+          var fileSize = fileSelect.files[0].size;
+          if (fileSize > spiffs_size) {
+            // We're only checking against spiffs_size because if it's larger than that,
+            // we know for sure it's too large.
+            // But we don't check against spiffs_free because we might be
+            // overwriting a file, so this check needs to happen on the ESP32.
+            fileSelect.value = null;
+            window.alert("File is too large! Maximum: " + Math.round(spiffs_size / 1024) + " kB");
+            return;
+          }
+          $("#div-file-info").html("File size: " + fileSize + " bytes");
+          $("#upload-progress").html("&nbsp;");
+        }
+      }
+
+      function onReady() {
+        $("#file-spiffs").change(onFileSelected);
+        $("#btn-upload").click(startUpload);
+        $("#btn-download-file").click(downloadFile);
+        $("#btn-delete-file").click(deleteFile);
+        getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
+        getFileList();
+      }
+
+      $(document).ready(onReady);
+    </script>
+  </body>
+</html>

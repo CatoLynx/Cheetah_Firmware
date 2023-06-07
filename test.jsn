@@ -1,0 +1,72 @@
+{
+    "units":	[
+      {
+        "name": "destination",
+        "type":	"text",
+        "flags": ["upper"],
+        "addr":	1,
+        "x":	2,
+        "y":	4,
+        "width":	2,
+        "height":	2,
+        "len":	8,
+        "map":	"alnum"
+      },
+      {
+        "name": "train_type",
+        "type":	"map",
+        "addr":	13,
+        "x":	2,
+        "y":	0,
+        "width":	6,
+        "height":	2,
+        "len":	1,
+        "map":	"trainType"
+      },
+      {
+        "name": "train_number",
+        "type":	"text",
+        "flags": ["upper"],
+        "addr":	100,
+        "x":	8,
+        "y":	0,
+        "width":	2,
+        "height":	2,
+        "len":	5,
+        "map":	"alnum"
+      },
+      {
+        "name": "via",
+        "type":	"map",
+        "addr":	27,
+        "x":	0,
+        "y":	2,
+        "width":	20,
+        "height":	2,
+        "len":	1,
+        "map":	"via"
+      }
+    ],
+    "maps":	{
+      "alnum":	{
+        "1":	"A",
+        "2":  "B"
+      },
+      "trainType":	{
+        "0":	null,
+        "1":	"ICE",
+        "2":	"RB",
+        "3":	"RE",
+        "4":	null,
+        "25":	"VIA"
+      },
+      "via":	{
+        "0":	null,
+        "1":	"Berlin - München",
+        "2":	"Frankfurt - Offenbach",
+        "3":	"Hagen",
+        "4":	"Sonderfahrt!",
+        "25":	"Bremen Hbf"
+      }
+    }
+  }

@@ -1,0 +1,25 @@
+{
+    "units":	[
+      {
+        "name": "operator",
+        "type":	"map",
+        "flags": null,
+        "addr":	1,
+        "x":	1,
+        "y":	1,
+        "width":	4,
+        "height":	1,
+        "len":	1,
+        "map":	"operator"
+      }
+    ],
+    "maps":	{
+      "operator":	{
+        "32":	"A",
+        "33": "B",
+        "34": "C",
+        "35": "D",
+        "36": "E"
+      }
+    }
+  }
