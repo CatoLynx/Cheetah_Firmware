@@ -548,6 +548,8 @@
             var field_value = parseInt($(inputs[i]).val());
           } else if (field_type == "color") {
             var field_value = hexToRGB($(inputs[i]).val());
+          } else if (field_type == "checkbox") {
+            var field_value = $(inputs[i]).prop("checked");
           } else {
             var field_value = $(inputs[i]).val();
           }
