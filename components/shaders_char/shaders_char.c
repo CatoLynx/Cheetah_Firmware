@@ -6,6 +6,7 @@
 #include "util_generic.h"
 #include "cJSON.h"
 #include "esp_log.h"
+#include "math.h"
 
 
 #define LOG_TAG "SHD-CHAR-COLOR"
@@ -131,8 +132,8 @@ color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize,
     uint16_t span = displaySize / repeats;
     if (span == 0) span = 1;
     calcColor_hsv.h = (cb_i_display % span) * (360 / span);
-    calcColor_hsv.h += speed * time_getSystemTime_us() / 1000000;
-    calcColor_hsv.h = (uint16_t)calcColor_hsv.h % 360;
+    calcColor_hsv.h += (double)speed * (double)time_getSystemTime_us() / 1000000.0;
+    calcColor_hsv.h = (uint16_t)fmod(calcColor_hsv.h, 360.0);
     calcColor_hsv.s = 1.0;
     calcColor_hsv.v = 1.0;
     return hsv2rgb(calcColor_hsv);
