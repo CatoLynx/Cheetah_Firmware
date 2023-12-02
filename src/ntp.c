@@ -9,7 +9,7 @@
 
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
+extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
 #endif
 
 bool ntp_initialized = false;
@@ -19,7 +19,7 @@ bool ntp_started = false;
 void ntp_sync_cb(struct timeval *tv) {
     ESP_LOGI(LOG_TAG, "NTP time synced");
     #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-    //display_char_buffer[0] = 'N';
+    //display_text_buffer[0] = 'N';
     #endif
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     wg_start();

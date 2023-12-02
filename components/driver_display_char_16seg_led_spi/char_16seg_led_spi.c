@@ -11,6 +11,7 @@
 
 #include "macros.h"
 #include "char_16seg_led_spi.h"
+#include "util_buffer.h"
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
@@ -188,35 +189,16 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
-    uint8_t prevWasLetter = 0;
-    uint16_t decPointMergeCnt = 0;
-    uint16_t cb_i_display = 0;
-
+void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     memset(frameBuf, 0x00, frameBufSize);
 
-    for (uint16_t cb_i_source = 0; cb_i_source < charBufSize; cb_i_source++) {
-        if (charBuf[cb_i_source] == '.') {
-            if (!prevWasLetter) {
-                // Current char is . and previous was . too
-                display_setDecimalPointAt(frameBuf, cb_i_display, 1);
-            } else {
-                // Current char is . but previous was a letter
-                // Add the point to the previous letter and update the respective counter
-                cb_i_display--;
-                display_setDecimalPointAt(frameBuf, cb_i_display, 1);
-                decPointMergeCnt++;
-                prevWasLetter = 0;
-            }
-        } else {
-            // Current char is a letter
-            if (charBuf[cb_i_source] >= char_seg_font_min && charBuf[cb_i_source] <= char_seg_font_max) {
-                display_setCharDataAt(frameBuf, cb_i_display, char_16seg_font[charBuf[cb_i_source] - char_seg_font_min]);
-            }
-            prevWasLetter = 1;
+    for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
+        if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
+            display_setCharDataAt(frameBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min]);
         }
-
-        cb_i_display++;
+        if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
+            display_setDecimalPointAt(frameBuf, charBufIndex, 1);
+        }
     }
 }
 

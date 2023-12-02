@@ -8,7 +8,7 @@
 
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-extern uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE];
+extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
 #endif
 
 
@@ -91,7 +91,7 @@ esp_err_t wg_start() {
     ESP_LOGI(LOG_TAG, "Connecting");
     if (wg_started) {
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-        //display_char_buffer[0] = 'W';
+        //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Already connected!");
         return ESP_OK;
@@ -99,7 +99,7 @@ esp_err_t wg_start() {
     esp_err_t ret = esp_wireguard_connect(&wg_ctx);
     if (ret == ESP_OK) {
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-        //display_char_buffer[0] = 'W';
+        //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Connected");
         wg_started = true;

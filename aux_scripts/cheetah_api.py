@@ -25,26 +25,14 @@ class Display:
             count = len(s)
         return count
 
-    def make_framebuf(self, text):
-        framebuf = [0] * self.display_info["charbuf_size"]
-        val = ""
-        for e in text.split("\n"):
-            actual_len = self.get_actual_char_count(e)
-            excess = actual_len - self.display_info["width"]
-            if excess < 0:
-                # Need to pad
-                val += e.ljust(len(e) - excess, " ")
-            else:
-                # Need to cut off
-                cutoff_pos = len(e) - excess
-                val += e[:cutoff_pos]
-        val_len = len(val)
-        for i in range(self.display_info["charbuf_size"]):
-            if i >= val_len:
-                framebuf[i] = 0
-            else:
-                code = ord(val[i])
-                framebuf[i] = code if code <= 255 else 0
+    def make_textbuf(self, text):
+        textbuf = [0] * self.display_info["textbuf_size"]
+        val_len = len(text)
+        i = 0
+        while i < val_len and i < self.display_info["textbuf_size"]:
+            code = ord(val[i])
+            textbuf[i] = code if code <= 255 else 0
+            i += 1
         return framebuf
 
     def load_display_info(self):

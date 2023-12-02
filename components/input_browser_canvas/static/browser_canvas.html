@@ -56,6 +56,7 @@
         "viewport_offset_y":	null,
         "framebuf_size":	256,
         "frame_type":	"unit",
+        "textbuf_size":	null,
         "charbuf_size":	null,
         "brightness_control":	false,
         "config":	{
@@ -669,30 +670,14 @@
             }
           }
         } else if (display_info["type"] == "character") {
-          let framebuf = new Array(display_info["charbuf_size"]);
-          let val = "";
-          $("#text-input").val().split("\n").forEach(function(e) {
-            var actualLen = getActualCharCount(e);
-            var excess =  actualLen - display_info["width"];
-            if (excess < 0) {
-              // Need to pad
-              val += e.padEnd(e.length - excess, " ");
-            } else {
-              // Need to cut off
-              var cutoffPos = e.length - excess;
-              val += e.substring(0, cutoffPos);
-            }
-          });
+          let textbuf = new Array(display_info["textbuf_size"]);
+          let val = $("#text-input").val();
           let valLen = val.length;
-          for (let i = 0; i < display_info["charbuf_size"]; i++) {
-            if (i >= valLen) {
-              framebuf[i] = 0;
-            } else {
-              let code = val.charCodeAt(i);
-              framebuf[i] = code > 255 ? 0 : code;
-            }
+          for (let i = 0; i < valLen && i < display_info["textbuf_size"]; i++) {
+            let code = val.charCodeAt(i);
+            textbuf[i] = code > 255 ? 0 : code;
           }
-          return framebuf;
+          return textbuf;
         } else if (display_info["type"] == "selection") {
           let framebuf = new Array(display_info["framebuf_size"]);
           let inputs = $("[data-is-unit=true]");

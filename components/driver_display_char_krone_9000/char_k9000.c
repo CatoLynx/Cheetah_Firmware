@@ -58,7 +58,7 @@ void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     outBuf[2] = code & 0x7F;
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     // No conversion needed, display takes straight text data
     memcpy(frameBuf, charBuf, frameBufSize < charBufSize ? frameBufSize : charBufSize);
 }

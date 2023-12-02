@@ -1,5 +1,24 @@
 #pragma once
 
+/*
+Explanation of the different buffer sizes
+
+DISPLAY_BUF_SIZE[_*BPP]:      Number of pixels / characters on the display
+
+DISPLAY_FRAMEBUF_SIZE[_*BPP]: Number of pixels / characters in the internal framebuffer[s].
+                              This is the display data as sent to the display.
+
+DISPLAY_CHARBUF_SIZE:         Number of characters in the internal character buffer.
+                              This is the buffer that holds the display data before it is being converted
+                              into the display-specific bytestream format.
+                              If applicable, the quirk flag buffer is the same size and holds the quirk flags
+                              for each character.
+
+DISPLAY_TEXTBUF_SIZE:         Number of characters in the user-facing text buffer.
+                              This is the buffer that holds the display data as entered by the user,
+                              before handling things like line breaks.
+*/
+
 #define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
 
 #define SET_MASK(buf, pos) (buf)[(pos)/8] |= (1 << ((pos)%8))
@@ -7,9 +26,9 @@
 #define GET_MASK(buf, pos) (!!((buf)[(pos)/8] & (1 << ((pos)%8))))
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-#define STRCPY_CHARBUF(dst, txt, len) strncpy(dst, txt, len);
+#define STRCPY_TEXTBUF(dst, txt, len) strncpy(dst, txt, len);
 #else
-#define STRCPY_CHARBUF(dst, txt, len)
+#define STRCPY_TEXTBUF(dst, txt, len)
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL) || defined(CONFIG_DISPLAY_TYPE_CHARACTER)
@@ -60,11 +79,19 @@
     #define DISPLAY_BUF_SIZE (CONFIG_DISPLAY_WIDTH * CONFIG_DISPLAY_HEIGHT)
     #define DISPLAY_CHARBUF_SIZE (CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT)
 
+    #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
+        // If the display has combining full stops, the text buffer needs to be
+        // twice as large as the frame buffer, since every character could be succeeded by a full stop
+        #define DISPLAY_TEXTBUF_SIZE (DISPLAY_CHARBUF_SIZE * 2)
+    #else
+        #define DISPLAY_TEXTBUF_SIZE DISPLAY_CHARBUF_SIZE
+    #endif
+
     // TODO: Review this. Why is this different?
     #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
-    #define DISPLAY_FRAMEBUF_SIZE (DISPLAY_CHARBUF_SIZE * DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8))
+        #define DISPLAY_FRAMEBUF_SIZE (DISPLAY_CHARBUF_SIZE * DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8))
     #else
-    #define DISPLAY_FRAMEBUF_SIZE (DIV_CEIL(DISPLAY_CHARBUF_SIZE * CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8))
+        #define DISPLAY_FRAMEBUF_SIZE (DIV_CEIL(DISPLAY_CHARBUF_SIZE * CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8))
     #endif
 #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
     #define DISPLAY_TYPE "selection"

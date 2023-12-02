@@ -379,31 +379,12 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
 
                 ESP_LOGD(LOG_TAG, "Converting message for display");
                 memset(output_buffer, 0x00, output_buffer_size);
-                str_convertLineBreaks((char*)output_buffer, filteredText_iso88591, DISPLAY_FRAME_HEIGHT, DISPLAY_FRAME_WIDTH);
+                strncpy((char*)output_buffer, filteredText_iso88591, output_buffer_size);
                 free(filteredText_utf8);
                 free(filteredText_iso88591);
 
-                ESP_LOGD(LOG_TAG, "Converting output buffer for Telegram reply");
-                ESP_LOGD(LOG_TAG, "Free Heap: %u", esp_get_free_heap_size());
-                char* formattedOutput = malloc(output_buffer_size + DISPLAY_FRAME_HEIGHT); // + DISPLAY_FRAME_HEIGHT to get one newline character per line
-                ESP_LOGV(LOG_TAG, "formattedOutput = %p", formattedOutput);
-                memset(formattedOutput, 0x00, output_buffer_size + DISPLAY_FRAME_HEIGHT);
-                ESP_LOGV(LOG_TAG, "str_insertLineBreaks");
-                str_insertLineBreaks(formattedOutput, (char*)output_buffer, DISPLAY_FRAME_WIDTH, output_buffer_size);
-
                 ESP_LOGD(LOG_TAG, "Sending reply");
-                char* tgText;
-                asprintf(&tgText, "Current display text:\n\n`%s`", formattedOutput);
-
-                char* tgText_utf8 = malloc(strlen(tgText) * 2 + 1); // Text can be at most twice as long in UTF-8
-                memset(tgText_utf8, 0x00, strlen(tgText) * 2 + 1);
-                ESP_LOGD(LOG_TAG, "Converting reply text from ISO-8859-1 to UTF-8");
-                buffer_iso88591_to_utf8(tgText_utf8, tgText);
-                ESP_LOGD(LOG_TAG, "Result: %s", tgText_utf8);
-                telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, tgText_utf8);
-                free(tgText_utf8);
-                free(formattedOutput);
-                free(tgText);
+                telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
                 ESP_LOGD(LOG_TAG, "Message processing finished");
             }
             break;

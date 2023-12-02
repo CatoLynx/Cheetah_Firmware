@@ -124,7 +124,7 @@ void display_latch() {
     gpio_pulse_inv(CONFIG_CSEG_LCD_LATCH_IO, 1, CONFIG_CSEG_LCD_LATCH_PULSE_LENGTH, CONFIG_CSEG_LCD_LATCH_PULSE_LENGTH, CONFIG_CSEG_LCD_LATCH_INV);
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     uint16_t fb_i = 0;
     const uint8_t* charData;
     memset(frameBuf, 0x00, frameBufSize);

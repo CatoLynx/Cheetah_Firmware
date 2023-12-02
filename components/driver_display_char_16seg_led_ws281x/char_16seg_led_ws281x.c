@@ -235,7 +235,7 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
     uint8_t prevWasLetter = 0;
     uint16_t decPointMergeCnt = 0;
     uint16_t cb_i_display = 0;
