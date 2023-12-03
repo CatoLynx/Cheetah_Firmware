@@ -16,6 +16,7 @@
 #include "browser_config.h"
 #include "browser_spiffs.h"
 #include "browser_ota.h"
+#include "git_version.h"
 #include "httpd.h"
 #include "logging_tcp.h"
 #include "macros.h"
@@ -25,6 +26,7 @@
 #include "wifi.h"
 #include "util_buffer.h"
 #include "util_fan.h"
+#include "util_generic.h"
 #include "util_gpio.h"
 #include "wg.h"
 
@@ -116,6 +118,30 @@ char hostname[64];
 
 
 static void display_refresh_task(void* arg) {
+    // Start with splashscreen
+    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    char hostname_upper[64];
+    strncpy(hostname_upper, hostname, 63);
+    str_toUpper(hostname_upper);
+
+    char splash_text[74];
+
+    #if defined(GIT_VERSION)
+    snprintf(splash_text, 74, "%s %s", hostname_upper, GIT_VERSION);
+    #else
+    snprintf(splash_text, 74, "%s", hostname_upper);
+    #endif
+
+    STRCPY_TEXTBUF((char*)display_text_buffer, splash_text, DISPLAY_TEXTBUF_SIZE);
+
+    buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXTBUF_SIZE, DISPLAY_CHARBUF_SIZE);
+    display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHARBUF_SIZE, DISPLAY_FRAMEBUF_SIZE);
+    display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+
+    taskYIELD();
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+    #endif
+
     while (1) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
             // Framebuffer format: Top-to-bottom columns
@@ -223,12 +249,6 @@ void app_main(void) {
     ESP_ERROR_CHECK(fan_init());
     #endif
 
-    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
-    ret = display_init(&nvs_handle, display_framebuf_mask, &display_num_units);
-    #else
-    ret = display_init(&nvs_handle);
-    #endif
-
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -252,6 +272,11 @@ void app_main(void) {
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
 
+    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+    ret = display_init(&nvs_handle, display_framebuf_mask, &display_num_units);
+    #else
+    ret = display_init(&nvs_handle);
+    #endif
     if (ret == ESP_OK) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
         tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);

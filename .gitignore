@@ -7,4 +7,5 @@
 .vscode/extensions.json
 sdkconfig*.old
 include/settings_secret.h
+include/git_version.h
 __pycache__/
