@@ -10,6 +10,7 @@
 
 #include "macros.h"
 #include "char_16seg_led_ws281x.h"
+#include "util_buffer.h"
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
@@ -236,42 +237,24 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
 }
 
 void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
-    uint8_t prevWasLetter = 0;
-    uint16_t decPointMergeCnt = 0;
-    uint16_t cb_i_display = 0;
     color_t color;
     color_rgb_t calcColor_rgb;
 
     memset(frameBuf, 0x88, frameBufSize);
 
-    for (uint16_t cb_i_source = 0; cb_i_source < charBufSize; cb_i_source++) {
-        calcColor_rgb = shader_fromJSON(cb_i_display, charBufSize, DISPLAY_BUF_SIZE, charBuf[cb_i_source], display_currentShader);
+    for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
+        calcColor_rgb = shader_fromJSON(charBufIndex, charBufSize, DISPLAY_BUF_SIZE, charBuf[charBufIndex], display_currentShader);
 
         color.red = calcColor_rgb.r * 255;
         color.green = calcColor_rgb.g * 255;
         color.blue = calcColor_rgb.b * 255;
 
-        if (charBuf[cb_i_source] == '.') {
-            if (!prevWasLetter) {
-                // Current char is . and previous was . too
-                display_setDecimalPointAt(frameBuf, cb_i_display, 1, color);
-            } else {
-                // Current char is . but previous was a letter
-                // Add the point to the previous letter and update the respective counter
-                cb_i_display--;
-                display_setDecimalPointAt(frameBuf, cb_i_display, 1, color);
-                decPointMergeCnt++;
-                prevWasLetter = 0;
-            }
-        } else {
-            // Current char is a letter
-            if (charBuf[cb_i_source] >= char_seg_font_min && charBuf[cb_i_source] <= char_seg_font_max) {
-                display_setCharDataAt(frameBuf, cb_i_display, char_16seg_font[charBuf[cb_i_source] - char_seg_font_min], color);
-            }
-            prevWasLetter = 1;
+        if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
+            display_setCharDataAt(frameBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
         }
-
-        cb_i_display++;
+        if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
+            display_setDecimalPointAt(frameBuf, charBufIndex, 1, color);
+        }
     }
 }
 
