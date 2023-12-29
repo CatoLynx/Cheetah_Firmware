@@ -225,6 +225,8 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint16_
             cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+            // Prevent 0
+            repeats = repeats ? repeats : 1;
 
             color_rgb_t color = shader_static_rainbow(cb_i_display, charBufSize, displaySize, character, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
@@ -239,6 +241,8 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint16_
             cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+            // Prevent 0
+            repeats = repeats ? repeats : 1;
             
             cJSON* rtl_field = cJSON_GetObjectItem(params, "right_to_left");
             if (!cJSON_IsBool(rtl_field)) return fallback;
@@ -271,6 +275,8 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint16_
             cJSON* repeats_field = cJSON_GetObjectItem(params, "repeats");
             if (!cJSON_IsNumber(repeats_field)) return fallback;
             uint8_t repeats = (uint8_t)cJSON_GetNumberValue(repeats_field);
+            // Prevent 0
+            repeats = repeats ? repeats : 1;
 
             color_rgb_t color = shader_linear_gradient(cb_i_display, charBufSize, displaySize, character, start, end, repeats);
             ESP_LOGV(LOG_TAG, "shader=%p shaderId=%u color=%.2f, %.2f, %.2f", shaderData, shaderId, color.r, color.g, color.b);
