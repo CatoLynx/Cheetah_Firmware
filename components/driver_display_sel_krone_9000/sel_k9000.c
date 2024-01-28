@@ -43,7 +43,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
     if (CONFIG_K9000_SEL_TX_IO >= 0) gpio_reset_pin(CONFIG_K9000_SEL_TX_IO);
     if (CONFIG_K9000_SEL_RX_IO >= 0) gpio_reset_pin(CONFIG_K9000_SEL_RX_IO);
     if (CONFIG_K9000_SEL_TX_IO >= 0) gpio_set_direction(CONFIG_K9000_SEL_TX_IO, GPIO_MODE_OUTPUT);
-    if (CONFIG_K9000_SEL_RX_IO >= 0) gpio_set_direction(CONFIG_K9000_SEL_RX_IO, GPIO_MODE_OUTPUT);
+    if (CONFIG_K9000_SEL_RX_IO >= 0) gpio_set_direction(CONFIG_K9000_SEL_RX_IO, GPIO_MODE_INPUT);
 
     ret = uart_driver_install(K9000_SEL_UART, CONFIG_K9000_SEL_RX_BUF_SIZE, CONFIG_K9000_SEL_TX_BUF_SIZE, 0, NULL, 0);
     if (ret != ESP_OK) return ret;
