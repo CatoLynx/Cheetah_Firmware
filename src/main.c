@@ -20,6 +20,7 @@
 #include "httpd.h"
 #include "logging_tcp.h"
 #include "macros.h"
+#include "remote_poll.h"
 #include "telegram_bot.h"
 #include "tpm2net.h"
 #include "ethernet.h"
@@ -284,15 +285,18 @@ void app_main(void) {
         tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_output_buffer, artnet_output_buffer, DISPLAY_FRAMEBUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
         browser_canvas_init(&server, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
         telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
+        remote_poll_init(&nvs_handle, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
         browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)

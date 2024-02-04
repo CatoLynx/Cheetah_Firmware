@@ -37,6 +37,9 @@ config_entry_t config_entries[] = {
     {.key = "wg_endpoint", .dataType = STR, .writeOnly = false},
     {.key = "wg_endpnt_port", .dataType = U16, .writeOnly = false},
     {.key = "wg_keepalive", .dataType = U16, .writeOnly = false},
+    {.key = "poll_url", .dataType = STR, .writeOnly = false},
+    {.key = "poll_token", .dataType = STR, .writeOnly = false},
+    {.key = "poll_interval", .dataType = U16, .writeOnly = false},
 };
 
 

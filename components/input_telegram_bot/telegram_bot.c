@@ -126,10 +126,8 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
     output_buffer = outBuf;
     output_buffer_size = bufSize;
 
-    if (apiTokenInited) {
-        // Free allocated memory
-        free(apiToken);
-    }
+    telegram_bot_deinit();
+
     apiToken = get_string_from_nvs(nvsHandle, "tg_bot_token");
     if (apiToken != NULL) {
         apiTokenInited = 1;
@@ -140,9 +138,11 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
 }
 
 void telegram_bot_deinit() {
+    // Free allocated memory
     if (apiTokenInited) {
-        // Free allocated memory
         free(apiToken);
+        apiToken = NULL;
+        apiTokenInited = 0;
     }
 }
 
