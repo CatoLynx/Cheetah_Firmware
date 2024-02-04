@@ -70,6 +70,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
 
 void k8200_pst_set_nmi(uint8_t state) {
     // state: 1 to assert NMI (stop units), 0 to deassert
+    ESP_LOGI(LOG_TAG, "NMI=%d", state);
     if (CONFIG_K8200_PST_SEL_NMI_IO >= 0) gpio_set_level(CONFIG_K8200_PST_SEL_NMI_IO, CONFIG_K8200_PST_SEL_NMI_ACT_HIGH ? !!state : !state);
 }
 
@@ -116,6 +117,12 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
     free(buf);
 
     if (prevFrame != NULL) memcpy(prevFrame, frame, frameBufSize);
+
+    // TODO: Implement better monitoring by querying rotation status using framebuffer mask
+    vTaskDelay(CONFIG_K8200_PST_SEL_ROTATION_TIMEOUT / portTICK_PERIOD_MS);
+    k8200_pst_set_nmi(1);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    k8200_pst_set_nmi(0);
 }
 
 #endif

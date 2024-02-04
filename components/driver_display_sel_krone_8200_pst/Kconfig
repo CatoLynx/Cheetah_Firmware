@@ -50,4 +50,10 @@ config K8200_PST_SEL_TX_BUF_SIZE
     help
         UART transmit buffer size. Set to 0 to disable buffer and block while sending data. Otherwise, must be greater that UART_FIFO_LEN.
 
+config K8200_PST_SEL_ROTATION_TIMEOUT
+    int "Rotation Timeout (ms)"
+    default 5000
+    help
+        How many milliseconds to wait for rotation to complete before sending NMI signal to stop any rogue units
+
 endmenu
