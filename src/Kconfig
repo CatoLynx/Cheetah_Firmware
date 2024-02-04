@@ -167,6 +167,10 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_SEL_KRONE_9000
         depends on DISPLAY_TYPE_SELECTION
         bool "KRONE 9000 Split-Flap (using UART peripheral)"
+        
+    config DISPLAY_DRIVER_SEL_KRONE_8200_PST
+        depends on DISPLAY_TYPE_SELECTION
+        bool "KRONE 8200 Split-Flap, PST (using UART peripheral)"
 endchoice
 
 config DISPLAY_UNIT_BUF_SIZE

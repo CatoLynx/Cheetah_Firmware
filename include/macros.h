@@ -122,6 +122,8 @@ DISPLAY_TEXTBUF_SIZE:         Number of characters in the user-facing text buffe
     #define DISPLAY_DRIVER "char_16seg_led_ws281x"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)
     #define DISPLAY_DRIVER "sel_krone_9000"
+#elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_8200_PST)
+    #define DISPLAY_DRIVER "sel_krone_8200_pst"
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)

@@ -1,0 +1,53 @@
+menu "KRONE 8200 PST Split-Flap Configuration (Selection Mode)"
+
+config K8200_PST_SEL_TX_IO
+    int "Tx GPIO"
+    default 0
+    help
+        GPIO pin for data transmitted to split-flap modules
+
+config K8200_PST_SEL_RX_IO
+    int "Rx GPIO"
+    default 0
+    help
+        GPIO pin for data received from split-flap modules
+
+config K8200_PST_SEL_NMI_IO
+    int "NMI GPIO"
+    default 0
+    help
+        GPIO pin for interrupt signal to split-flap modules
+
+config K8200_PST_SEL_NMI_ACT_HIGH
+    bool "NMI active-high"
+    default false
+    help
+        NMI GPIO active-low or active-high
+
+choice K8200_PST_SEL_UART
+    bool "UART to use"
+    default K8200_PST_SEL_UART_1
+
+    config K8200_PST_SEL_UART_0
+        bool "UART0"
+
+    config K8200_PST_SEL_UART_1
+        bool "UART1"
+
+    config K8200_PST_SEL_UART_2
+        bool "UART2"
+endchoice
+
+config K8200_PST_SEL_RX_BUF_SIZE
+    int "Rx buffer size in bytes"
+    default 64
+    help
+        UART receive buffer size. Must be greater that UART_FIFO_LEN.
+
+config K8200_PST_SEL_TX_BUF_SIZE
+    int "Tx buffer size in bytes"
+    default 256
+    help
+        UART transmit buffer size. Set to 0 to disable buffer and block while sending data. Otherwise, must be greater that UART_FIFO_LEN.
+
+endmenu

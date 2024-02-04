@@ -35,6 +35,16 @@ uint8_t uint_num_digits(uint64_t n) {
   return result;
 }
 
+uint8_t uint8_to_bcd(uint8_t n) {
+  // Turn a positive integer between in the range [0, 99]
+  // into its hexadecimal BCD representation.
+  // e.g. 37 => 0x37
+  uint8_t tens = n / 10;
+  if (tens > 9) return 0;
+  uint8_t ones = n % 10;
+  return tens * 16 + ones;
+}
+
 void str_toUpper(char* str) {
   while (*str) {
     *str = toupper((unsigned char) *str);

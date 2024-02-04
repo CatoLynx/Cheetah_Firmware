@@ -309,6 +309,13 @@
                   input = $("<select>");
                   input.change(updateDisplay);
                   let map = config["maps"][unit["map"]];
+
+                  // Add home position
+                  let option = $("<option>");
+                  option.attr("value", unit["home_pos"]);
+                  option.html("&lt;Home&gt;");
+                  input.append(option);
+
                   for (const [key, value] of Object.entries(map)) {
                     let option = $("<option>");
                     option.attr("value", key);

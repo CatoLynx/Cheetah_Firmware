@@ -54,6 +54,8 @@
 #include "driver_display_char_16seg_led_ws281x.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)
 #include "driver_display_sel_krone_9000.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_8200_PST)
+#include "driver_display_sel_krone_8200_pst.h"
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
