@@ -23,7 +23,6 @@ uint16_t pollInterval = 0;
 uint8_t pollUrlInited = 0;
 uint8_t pollTokenInited = 0;
 uint32_t last_update_id = 0;
-char* err_desc = NULL;
 
 // Dynamic array holding the current list of buffers
 rp_buffer_list_entry_t* rp_buffers = NULL;
@@ -102,15 +101,9 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
 
             esp_err_t ret = remote_poll_process_response(json);
             if (ret != ESP_OK) {
-                memset(output_buffer, 0x00, output_buffer_size);
-                if (err_desc == NULL) {
-                    ESP_LOGE(LOG_TAG,  "Error");
-                    // sprintf((char*)output_buffer, "REMOTE POLL API FAIL");
-                } else {
-                    ESP_LOGE(LOG_TAG,  "Error: %s", err_desc);
-                    // strncpy((char*)output_buffer, err_desc, output_buffer_size);
-                    err_desc = NULL;
-                }
+                //memset(output_buffer, 0x00, output_buffer_size);
+                ESP_LOGE(LOG_TAG,  "Error");
+                cJSON_Delete(json);
                 return ret;
             }
             cJSON_Delete(json);
