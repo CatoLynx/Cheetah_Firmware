@@ -29,6 +29,7 @@ char* err_desc = NULL;
 rp_buffer_list_entry_t* rp_buffers = NULL;
 uint8_t rp_num_buffers = 0;
 uint8_t rp_cur_buffer = 0;
+bool rp_restart_cycle = false;
 
 // Last switch / update times
 uint64_t rp_last_switch = 0;
@@ -176,9 +177,14 @@ void remote_poll_task(void* arg) {
         // Switch buffer if necessary
         if (rp_num_buffers > 0) {
             if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0; // In case rp_num_buffers got smaller
-            if (rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
+            if (rp_restart_cycle == true) {
+                ESP_LOGI(LOG_TAG, "Restarting cycle");
+                rp_cur_buffer = 0;
+            }
+            if (rp_restart_cycle == true || rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
                 rp_last_switch = now;
-                rp_cur_buffer++;
+                if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
+                rp_restart_cycle = false;
                 if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
                 ESP_LOGI(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
                 memcpy(output_buffer, rp_buffers[rp_cur_buffer].buffer, output_buffer_size);
@@ -233,6 +239,7 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     /*
     Expected JSON schema:
     {
+        "restartCycle": false,
         "buffers": [
             {
                 "duration": <duration in seconds>,
@@ -259,6 +266,15 @@ esp_err_t remote_poll_process_response(cJSON* json) {
         char* error_str = cJSON_GetStringValue(field_error);
         ESP_LOGE(LOG_TAG, "Poll API Error: %s", error_str);
         return ESP_FAIL;
+    }
+
+    // If this is true, the next cycle will immediately begin and restart at buffer 0
+    // Useful if the newly received message should be displayed immediately
+    cJSON* field_restart = cJSON_GetObjectItem(json, "restartCycle");
+    if (field_restart != NULL) {
+        rp_restart_cycle = cJSON_IsTrue(field_restart);
+    } else {
+        rp_restart_cycle = false;
     }
 
     cJSON* buffers_arr = cJSON_GetObjectItem(json, "buffers");
