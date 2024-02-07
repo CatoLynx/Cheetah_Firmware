@@ -313,13 +313,13 @@
                   // Add home position
                   let option = $("<option>");
                   option.attr("value", unit["home"]);
-                  option.html("&lt;Home&gt;");
+                  option.text("<Home>");
                   input.append(option);
 
                   for (const [key, value] of Object.entries(map)) {
                     let option = $("<option>");
                     option.attr("value", key);
-                    option.html(value);
+                    option.text(value);
                     input.append(option);
                   }
                 }
@@ -851,7 +851,7 @@
       
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
-        $("#hostname").html(data['hostname']);
+        $("#hostname").text(data['hostname']);
       }
 
       function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
