@@ -16,15 +16,15 @@
 #define LOG_TAG "TGBot"
 
 static TaskHandle_t telegram_bot_task_handle;
-nvs_handle_t tg_bot_nvs_handle;
-char* apiToken = NULL;
-uint8_t apiTokenInited = 0;
-uint32_t last_update_id = 0;
-uint8_t err_status = 0;
-char* err_desc = NULL;
+static nvs_handle_t tg_bot_nvs_handle;
+static char* apiToken = NULL;
+static uint8_t apiTokenInited = 0;
+static uint32_t last_update_id = 0;
+static uint8_t err_status = 0;
+static char* err_desc = NULL;
 
-uint8_t* output_buffer;
-size_t output_buffer_size = 0;
+static uint8_t* output_buffer;
+static size_t output_buffer_size = 0;
 
 extern uint8_t wifi_gotIP;
 

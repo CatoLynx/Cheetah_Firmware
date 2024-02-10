@@ -16,26 +16,25 @@
 
 
 static TaskHandle_t rp_task_handle;
-nvs_handle_t rp_nvs_handle;
-char* pollUrl = NULL;
-char* pollToken = NULL;
-uint16_t pollInterval = 0;
-uint8_t pollUrlInited = 0;
-uint8_t pollTokenInited = 0;
-uint32_t last_update_id = 0;
+static nvs_handle_t rp_nvs_handle;
+static char* pollUrl = NULL;
+static char* pollToken = NULL;
+static uint16_t pollInterval = 0;
+static uint8_t pollUrlInited = 0;
+static uint8_t pollTokenInited = 0;
 
 // Dynamic array holding the current list of buffers
-rp_buffer_list_entry_t* rp_buffers = NULL;
-uint8_t rp_num_buffers = 0;
-uint8_t rp_cur_buffer = 0;
-bool rp_restart_cycle = false;
+static rp_buffer_list_entry_t* rp_buffers = NULL;
+static uint8_t rp_num_buffers = 0;
+static uint8_t rp_cur_buffer = 0;
+static bool rp_restart_cycle = false;
 
 // Last switch / update times
-uint64_t rp_last_switch = 0;
-uint64_t rp_last_update = 0;
+static uint64_t rp_last_switch = 0;
+static uint64_t rp_last_update = 0;
 
-uint8_t* output_buffer;
-size_t output_buffer_size = 0;
+static uint8_t* output_buffer;
+static size_t output_buffer_size = 0;
 
 extern uint8_t wifi_gotIP;
 
