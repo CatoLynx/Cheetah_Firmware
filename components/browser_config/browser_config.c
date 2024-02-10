@@ -22,7 +22,11 @@ nvs_handle_t config_nvs_handle;
 config_entry_t config_entries[] = {
     {.key = "hostname", .dataType = STR, .writeOnly = false},
     {.key = "sta_ssid", .dataType = STR, .writeOnly = false},
+    {.key = "sta_anon_ident", .dataType = STR, .writeOnly = false},
+    {.key = "sta_ident", .dataType = STR, .writeOnly = false},
     {.key = "sta_pass", .dataType = STR, .writeOnly = false},
+    {.key = "sta_phase2", .dataType = U8, .writeOnly = false},
+    {.key = "sta_phase2_ttls", .dataType = U8, .writeOnly = false},
     {.key = "sta_retries", .dataType = U8, .writeOnly = false},
     {.key = "ap_ssid", .dataType = STR, .writeOnly = false},
     {.key = "ap_pass", .dataType = STR, .writeOnly = false},
