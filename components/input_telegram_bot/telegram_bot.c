@@ -192,7 +192,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
     switch(endpoint) {
         case TG_SEND_MESSAGE: {
             va_start(valist, endpoint);
-            uint32_t chat_id = va_arg(valist, uint32_t);
+            int64_t chat_id = va_arg(valist, int64_t);
             char* text = va_arg(valist, char*);
 
             json = cJSON_CreateObject();
@@ -337,7 +337,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                     err_status = 13;
                     return ESP_FAIL;
                 }
-                uint32_t chat_id = cJSON_GetNumberValue(field_chat_id);
+                int64_t chat_id = cJSON_GetNumberValue(field_chat_id);
 
                 cJSON* field_text = cJSON_GetObjectItem(message, "text");
                 if (field_text == NULL) {
