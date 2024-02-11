@@ -18,9 +18,9 @@ typedef enum config_data_type {
 } config_data_type_t;
 
 typedef enum config_field_flags {
-    CONFIG_FIELD_FLAGS_NONE = 0,
-    CONFIG_FIELD_FLAGS_WRITE_ONLY = 1, // If set, fields.json will not contain the actual value. Good for things like passwords or access tokens. Only works for strings at the moment.
-    CONFIG_FIELD_FLAG_SPIFFS_FILE_SELECT = 2 // For STR entries, makes the field show a select input populated with filenames from SPIFFS
+    BC_FIELD_FLAGS_NONE = 0,
+    BC_FIELD_FLAGS_WRITE_ONLY = 1, // If set, fields.json will not contain the actual value. Good for things like passwords or access tokens. Only works for strings at the moment.
+    BC_FIELD_FLAGS_SPIFFS_FILE_SELECT = 2 // For STR entries, makes the field show a select input populated with filenames from SPIFFS
 } config_field_flags_t;
 
 typedef struct config_entry {
