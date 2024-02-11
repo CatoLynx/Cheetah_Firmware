@@ -20,30 +20,30 @@ extern const uint8_t browser_config_html_end[]   asm("_binary_browser_config_htm
 // List of config options to present
 nvs_handle_t config_nvs_handle;
 config_entry_t config_entries[] = {
-    {.key = "hostname", .dataType = STR, .writeOnly = false},
-    {.key = "sta_ssid", .dataType = STR, .writeOnly = false},
-    {.key = "sta_anon_ident", .dataType = STR, .writeOnly = false},
-    {.key = "sta_ident", .dataType = STR, .writeOnly = false},
-    {.key = "sta_pass", .dataType = STR, .writeOnly = false},
-    {.key = "sta_phase2", .dataType = U8, .writeOnly = false},
-    {.key = "sta_phase2_ttls", .dataType = U8, .writeOnly = false},
-    {.key = "sta_retries", .dataType = U8, .writeOnly = false},
-    {.key = "ap_ssid", .dataType = STR, .writeOnly = false},
-    {.key = "ap_pass", .dataType = STR, .writeOnly = false},
-    {.key = "tg_bot_token", .dataType = STR, .writeOnly = true},
-    {.key = "disp_led_gamma", .dataType = U16, .writeOnly = false},
-    {.key = "sel_conf_file", .dataType = STR, .writeOnly = false},
-    {.key = "wg_private_key", .dataType = STR, .writeOnly = true},
-    {.key = "wg_public_key", .dataType = STR, .writeOnly = true},
-    {.key = "wg_allowed_ip", .dataType = STR, .writeOnly = false},
-    {.key = "wg_allowed_mask", .dataType = STR, .writeOnly = false},
-    {.key = "wg_listen_port", .dataType = U16, .writeOnly = false},
-    {.key = "wg_endpoint", .dataType = STR, .writeOnly = false},
-    {.key = "wg_endpnt_port", .dataType = U16, .writeOnly = false},
-    {.key = "wg_keepalive", .dataType = U16, .writeOnly = false},
-    {.key = "poll_url", .dataType = STR, .writeOnly = false},
-    {.key = "poll_token", .dataType = STR, .writeOnly = true},
-    {.key = "poll_interval", .dataType = U16, .writeOnly = false},
+    {.key = "hostname", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_ssid", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_anon_ident", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_ident", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_pass", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_phase2", .dataType = U8, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_phase2_ttls", .dataType = U8, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sta_retries", .dataType = U8, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "ap_ssid", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "ap_pass", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "tg_bot_token", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_WRITE_ONLY},
+    {.key = "disp_led_gamma", .dataType = U16, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "sel_conf_file", .dataType = STR, .flags = CONFIG_FIELD_FLAG_SPIFFS_FILE_SELECT},
+    {.key = "wg_private_key", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_WRITE_ONLY},
+    {.key = "wg_public_key", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_WRITE_ONLY},
+    {.key = "wg_allowed_ip", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "wg_allowed_mask", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "wg_listen_port", .dataType = U16, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "wg_endpoint", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "wg_endpnt_port", .dataType = U16, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "wg_keepalive", .dataType = U16, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "poll_url", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_NONE},
+    {.key = "poll_token", .dataType = STR, .flags = CONFIG_FIELD_FLAGS_WRITE_ONLY},
+    {.key = "poll_interval", .dataType = U16, .flags = CONFIG_FIELD_FLAGS_NONE},
 };
 
 
@@ -77,13 +77,14 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
         cJSON* entry = cJSON_CreateObject();
         cJSON_AddStringToObject(entry, "name", config_entries[i].key);
         cJSON_AddNumberToObject(entry, "type", config_entries[i].dataType);
+        cJSON_AddNumberToObject(entry, "flags", (uint32_t)config_entries[i].flags);
 
         if (config_entries[i].dataType == BLOB) {
             // Not yet implemented
         } else if (config_entries[i].dataType == STR) {
             // Query string length
             size_t valueLength;
-            if (config_entries[i].writeOnly == true) {
+            if (config_entries[i].flags & CONFIG_FIELD_FLAGS_WRITE_ONLY) {
                 // The string "<unchanged>" will also be checked for when receiving field data.
                 // This means that a field can not actually have this value.
                 // This seems acceptable.

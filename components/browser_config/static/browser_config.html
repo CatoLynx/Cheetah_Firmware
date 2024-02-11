@@ -64,6 +64,13 @@
         17: 0xFFFFFFFFFFFFFFFF
       };
 
+      var fieldFlags = {
+        "WRITE_ONLY": 1,
+        "SPIFFS_FILE_SELECT": 2
+      };
+
+      var spiffs_files = [];
+
       function getFields() {
         $.ajax({
           type: "GET",
@@ -74,13 +81,33 @@
         });
       }
 
+      function getFileList() {
+        $.ajax({
+          type: "GET",
+          url: "/spiffs/files.json",
+          success: onGetFileListSuccess,
+          error: onGetFileListError
+        });
+      }
+
       function onGetFieldsSuccess(data, textStatus, jqXHR) {
-        console.log(data);
+        //console.log(data);
         buildForm(data["fields"]);
       }
       
       function onGetFieldsError(jqXHR, textStatus, errorThrown) {
         console.log("Error getting fields!");
+        console.log(errorThrown);
+      }
+      
+      function onGetFileListSuccess(data, textStatus, jqXHR) {
+        console.log("Successfully got file list");
+        spiffs_files = data['files'];
+      }
+      
+      function onGetFileListError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting file list!");
+        console.log(textStatus);
         console.log(errorThrown);
       }
 
@@ -118,7 +145,25 @@
             field_element.val(field["value"]);
           } else if (fieldTypes[field["type"]] == "STR") {
             // String field
-            var field_element = $('<input type="text">');
+            var field_element;
+            if (field["flags"] & fieldFlags["SPIFFS_FILE_SELECT"]) {
+              field_element = $("<select>");
+
+              // Empty option
+              var option = $("<option>");
+              option.attr("value", "");
+              option.text("");
+              field_element.append(option);
+
+              for (const filename of spiffs_files) {
+                var option = $("<option>");
+                option.attr("value", filename);
+                option.text(filename);
+                field_element.append(option);
+              }
+            } else {
+              field_element = $('<input type="text">');
+            }
             field_element.prop("name", field["name"]);
             field_element.val(field["value"]);
           } else if (fieldTypes[field["type"]] == "BLOB") {
@@ -138,7 +183,7 @@
       }
 
       function getConfigData() {
-        var inputs = $("#config-fields input");
+        var inputs = $("#config-fields input, select");
         var field_array = [];
         for (var i = 0; i < inputs.length; i += 2) {
           var field_name = $(inputs[i]).prop("name");
@@ -146,8 +191,10 @@
           if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field_type]) != -1) {
             // Numerical field
             var field_value = parseInt($(inputs[i]).val());
+            if (field_value == null) field_value = 0;
           } else {
             var field_value = $(inputs[i]).val();
+            if (field_value == null) field_value = "";
           }
           var entry = {"name": field_name, "type": field_type, "value": field_value};
           field_array.push(entry);
@@ -191,6 +238,7 @@
 
       function onReady() {
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
+        getFileList();
         getFields();
         $("#btn-save").click(onSave);
         $("#btn-restart").click(restartSystem);
