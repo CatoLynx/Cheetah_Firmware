@@ -45,3 +45,33 @@ Some other noteworthy features include:
 * Browser-based rudimentary SPIFFS file manager
 * WireGuard implementation for easy access to the display from anywhere
 * Experimental TCP-based log output
+
+## Buffers and formats
+Since this firmware supports many different types of displays, there is a need for multiple different kinds of buffers and formats.
+
+### Pixel-based displays
+Pixel-based displays use framebuffers. Depending on the project configuration, they can use one or two buffers.
+Using two framebuffers allows for double buffering, which reduces image artifacts.
+Also depending on project configuration, the buffer(s) can have one of three formats:
+
+* 24bpp: RGB color, 8 bits per color, 24 bits per pixel
+* 8bpp: Grayscale, 8 bits per pixel
+* 1bpp: Only on or off, 1 bit per pixel
+
+### Character-based displays
+Character-based displays use several buffers:
+
+* The text buffer, which holds the input text as entered by the user
+* The character buffer, which holds an intermediary representation of each character, e.g. a different character set
+* The quirk flags buffer, which holds metadata for each character, such as combining diacritical marks
+* The framebuffer, which holds the raw data that gets sent to the display in whatever format necessary
+
+### Selection-based displays
+Selection-based displays use the following buffers:
+
+* The framebuffer, which consists of one byte per display unit (e.g. a split-flap module) and contains that unit's target position
+* A buffer mask, which is used to know which unit addresses are in use
+
+The buffer mask is used because for selection displays, the firmware only defines the display driver and buffer size, but the actual configuration
+of the layout and contents of the individual units is done via a JSON file uploaded to SPIFFS.
+Thus, the buffer will usually be larger than required and the controller needs to know which parts of it to use.
