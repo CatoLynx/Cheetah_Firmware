@@ -87,7 +87,7 @@ void k8200_pst_home(void) {
 void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     outBuf[0] = 0x3A;
     outBuf[1] = address;
-    outBuf[2] = uint8_to_bcd(code);
+    outBuf[2] = code == 0x7F ? code : uint8_to_bcd(code); // 0x7F is always the last position (empty)
 }
 
 void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
