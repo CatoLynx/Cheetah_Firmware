@@ -1,3 +1,4 @@
+#include "macros.h"
 #include "esp_wireguard.h"
 #include "util_nvs.h"
 

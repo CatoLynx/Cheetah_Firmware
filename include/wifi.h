@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.h"
 #include <stdint.h>
 #include "esp_event.h"
 #include "nvs.h"

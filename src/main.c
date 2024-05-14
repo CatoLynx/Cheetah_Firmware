@@ -59,7 +59,7 @@
 #include "driver_display_sel_krone_8200_pst.h"
 #endif
 
-#if defined(CONFIG_DISPLAY_TYPE_PIXEL)
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
 #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
 #define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
 #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
@@ -79,7 +79,7 @@ uint8_t tpm2net_output_buffer[TPM2NET_FRAMEBUF_SIZE] = {0};
 uint8_t artnet_output_buffer[ARTNET_FRAMEBUF_SIZE] = {0};
 #endif
 
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
 uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE] = {0};
 uint16_t display_quirk_flags_buffer[DISPLAY_CHARBUF_SIZE] = {0};
 uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE] = {0};
@@ -96,7 +96,7 @@ uint16_t display_num_units = 0;
 
 uint8_t display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 
-#if defined(CONFIG_DISPLAY_TYPE_PIXEL)
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
 uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 #endif
 
@@ -122,7 +122,7 @@ char hostname[64];
 
 static void display_refresh_task(void* arg) {
     // Start with splashscreen
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    #if defined(DISPLAY_HAS_CHAR_BUFFER)
     char hostname_upper[64];
     strncpy(hostname_upper, hostname, 63);
     str_toUpper(hostname_upper);
@@ -308,7 +308,7 @@ void app_main(void) {
         browser_canvas_register_shaders(&server, &display_shader);
         #endif
 
-        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        #if defined(DISPLAY_HAS_CHAR_BUFFER)
         display_text_buffer[0] = '-';
         #endif
 

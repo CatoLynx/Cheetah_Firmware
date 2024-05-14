@@ -11,6 +11,8 @@ This project is always under development and pretty much all features are develo
 The firmware supports three classes of displays:
 * Pixel-based displays, e.g. LCD, LED, flipdot matrix displays
 * Character-based displays, e.g. mosaic LCD, 16-segment LED displays or alphanumeric split-flap units
+* Character-based displays on top of pixel-based displays: i.e. a large character-based display that uses many LEDs to form distinct characters, but those LEDs can also be controlled as a pixel display, "modulated" by the character buffer.
+* (Pixel-based displays on top of character-based displays: i.e. a large character-based display that can use its characters to display "pixel" images) - planned, but not yet supported
 * Selection-based displays, which can only display a selection out of a fixed dataset, e.g. non-alphanumeric split-flap displays or rolling film displays
 
 The following display drivers currently exist in this firmware:

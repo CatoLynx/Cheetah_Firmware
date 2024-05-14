@@ -1,13 +1,12 @@
 #include "wg.h"
 #include "esp_log.h"
-#include "macros.h"
 #include <string.h>
 
 
 #define LOG_TAG "WireGuard"
 
 
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
 extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
 #endif
 
@@ -90,7 +89,7 @@ esp_err_t wg_start() {
     if (!wg_initialized) return ESP_FAIL;
     ESP_LOGI(LOG_TAG, "Connecting");
     if (wg_started) {
-        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        #if defined(DISPLAY_HAS_CHAR_BUFFER)
         //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Already connected!");
@@ -98,7 +97,7 @@ esp_err_t wg_start() {
     }
     esp_err_t ret = esp_wireguard_connect(&wg_ctx);
     if (ret == ESP_OK) {
-        #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+        #if defined(DISPLAY_HAS_CHAR_BUFFER)
         //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Connected");

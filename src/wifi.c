@@ -4,7 +4,6 @@
 #include "esp_log.h"
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
-#include "macros.h"
 
 #include "wifi.h"
 #include "ntp.h"
@@ -32,7 +31,7 @@ uint8_t wifi_gotIP = 0;
 
 extern char hostname[63];
 
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
 extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
 #endif
 
@@ -87,7 +86,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 wifi_gotIP = 1;
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-                #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+                #if defined(DISPLAY_HAS_CHAR_BUFFER)
                 char temp[19];
                 sprintf(temp, IPSTR, IP2STR(&event->ip_info.ip));
                 STRCPY_TEXTBUF((char*)display_text_buffer, temp, DISPLAY_TEXTBUF_SIZE);

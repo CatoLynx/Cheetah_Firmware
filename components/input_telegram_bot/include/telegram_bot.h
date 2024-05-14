@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.h"
 #include "esp_http_client.h"
 #include "nvs.h"
 #include "cJSON.h"

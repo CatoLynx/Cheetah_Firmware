@@ -1,14 +1,13 @@
 #include "ntp.h"
 #include "wg.h"
 #include "esp_log.h"
-#include "macros.h"
 #include <string.h>
 
 
 #define LOG_TAG "NTP"
 
 
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
 extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
 #endif
 
@@ -18,7 +17,7 @@ bool ntp_started = false;
 
 void ntp_sync_cb(struct timeval *tv) {
     ESP_LOGI(LOG_TAG, "NTP time synced");
-    #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+    #if defined(DISPLAY_HAS_CHAR_BUFFER)
     //display_text_buffer[0] = 'N';
     #endif
     vTaskDelay(2000 / portTICK_PERIOD_MS);

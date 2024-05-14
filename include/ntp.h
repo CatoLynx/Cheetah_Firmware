@@ -1,3 +1,4 @@
+#include "macros.h"
 #include "esp_sntp.h"
 
 void ntp_sync_cb(struct timeval *tv);

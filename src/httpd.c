@@ -9,7 +9,6 @@
 
 #include "config_global.h"
 #include "util_disp_selection.h"
-#include "macros.h"
 
 #define LOG_TAG "HTTPD"
 
@@ -118,7 +117,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
 #endif
     cJSON_AddNumberToObject(json, "framebuf_size", DISPLAY_FRAMEBUF_SIZE);
     cJSON_AddStringToObject(json, "frame_type", DISPLAY_FRAME_TYPE);
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
     cJSON_AddNumberToObject(json, "textbuf_size", DISPLAY_TEXTBUF_SIZE);
     cJSON_AddNumberToObject(json, "charbuf_size", DISPLAY_CHARBUF_SIZE);
 #else

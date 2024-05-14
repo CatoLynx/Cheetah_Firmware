@@ -5,13 +5,12 @@
 #include "esp_http_client.h"
 
 #include "telegram_bot.h"
-#include "macros.h"
 #include "util_buffer.h"
 #include "util_generic.h"
 #include "util_nvs.h"
 
 
-#if defined(CONFIG_DISPLAY_TYPE_PIXEL) || defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
 
 #define LOG_TAG "TGBot"
 

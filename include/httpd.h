@@ -1,5 +1,6 @@
 #pragma once
 
+#include "macros.h"
 #include "esp_http_server.h"
 #include "nvs_flash.h"
 

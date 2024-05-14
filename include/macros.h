@@ -25,14 +25,22 @@ DISPLAY_TEXTBUF_SIZE:         Number of characters in the user-facing text buffe
 #define CLEAR_MASK(buf, pos) (buf)[(pos)/8] &= ~(1 << ((pos)%8))
 #define GET_MASK(buf, pos) (!!((buf)[(pos)/8] & (1 << ((pos)%8))))
 
-#if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-#define STRCPY_TEXTBUF(dst, txt, len) strncpy(dst, txt, len);
-#else
-#define STRCPY_TEXTBUF(dst, txt, len)
+#if defined(CONFIG_DISPLAY_TYPE_PIXEL) || defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
+    #define DISPLAY_HAS_PIXEL_BUFFER
+#endif
+
+#if defined(CONFIG_DISPLAY_TYPE_CHARACTER) || defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
+    #define DISPLAY_HAS_CHAR_BUFFER
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_PIXEL) || defined(CONFIG_DISPLAY_TYPE_CHARACTER)
     #define DISPLAY_HAS_SIZE
+#endif
+
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#define STRCPY_TEXTBUF(dst, txt, len) strncpy(dst, txt, len);
+#else
+#define STRCPY_TEXTBUF(dst, txt, len)
 #endif
 
 #if defined(DISPLAY_HAS_SIZE)
