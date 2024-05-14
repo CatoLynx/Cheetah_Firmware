@@ -11,14 +11,16 @@
   </head>
   <body>
     <h2 id="hostname">&nbsp;</h2>
-    <div id="canvas-container" style="display: none;">
+    <div id="pixel-container" style="display: none;">
       <canvas id="pixel-canvas">
         If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
         Try enabling JavaScript and reload the page.
       </canvas>
       <div>
         <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
-        <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label>
+        <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label><br />
+        <input type="button" id="btn-clear" value="Clear" /><br />
+        <input type="button" id="btn-invert-colors" value="Invert Colors" />
       </div>
     </div>
     <div id="text-container" style="display: none;">
@@ -204,7 +206,9 @@
         for (let i = pixelHeight + (gridLineWidth / 2); i < canvas.height; i += (pixelHeight + gridLineWidth)) {
             drawLine(ctx, 0, i, canvas.width, i);
         }
-        $("#canvas-container").show();
+        $("#btn-clear").click(clearCanvas);
+        $("#btn-invert-colors").click(invertColors);
+        $("#pixel-container").show();
       }
 
       function drawTextInput() {
@@ -413,12 +417,66 @@
         pixels[i] = color;
       }
 
+      function updateCanvasFromPixels() {
+        // Redraw interactive canvas from pixels array
+        for (let x = 0; x < display_info["width"]; x++) {
+          for (let y = 0; y < display_info["height"]; y++) {
+            let i = x * display_info["height"] + y;
+            let newPixel = new Pixel(x * (pixelWidth + gridLineWidth), y * (pixelHeight + gridLineWidth), pixelWidth, pixelHeight, gridLineWidth, pixels[i]);
+            newPixel.draw();
+          }
+        }
+      }
+
+      function padZero(str, len) {
+        len = len || 2;
+        var zeros = new Array(len).join('0');
+        return (zeros + str).slice(-len);
+      }
+
+      function invertHexColor(hex) {
+        if (hex.indexOf('#') === 0) {
+          hex = hex.slice(1);
+        }
+        // convert 3-digit hex to 6-digits.
+        if (hex.length === 3) {
+          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        if (hex.length !== 6) {
+          throw new Error('Invalid HEX color.');
+        }
+        // invert color components
+        var r = (255 - parseInt(hex.slice(0, 2), 16)).toString(16),
+            g = (255 - parseInt(hex.slice(2, 4), 16)).toString(16),
+            b = (255 - parseInt(hex.slice(4, 6), 16)).toString(16);
+        // pad each with zeros and return
+        return '#' + padZero(r) + padZero(g) + padZero(b);
+      }
+
+      function clearCanvas() {
+        pixels = new Array(display_info["width"] * display_info["height"]);
+        pixels.fill(bgColor);
+        updateCanvasFromPixels();
+        updateDisplay(null);
+      }
+
+      function invertColors() {
+        for (let x = 0; x < display_info["width"]; x++) {
+          for (let y = 0; y < display_info["height"]; y++) {
+            let i = x * display_info["height"] + y;
+            pixels[i] = invertHexColor(pixels[i]);
+          }
+        }
+        updateCanvasFromPixels();
+        updateDisplay(null);
+      }
+
       function onCanvasMouseDown(event) {
         event.preventDefault();
         if(event.button == 0) drawPixel(event.clientX, event.clientY, fgColor);
         if(event.button == 2) drawPixel(event.clientX, event.clientY, bgColor);
         buttonPressed = true;
-        updateDisplay();
+        updateDisplay(null);
       }
 
       function onCanvasMouseRightClick(event) {
@@ -430,7 +488,7 @@
         if((event.buttons == 1 || event.buttons == 2) && !buttonPressed) {
           // Mouse has entered the canvas with button pressed
           buttonPressed = true;
-          updateDisplay();
+          updateDisplay(null);
         }
         if(event.buttons == 1){
           drawPixel(event.clientX, event.clientY, fgColor);
@@ -441,11 +499,11 @@
 
       function onCanvasMouseUp(event) {
         buttonPressed = false;
-        updateDisplay();
+        updateDisplay(null);
       }
 
       function onCanvasMouseOut(event) {
-        if(buttonPressed) updateDisplay();
+        if(buttonPressed) updateDisplay(null);
         buttonPressed = false;
       }
 
@@ -479,13 +537,13 @@
       function limitColorRange(color) {
         switch(display_info["frame_type"]) {
           case "1bpp": {
-            let lum = calculateLuminosity(color);
+            let lum = hexColorToLuminosity(color);
             return lum > 127 ? "#ffffff" : "#000000";
           }
 
           case "8bpp": {
-            let lum = calculateLuminosity(color);
-            return rgbToHex(lum, lum, lum);
+            let lum = hexColorToLuminosity(color);
+            return luminosityToHexColor(lum);
           }
           
           default:
@@ -495,10 +553,14 @@
         }
       }
 
-      function calculateLuminosity(color) {
+      function hexColorToLuminosity(color) {
         let rgb = hexToRGB(color);
         let lum = Math.round(rgb["r"] * 0.2126 + rgb["g"] * 0.7152 + rgb["b"] * 0.0722);
         return lum > 255 ? 255 : lum;
+      }
+
+      function luminosityToHexColor(luminosity) {
+        return rgbToHex(luminosity, luminosity, luminosity);
       }
 
       function getShaders() {
@@ -625,7 +687,7 @@
                 for (let y = 0; y < display_info["frame_height"]; y++) {
                   let bit = y % 8;
                   if (!((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"])))) {
-                    if (calculateLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
+                    if (hexColorToLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
                     pixel_idx++;
                   }
                   if ((bit == 7) || (y == display_info["frame_height"] - 1)) {
@@ -646,7 +708,7 @@
                   if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
                     framebuf[fb_idx++] = 0;
                   } else {
-                    framebuf[fb_idx++] = calculateLuminosity(pixels[pixel_idx]);
+                    framebuf[fb_idx++] = hexColorToLuminosity(pixels[pixel_idx]);
                     pixel_idx++;
                   }
                 }
@@ -713,7 +775,7 @@
       function updateDisplay(event) {
         // If live update is disabled, only allow events from the update button
         if (!liveUpdate) {
-          if ($(event.target)[0] != $("#btn-update")[0]) {
+          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
             return;
           }
         }
@@ -823,10 +885,11 @@
 
       function onUpdateDisplaySuccess(data, textStatus, jqXHR) {
         updateInProgress = false;
-        if(buttonPressed) updateDisplay();
+        if(buttonPressed) updateDisplay(null);
       }
 
       function onUpdateDisplayError(jqXHR, textStatus, errorThrown) {
+        updateInProgress = false;
         console.log("Error updating display!");
         console.log(errorThrown);
       }
@@ -871,21 +934,32 @@
       }
 
       function onGetFramebufferFromDisplaySuccess(data, textStatus, jqXHR) {
-        // TODO: Make this work for pixel displays
+        // TODO: Make this work for all pixel buffer types
         if (display_info["type"] == "pixel") {
+          let framebuf = Uint8Array.from(atob(data["buffer"]), c => c.charCodeAt(0));
           switch(display_info["frame_type"]) {
             case "1bpp": {
               break;
             }
 
             case "8bpp": {
-              break;
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width"]; x++) {
+                for (let y = 0; y < display_info["frame_height"]; y++) {
+                  if ((x >= display_info["viewport_offset_x"]) && (y >= display_info["viewport_offset_y"]) && (x < (display_info["width"] + display_info["viewport_offset_x"])) && (y < (display_info["height"] + display_info["viewport_offset_y"]))) {
+                    pixels[pixel_idx++] = luminosityToHexColor(framebuf[fb_idx]);
+                  }
+                  fb_idx++;
+                }
+              }
             }
 
             case "24bpp": {
               break;
             }
           }
+          updateCanvasFromPixels();
         } else if (display_info["type"] == "character") {
           let text = atob(data["buffer"]).replaceAll(/[ \x00]*$/g, "");
           $("#text-input").val(text);
