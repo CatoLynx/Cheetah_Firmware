@@ -16,8 +16,8 @@
 #define PIN_COL_A3	33	// Column driver line decoder A3 bit
 #define PIN_LED		13	// LED backlight enable
 
-#define FLIP_PULSE_WIDTH_US		350
-#define LATCH_PULSE_WIDTH_US	10
+#define FLIP_PULSE_WIDTH_US		500
+#define LATCH_PULSE_WIDTH_US	20
 
 esp_err_t display_init(nvs_handle_t* nvsHandle);
 void display_set_address(uint8_t address);
