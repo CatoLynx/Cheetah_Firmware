@@ -133,18 +133,18 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
     prev_p = 0xFFFF;
     if(!display_dirty && prevFrame) {
         for(uint16_t i = 0; i < frameBufSize; i++) {
-            x = (i / DISPLAY_FRAME_HEIGHT_BYTES);
-            y_byte = i % DISPLAY_FRAME_HEIGHT_BYTES;
+            x = (i / DISPLAY_FRAME_HEIGHT_PIXEL_BYTES);
+            y_byte = i % DISPLAY_FRAME_HEIGHT_PIXEL_BYTES;
             for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
                 y = (y_byte * 8) + y_bit;
-                if(BUFFER_VAL(frame, x, y) == BUFFER_VAL(prevFrame, x, y)) continue;
+                if(PIX_BUF_VAL(frame, x, y) == PIX_BUF_VAL(prevFrame, x, y)) continue;
                 p = x / CONFIG_BROSE_PANEL_WIDTH;
                 if (p != prev_p) {
                     //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
                     //display_select_panel(p);
                     prev_p = p;
                 }
-                display_select_color(BUFFER_VAL(frame, x, y));
+                display_select_color(PIX_BUF_VAL(frame, x, y));
                 display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
                 display_select_row(y);
                 ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
@@ -154,8 +154,8 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         memcpy(prevFrame, frame, frameBufSize);
     } else {
         for(uint16_t i = 0; i < frameBufSize; i++) {
-            x = (i / DISPLAY_FRAME_HEIGHT_BYTES);
-            y_byte = i % DISPLAY_FRAME_HEIGHT_BYTES;
+            x = (i / DISPLAY_FRAME_HEIGHT_PIXEL_BYTES);
+            y_byte = i % DISPLAY_FRAME_HEIGHT_PIXEL_BYTES;
             for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
                 y = (y_byte * 8) + y_bit;
                 p = x / CONFIG_BROSE_PANEL_WIDTH;
@@ -164,7 +164,7 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                     //display_select_panel(p);
                     prev_p = p;
                 }
-                display_select_color(BUFFER_VAL(frame, x, y));
+                display_select_color(PIX_BUF_VAL(frame, x, y));
                 display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
                 display_select_row(y);
                 ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);

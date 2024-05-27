@@ -5,9 +5,9 @@
 #include "cJSON.h"
 
 cJSON* shader_get_available();
-color_rgb_t shader_static(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, color_rgb_t color);
-color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, uint8_t repeats);
-color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, uint16_t speed, uint8_t repeats, uint8_t rtl);
-color_rgb_t shader_sweeping_single_color_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, uint16_t speed);
-color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, color_rgb_t start, color_rgb_t end, uint8_t repeats);
-color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint16_t displaySize, uint8_t character, cJSON* shaderData);
+color_rgb_t shader_static(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t color);
+color_rgb_t shader_static_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint8_t repeats);
+color_rgb_t shader_sweeping_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint16_t speed, uint8_t repeats, uint8_t rtl);
+color_rgb_t shader_sweeping_single_color_rainbow(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, uint16_t speed);
+color_rgb_t shader_linear_gradient(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, color_rgb_t start, color_rgb_t end, uint8_t repeats);
+color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, cJSON* shaderData);

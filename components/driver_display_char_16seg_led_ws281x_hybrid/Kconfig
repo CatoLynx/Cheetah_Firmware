@@ -1,0 +1,20 @@
+menu "16-segment WS281x Hybrid Configuration"
+
+config 16SEG_WS281X_HYBRID_DATA_IO
+    int "Data GPIO"
+    default 0
+    help
+        GPIO Pin for LED data
+
+choice 16SEG_WS281X_HYBRID_SPI_HOST
+    bool "SPI Host"
+    default 16SEG_WS281X_HYBRID_SPI_HOST_VSPI
+
+    config 16SEG_WS281X_HYBRID_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config 16SEG_WS281X_HYBRID_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
+endmenu

@@ -100,30 +100,71 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON* json = cJSON_CreateObject();
     cJSON_AddStringToObject(json, "type", DISPLAY_TYPE);
     cJSON_AddStringToObject(json, "driver", DISPLAY_DRIVER);
-#if defined(DISPLAY_HAS_SIZE)
-    cJSON_AddNumberToObject(json, "width", CONFIG_DISPLAY_WIDTH);
-    cJSON_AddNumberToObject(json, "height", CONFIG_DISPLAY_HEIGHT);
-    cJSON_AddNumberToObject(json, "frame_width", DISPLAY_FRAME_WIDTH);
-    cJSON_AddNumberToObject(json, "frame_height", DISPLAY_FRAME_HEIGHT);
-    cJSON_AddNumberToObject(json, "viewport_offset_x", DISPLAY_VIEWPORT_OFFSET_X);
-    cJSON_AddNumberToObject(json, "viewport_offset_y", DISPLAY_VIEWPORT_OFFSET_Y);
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    cJSON_AddNumberToObject(json, "viewport_width_pixel", DISPLAY_VIEWPORT_WIDTH_PIXEL);
+    cJSON_AddNumberToObject(json, "viewport_height_pixel", DISPLAY_VIEWPORT_HEIGHT_PIXEL);
+    cJSON_AddNumberToObject(json, "frame_width_pixel", DISPLAY_FRAME_WIDTH_PIXEL);
+    cJSON_AddNumberToObject(json, "frame_height_pixel", DISPLAY_FRAME_HEIGHT_PIXEL);
+    cJSON_AddNumberToObject(json, "viewport_offset_x_pixel", DISPLAY_VIEWPORT_OFFSET_X_PIXEL);
+    cJSON_AddNumberToObject(json, "viewport_offset_y_pixel", DISPLAY_VIEWPORT_OFFSET_Y_PIXEL);
 #else
-    cJSON_AddNullToObject(json, "width");
-    cJSON_AddNullToObject(json, "height");
-    cJSON_AddNullToObject(json, "frame_width");
-    cJSON_AddNullToObject(json, "frame_height");
-    cJSON_AddNullToObject(json, "viewport_offset_x");
-    cJSON_AddNullToObject(json, "viewport_offset_y");
+    cJSON_AddNullToObject(json, "viewport_width_pixel");
+    cJSON_AddNullToObject(json, "viewport_height_pixel");
+    cJSON_AddNullToObject(json, "frame_width_pixel");
+    cJSON_AddNullToObject(json, "frame_height_pixel");
+    cJSON_AddNullToObject(json, "viewport_offset_x_pixel");
+    cJSON_AddNullToObject(json, "viewport_offset_y_pixel");
 #endif
-    cJSON_AddNumberToObject(json, "framebuf_size", DISPLAY_FRAMEBUF_SIZE);
-    cJSON_AddStringToObject(json, "frame_type", DISPLAY_FRAME_TYPE);
+
 #if defined(DISPLAY_HAS_CHAR_BUFFER)
-    cJSON_AddNumberToObject(json, "textbuf_size", DISPLAY_TEXTBUF_SIZE);
-    cJSON_AddNumberToObject(json, "charbuf_size", DISPLAY_CHARBUF_SIZE);
+    cJSON_AddNumberToObject(json, "viewport_width_char", DISPLAY_VIEWPORT_WIDTH_CHAR);
+    cJSON_AddNumberToObject(json, "viewport_height_char", DISPLAY_VIEWPORT_HEIGHT_CHAR);
+    cJSON_AddNumberToObject(json, "frame_width_char", DISPLAY_FRAME_WIDTH_CHAR);
+    cJSON_AddNumberToObject(json, "frame_height_char", DISPLAY_FRAME_HEIGHT_CHAR);
+    cJSON_AddNumberToObject(json, "viewport_offset_x_char", DISPLAY_VIEWPORT_OFFSET_X_CHAR);
+    cJSON_AddNumberToObject(json, "viewport_offset_y_char", DISPLAY_VIEWPORT_OFFSET_Y_CHAR);
+#else
+    cJSON_AddNullToObject(json, "viewport_width_char");
+    cJSON_AddNullToObject(json, "viewport_height_char");
+    cJSON_AddNullToObject(json, "frame_width_char");
+    cJSON_AddNullToObject(json, "frame_height_char");
+    cJSON_AddNullToObject(json, "viewport_offset_x_char");
+    cJSON_AddNullToObject(json, "viewport_offset_y_char");
+#endif
+
+#if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+    cJSON_AddNumberToObject(json, "unitbuf_size", DISPLAY_UNIT_BUF_SIZE);
+#else
+    cJSON_AddNullToObject(json, "unitbuf_size");
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER) || defined(DISPLAY_HAS_CHAR_BUFFER)
+    cJSON_AddStringToObject(json, "output_buf_based_on", DISPLAY_OUTPUT_BUFFER_BASED_ON);
+    cJSON_AddNumberToObject(json, "output_width", DISPLAY_OUTPUT_WIDTH);
+    cJSON_AddNumberToObject(json, "output_height", DISPLAY_OUTPUT_HEIGHT);
+#else
+    cJSON_AddNullToObject(json, "output_buf_based_on");
+    cJSON_AddNullToObject(json, "output_width");
+    cJSON_AddNullToObject(json, "output_height");
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    cJSON_AddNumberToObject(json, "pixbuf_size", DISPLAY_PIX_BUF_SIZE);
+    cJSON_AddStringToObject(json, "pixbuf_type", DISPLAY_PIX_BUF_TYPE);
+#else
+    cJSON_AddNullToObject(json, "pixbuf_size");
+    cJSON_AddNullToObject(json, "pixbuf_type");
+#endif
+
+#if defined(DISPLAY_HAS_CHAR_BUFFER)
+    cJSON_AddNumberToObject(json, "textbuf_size", DISPLAY_TEXT_BUF_SIZE);
+    cJSON_AddNumberToObject(json, "charbuf_size", DISPLAY_CHAR_BUF_SIZE);
 #else
     cJSON_AddNullToObject(json, "textbuf_size");
     cJSON_AddNullToObject(json, "charbuf_size");
 #endif
+
     cJSON_AddBoolToObject(json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
     cJSON* sel_config;

@@ -1,5 +1,6 @@
 #include "util_buffer.h"
 #include "util_generic.h"
+#include "macros.h"
 #include <string.h>
 
 
@@ -108,7 +109,7 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
 
         if (display_text_buffer[textBufIndex] == '\n') {
             // If a line break is encountered, skip to the beginning of the next line
-            while (charBufCol < CONFIG_DISPLAY_FRAME_WIDTH) {
+            while (charBufCol < DISPLAY_FRAME_WIDTH_CHAR) {
                 charBufCol++;
                 charBufIndex++;
                 if (charBufIndex >= charBufSize) return;
@@ -129,7 +130,7 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
             charBufIndex++;
             if (charBufIndex >= charBufSize) return;
             charBufCol++;
-            if (charBufCol >= CONFIG_DISPLAY_FRAME_WIDTH) {
+            if (charBufCol >= DISPLAY_FRAME_WIDTH_CHAR) {
                 charBufCol = 0;
                 charBufRow++;
             }

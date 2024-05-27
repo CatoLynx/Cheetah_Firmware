@@ -17,13 +17,13 @@
 #define LOG_TAG "LED-SR-I2S"
 
 
-#if !defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
+#if !defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
 #error "I2S shift register LED matrix driver can only be used with 1bpp frame buffer"
 #endif
 
 #define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
-#define DISPLAY_FRAMEBUF_SIZE DIV_CEIL(CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT, 8)
-#define I2S_BUF_SIZE (DISPLAY_FRAMEBUF_SIZE * 8)
+#define DISPLAY_OUT_BUF_SIZE DIV_CEIL(CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT, 8)
+#define I2S_BUF_SIZE (DISPLAY_OUT_BUF_SIZE * 8)
 uint8_t i2s_buf[I2S_BUF_SIZE];
 
 // Indices: Logical addresses; Values: Actual addresses

@@ -17,8 +17,8 @@
 static TaskHandle_t artnetTaskHandle;
 static uint8_t* artnet_temp_buffer;
 static size_t artnet_temp_buffer_size = 0;
-static uint8_t* artnet_out_buffer;
-static size_t artnet_out_buffer_size = 0;
+static uint8_t* artnet_pixel_buffer;
+static size_t artnet_pixel_buffer_size = 0;
 
 
 static void artnet_task(void* arg) {
@@ -89,15 +89,15 @@ static void artnet_task(void* arg) {
                 // Copy partial frame to buffer
                 memcpy(&artnet_temp_buffer[packet.universe * ARTNET_UNIVERSE_SIZE], packet.data, packet.dataLength);
 
-                #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
+                #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
                     #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
-                    buffer_8to1(artnet_temp_buffer, artnet_out_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    buffer_8to1(artnet_temp_buffer, artnet_pixel_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
-                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
+                #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_8BPP)
                     #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
@@ -105,7 +105,7 @@ static void artnet_task(void* arg) {
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
-                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
+                #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
                     #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
@@ -126,12 +126,12 @@ static void artnet_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void artnet_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize) {
+void artnet_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, size_t tmpBufSize) {
     ESP_LOGI(LOG_TAG, "Starting ArtNet receiver");
     artnet_temp_buffer = tmpBuf;
     artnet_temp_buffer_size = tmpBufSize;
-    artnet_out_buffer = outBuf;
-    artnet_out_buffer_size = outBufSize;
+    artnet_pixel_buffer = pixBuf;
+    artnet_pixel_buffer_size = pixBufSize;
     xTaskCreatePinnedToCore(artnet_task, "artnet_server", 4096, NULL, 5, &artnetTaskHandle, 0);
 }
 

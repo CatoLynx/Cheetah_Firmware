@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8">
     <title>Canvas</title>
-    <link rel="icon" href="/img/favicon.ico">
-    <link rel="stylesheet" href="/css/simple.css">
+    <link rel="icon" href="img/favicon.ico">
+    <link rel="stylesheet" href="css/simple.css">
     <meta name='viewport' content='width=device-width, initial-scale=1' />
-    <script src="/js/jquery.min.js"></script>
-    <script src="/js/util.js"></script>
+    <script src="js/jquery.min.js"></script>
+    <script src="js/util.js"></script>
   </head>
   <body>
     <h2 id="hostname">&nbsp;</h2>
@@ -20,7 +20,8 @@
         <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
         <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label><br />
         <input type="button" id="btn-clear" value="Clear" /><br />
-        <input type="button" id="btn-invert-colors" value="Invert Colors" />
+        <input type="button" id="btn-invert-colors" value="Invert Colors" /><br />
+        <label for="num-brush-size"><input type="number" min="1" max="50" value="1" id="num-brush-size" style="width: 4em;" /> Brush Size</label>
       </div>
     </div>
     <div id="text-container" style="display: none;">
@@ -48,114 +49,52 @@
     <script type="text/javascript">
       var _CANVASDEBUG = false;
       var _CANVASDEBUGINFO = {
-        "type":	"selection",
-        "driver":	"sel_krone_9000",
-        "width":	null,
-        "height":	null,
-        "frame_width":	null,
-        "frame_height":	null,
-        "viewport_offset_x":	null,
-        "viewport_offset_y":	null,
-        "framebuf_size":	256,
-        "frame_type":	"unit",
-        "textbuf_size":	null,
-        "charbuf_size":	null,
-        "brightness_control":	false,
-        "config":	{
-          "units":	[
-            {
-              "name": "destination",
-              "type":	"text",
-              "flags": ["upper"],
-              "addr":	1,
-              "x":	2,
-              "y":	4,
-              "width":	2,
-              "height":	2,
-              "len":	8,
-              "map":	"alnum"
-            },
-            {
-              "name": "train_type",
-              "type":	"map",
-              "addr":	13,
-              "x":	2,
-              "y":	0,
-              "width":	6,
-              "height":	2,
-              "len":	1,
-              "map":	"trainType"
-            },
-            {
-              "name": "train_number",
-              "type":	"text",
-              "flags": ["upper"],
-              "addr":	100,
-              "x":	8,
-              "y":	0,
-              "width":	2,
-              "height":	2,
-              "len":	5,
-              "map":	"alnum"
-            },
-            {
-              "name": "via",
-              "type":	"map",
-              "addr":	27,
-              "x":	0,
-              "y":	2,
-              "width":	20,
-              "height":	2,
-              "len":	1,
-              "map":	"via"
-            }
-          ],
-          "maps":	{
-            "alnum":	{
-              "0":	null,
-              "1":	"A",
-              "2":  "B"
-            },
-            "trainType":	{
-              "0":	null,
-              "1":	"ICE",
-              "2":	"RB",
-              "3":	"RE",
-              "4":	null,
-              "25":	"VIA"
-            },
-            "via":	{
-              "0":	null,
-              "1":	"Berlin - München",
-              "2":	"Frankfurt - Offenbach",
-              "3":	"Hagen",
-              "4":	"Sonderfahrt!",
-              "25":	"Bremen Hbf"
-            }
-          }
-        },
-        "quirks":	[]
+        "type": "char_on_pixel",
+        "driver": "char_16seg_led_ws281x_hybrid",
+        "viewport_width_pixel": 74,
+        "viewport_height_pixel": 101,
+        "frame_width_pixel": 74,
+        "frame_height_pixel": 101,
+        "viewport_offset_x_pixel": 0,
+        "viewport_offset_y_pixel": 0,
+        "viewport_width_char": 1,
+        "viewport_height_char": 1,
+        "frame_width_char": 1,
+        "frame_height_char": 1,
+        "viewport_offset_x_char": 0,
+        "viewport_offset_y_char": 0,
+        "unitbuf_size": null,
+        "output_buf_based_on": "char",
+        "output_width": 1,
+        "output_height": 1,
+        "pixbuf_size": 74 * 101 * 3,
+        "pixbuf_type": "24bpp",
+        "textbuf_size": 2,
+        "charbuf_size": 1,
+        "brightness_control": false,
+        "config": {},
+        "quirks": []
       };
       
       var display_info = {};
       var shader_list = [];
       var selectedShaderId = 0;
-      var pixelWidth = 20;
-      var pixelHeight = 20;
+      var pixelSize = 10;
+      var brushSize = 1;
       var baseColor = "#000000";
       var bgColor = "#000000";
       var gridColor = "#444444";
       var fgColor = "#ffffff";
-      var gridLineWidth = 2;
+      var gridLineWidth = 1;
       var pixels = new Array(0);
-      var buttonPressed = false;
-      var updateInProgress = false;
+      var pixelCanvasButtonPressed = false;
+      var pixelBufferUpdateInProgress = false;
+      var textBufferUpdateInProgress = false;
+      var unitBufferUpdateInProgress = false;
       var liveUpdate = false;
       
-
+      /* PIXEL FUNCTIONS ################################################### */
       let Pixel = function(x, y, width, height, spacing, color) {
-        let canvas = $("#pixel-canvas")[0];
-
         this.getGridAlignedPos = function(num, size) {
           return num - (num % size);
         };
@@ -178,7 +117,7 @@
       };
 
       Pixel.prototype.getIndex = function() {
-        return this.buf_x * display_info["height"] + this.buf_y;
+        return this.buf_x * display_info["viewport_height_pixel"] + this.buf_y;
       }
 
       function drawLine(ctx, x1, y1, x2, y2) {
@@ -191,32 +130,408 @@
 
       function drawPixelCanvas() {
         let canvas = $("#pixel-canvas")[0];
-        canvas.width = (pixelWidth * display_info["width"]) + (gridLineWidth * (display_info["width"] - 1));
-        canvas.height = (pixelHeight * display_info["height"]) + (gridLineWidth * (display_info["height"] - 1));
+        canvas.width = (pixelSize * display_info["viewport_width_pixel"]) + (gridLineWidth * (display_info["viewport_width_pixel"] - 1));
+        canvas.height = (pixelSize * display_info["viewport_height_pixel"]) + (gridLineWidth * (display_info["viewport_height_pixel"] - 1));
         let ctx = canvas.getContext("2d");
         ctx.fillStyle = baseColor;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = gridColor;
         ctx.lineWidth = gridLineWidth;
         
-        for (let i = pixelWidth + (gridLineWidth / 2); i < canvas.width; i += (pixelWidth + gridLineWidth)) {
+        for (let i = pixelSize + (gridLineWidth / 2); i < canvas.width; i += (pixelSize + gridLineWidth)) {
             drawLine(ctx, i, 0, i, canvas.height);
         }
 
-        for (let i = pixelHeight + (gridLineWidth / 2); i < canvas.height; i += (pixelHeight + gridLineWidth)) {
+        for (let i = pixelSize + (gridLineWidth / 2); i < canvas.height; i += (pixelSize + gridLineWidth)) {
             drawLine(ctx, 0, i, canvas.width, i);
         }
         $("#btn-clear").click(clearCanvas);
         $("#btn-invert-colors").click(invertColors);
         $("#pixel-container").show();
+        
+        $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
+        $("#pixel-canvas").mousedown(onCanvasMouseDown);
+        $("#pixel-canvas").mousemove(onCanvasMouseMove);
+        $("#pixel-canvas").mouseup(onCanvasMouseUp);
+        $("#pixel-canvas").mouseout(onCanvasMouseOut);
+      }
+      
+      function drawPixel(x, y, color) {
+        let canvas = $("#pixel-canvas")[0];
+        let margin = canvas.getBoundingClientRect();
+
+        x -= margin.left;
+        y -= margin.top;
+        
+        let offset = Math.round(brushSize * (pixelSize + gridLineWidth) / 2 - pixelSize / 2);
+
+        for (let i = 0; i < brushSize; i++) {
+          for (let j = 0; j < brushSize; j++) {
+            let newPixel = new Pixel(x + i * (pixelSize + gridLineWidth) - offset, y + j * (pixelSize + gridLineWidth) - offset, pixelSize, pixelSize, gridLineWidth, color);
+            newPixel.draw();
+            let index = newPixel.getIndex();
+            pixels[index] = color;
+          }
+        }
       }
 
+      function updateCanvasFromPixels() {
+        // Redraw interactive canvas from pixels array
+        for (let x = 0; x < display_info["viewport_width_pixel"]; x++) {
+          for (let y = 0; y < display_info["viewport_height_pixel"]; y++) {
+            let i = x * display_info["viewport_height_pixel"] + y;
+            let newPixel = new Pixel(x * (pixelSize + gridLineWidth), y * (pixelSize + gridLineWidth), pixelSize, pixelSize, gridLineWidth, pixels[i]);
+            newPixel.draw();
+          }
+        }
+      }
+
+      function clearCanvas() {
+        pixels = new Array(display_info["viewport_width_pixel"] * display_info["viewport_height_pixel"]);
+        pixels.fill(bgColor);
+        updateCanvasFromPixels();
+        updatePixelBuffer(null);
+      }
+
+      function invertColors() {
+        for (let x = 0; x < display_info["viewport_width_pixel"]; x++) {
+          for (let y = 0; y < display_info["viewport_height_pixel"]; y++) {
+            let i = x * display_info["viewport_height_pixel"] + y;
+            pixels[i] = invertHexColor(pixels[i]);
+          }
+        }
+        updateCanvasFromPixels();
+        updatePixelBuffer(null);
+      }
+
+      function onCanvasMouseDown(event) {
+        event.preventDefault();
+        if(event.button == 0) drawPixel(event.clientX, event.clientY, fgColor);
+        if(event.button == 2) drawPixel(event.clientX, event.clientY, bgColor);
+        pixelCanvasButtonPressed = true;
+        updatePixelBuffer(null);
+      }
+
+      function onCanvasMouseRightClick(event) {
+        event.preventDefault();
+      }
+
+      function onCanvasMouseMove(event) {
+        event.preventDefault();
+        if((event.buttons == 1 || event.buttons == 2) && !pixelCanvasButtonPressed) {
+          // Mouse has entered the canvas with button pressed
+          pixelCanvasButtonPressed = true;
+          updatePixelBuffer(null);
+        }
+        if(event.buttons == 1){
+          drawPixel(event.clientX, event.clientY, fgColor);
+        } else if(event.buttons == 2) {
+          drawPixel(event.clientX, event.clientY, bgColor);
+        }
+      }
+
+      function onCanvasMouseUp(event) {
+        pixelCanvasButtonPressed = false;
+        updatePixelBuffer(null);
+      }
+
+      function onCanvasMouseOut(event) {
+        if(pixelCanvasButtonPressed) updatePixelBuffer(null);
+        pixelCanvasButtonPressed = false;
+      }
+
+      function onForegroundColorChange(event) {
+        fgColor = limitColorRange($("#fg-color").val());
+        $("#fg-color").val(fgColor);
+        localStorage.setItem("fgColor", fgColor);
+      }
+      
+      function onBackgroundColorChange(event) {
+        bgColor = limitColorRange($("#bg-color").val());
+        $("#bg-color").val(bgColor);
+        localStorage.setItem("bgColor", bgColor);
+      }
+      
+      function onBrushSizeChange(event) {
+        brushSize = $("#num-brush-size").val();
+        localStorage.setItem("brushSize", brushSize);
+      }
+
+      function getPixelBufferFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/canvas/buffer/pixel",
+          success: onGetPixelBufferFromDisplaySuccess,
+          error: onGetPixelBufferFromDisplayError
+        });
+      }
+
+      function onGetPixelBufferFromDisplaySuccess(data, textStatus, jqXHR) {
+        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          let framebuf = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+          switch(display_info["pixbuf_type"]) {
+            case "1bpp": {
+              // TODO: Implement
+              break;
+            }
+
+            case "8bpp": {
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+                for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+                  if ((x >= display_info["viewport_offset_x_pixel"]) && (y >= display_info["viewport_offset_y_pixel"]) && (x < (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) && (y < (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"]))) {
+                    pixels[pixel_idx++] = luminosityToHexColor(framebuf[fb_idx]);
+                  }
+                  fb_idx++;
+                }
+              }
+              break;
+            }
+
+            case "24bpp": {
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+                for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+                  if ((x >= display_info["viewport_offset_x_pixel"]) && (y >= display_info["viewport_offset_y_pixel"]) && (x < (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) && (y < (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"]))) {
+                    pixels[pixel_idx++] = rgbToHex(framebuf[fb_idx], framebuf[fb_idx + 1], framebuf[fb_idx + 2]);
+                  }
+                  fb_idx += 3;
+                }
+              }
+              break;
+            }
+          }
+          updateCanvasFromPixels();
+        }
+      }
+
+      function onGetPixelBufferFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting pixel buffer from display!");
+        console.log(errorThrown);
+      }
+
+      function getPixelBuffer() {
+        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          switch(display_info["pixbuf_type"]) {
+            case "1bpp": {
+              let framebuf = new Array(display_info["pixbuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+                let byte = 0x00;
+                for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+                  let bit = y % 8;
+                  if (!((x < display_info["viewport_offset_x_pixel"]) || (y < display_info["viewport_offset_y_pixel"]) || (x >= (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) || (y >= (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"])))) {
+                    if (hexColorToLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
+                    pixel_idx++;
+                  }
+                  if ((bit == 7) || (y == display_info["frame_height_pixel"] - 1)) {
+                    framebuf[fb_idx++] = byte;
+                    byte = 0x00;
+                  }
+                }
+              }
+              return framebuf;
+            }
+
+            case "8bpp": {
+              let framebuf = new Array(display_info["pixbuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+                for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+                  if ((x < display_info["viewport_offset_x_pixel"]) || (y < display_info["viewport_offset_y_pixel"]) || (x >= (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) || (y >= (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"]))) {
+                    framebuf[fb_idx++] = 0;
+                  } else {
+                    framebuf[fb_idx++] = hexColorToLuminosity(pixels[pixel_idx]);
+                    pixel_idx++;
+                  }
+                }
+              }
+              return framebuf;
+            }
+
+            case "24bpp": {
+              let framebuf = new Array(display_info["pixbuf_size"]);
+              let fb_idx = 0;
+              let pixel_idx = 0;
+              for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+                for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+                  if ((x < display_info["viewport_offset_x_pixel"]) || (y < display_info["viewport_offset_y_pixel"]) || (x >= (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) || (y >= (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"]))) {
+                    framebuf[fb_idx++] = 0;
+                    framebuf[fb_idx++] = 0;
+                    framebuf[fb_idx++] = 0;
+                  } else {
+                    color = hexToRGB(pixels[pixel_idx]);
+                    framebuf[fb_idx++] = color["r"];
+                    framebuf[fb_idx++] = color["g"];
+                    framebuf[fb_idx++] = color["b"];
+                    pixel_idx++;
+                  }
+                }
+              }
+              return framebuf;
+            }
+          }
+        }
+      }
+
+      function updatePixelBuffer(event) {
+        // If live update is disabled, only allow events from the update button
+        if (!liveUpdate) {
+          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
+            return;
+          }
+        }
+        
+        let fb = getPixelBuffer();
+        buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
+        
+        if (_CANVASDEBUG) {
+          console.log(fb);
+          console.log(buffer_b64);
+          setTimeout(onUpdatePixelBufferSuccess, 250);
+        } else {
+          if(pixelBufferUpdateInProgress) return;
+          pixelBufferUpdateInProgress = true;
+          $.ajax({
+            type: "POST",
+            contentType: "text/plain",
+            url: "/canvas/buffer/pixel",
+            data: buffer_b64,
+            success: onUpdatePixelBufferSuccess,
+            error: onUpdatePixelBufferError
+          });
+        }
+      }
+
+      function onUpdatePixelBufferSuccess(data, textStatus, jqXHR) {
+        pixelBufferUpdateInProgress = false;
+        if(pixelCanvasButtonPressed) updatePixelBuffer(null);
+      }
+
+      function onUpdatePixelBufferError(jqXHR, textStatus, errorThrown) {
+        pixelBufferUpdateInProgress = false;
+        console.log("Error updating pixel buffer!");
+        console.log(errorThrown);
+      }
+
+      /* ################################################################### */
+
+      /* TEXT FUNCTIONS #################################################### */
       function drawTextInput() {
-        $("#text-input").prop('cols', display_info["width"]);
-        $("#text-input").prop('rows', display_info["height"]);
+        $("#text-input").prop('cols', display_info["viewport_width_char"]);
+        $("#text-input").prop('rows', display_info["viewport_height_char"]);
         $("#text-container").show();
+        $("#text-input").on("input", onTextInputInput);
       }
 
+      function onTextInputInput(event) {
+        event.preventDefault();
+        updateTextBuffer(event);
+      }
+
+      function getActualCharCount(str) {
+        let count = 0;
+        if (display_info["quirks"].includes("combining_full_stop")) {
+          for (var i = 0; i < str.length; i++) {
+            if (i == 0) {
+              count++; // Always count first character
+            } else {
+              if (str[i] == ".") {
+                if (str[i-1] == ".") count++; // Only count full stop if preceded by another full stop
+              } else {
+                count++; // Always count non full stop characters
+              }
+            }
+          }
+        } else {
+          count = str.length;
+        }
+        return count;
+      }
+
+      function getTextBufferFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/canvas/buffer/text",
+          success: onGetTextBufferFromDisplaySuccess,
+          error: onGetTextBufferFromDisplayError
+        });
+      }
+
+      function onGetTextBufferFromDisplaySuccess(data, textStatus, jqXHR) {
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          let text = atob(data).replaceAll(/[ \x00]*$/g, "");
+          $("#text-input").val(text);
+        }
+      }
+
+      function onGetTextBufferFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting text buffer from display!");
+        console.log(errorThrown);
+      }
+
+      function getTextBuffer() {
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          let textbuf = new Array(display_info["textbuf_size"]);
+          let val = $("#text-input").val();
+          let valLen = val.length;
+          for (let i = 0; i < valLen && i < display_info["textbuf_size"]; i++) {
+            let code = val.charCodeAt(i);
+            textbuf[i] = code > 255 ? 0 : code;
+          }
+          return textbuf;
+        }
+        
+      }
+      
+      function updateTextBuffer(event) {
+        // If live update is disabled, only allow events from the update button
+        if (!liveUpdate) {
+          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
+            return;
+          }
+        }
+        
+        let fb = getTextBuffer();
+        buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
+        
+        if (_CANVASDEBUG) {
+          console.log(fb);
+          console.log(buffer_b64);
+          setTimeout(onUpdateTextBufferSuccess, 250);
+        } else {
+          if(textBufferUpdateInProgress) return;
+          textBufferUpdateInProgress = true;
+          $.ajax({
+            type: "POST",
+            contentType: "text/plain",
+            url: "/canvas/buffer/text",
+            data: buffer_b64,
+            success: onUpdateTextBufferSuccess,
+            error: onUpdateTextBufferError
+          });
+        }
+      }
+
+      function onUpdateTextBufferSuccess(data, textStatus, jqXHR) {
+        textBufferUpdateInProgress = false;
+      }
+
+      function onUpdateTextBufferError(jqXHR, textStatus, errorThrown) {
+        textBufferUpdateInProgress = false;
+        console.log("Error updating text buffer!");
+        console.log(errorThrown);
+      }
+
+      /* ################################################################### */
+      
+      /* SELECTION FUNCTIONS ############################################### */
       function drawSelectionInput() {
         function getUnitByCoordinates(x, y) {
           let units = display_info["config"]["units"];
@@ -311,7 +626,7 @@
                   input.on("input", onTextInputInput);
                 } else if(unit["type"] == "map") {
                   input = $("<select>");
-                  input.change(updateDisplay);
+                  input.change(updateUnitBuffer);
                   let map = config["maps"][unit["map"]];
 
                   // Add home position
@@ -344,10 +659,169 @@
         $("#selection-container").append(table);
       }
 
+      function getUnitBufferFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/canvas/buffer/unit",
+          success: onGetUnitBufferFromDisplaySuccess,
+          error: onGetUnitBufferFromDisplayError
+        });
+      }
+
+      function onGetUnitBufferFromDisplaySuccess(data, textStatus, jqXHR) {
+        if (display_info["type"] == "selection") {
+          let moduleData = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+          for (var i = 0; i < display_info["config"]["units"].length; i++) {
+            let unit = display_info["config"]["units"][i];
+            let input = $("[data-unit-index=" + i + "]");
+            if (unit["type"] == "map") {
+              input.val(moduleData[unit["addr"]]);
+            } else if (unit["type"] == "text") {
+              let text = "";
+              let map = display_info["config"]["maps"][unit["map"]];
+              for (var j = 0; j < unit["len"]; j++) {
+                let code = moduleData[unit["addr"]+j];
+                if (code in map) {
+                  text += map[code];
+                } else {
+                  text += " ";
+                }
+              }
+              input.val(text.trim());
+            }
+          }
+        }
+      }
+
+      function onGetUnitBufferFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting unit buffer from display!");
+        console.log(errorThrown);
+      }
+
+      function getUnitBuffer() {
+        if (display_info["type"] == "selection") {
+          let framebuf = new Array(display_info["unitbuf_size"]);
+          let inputs = $("[data-is-unit=true]");
+          for (const input of inputs) {
+            let unit_index = parseInt($(input).attr("data-unit-index"));
+            let unit = display_info["config"]["units"][unit_index];
+            let value = $(input).val();
+            if (unit["type"] == "text") {
+              // Convert text to positions using mapping
+              if (unit["flags"].includes("upper")) value = value.toUpperCase();
+              if (unit["flags"].includes("lower")) value = value.toLowerCase();
+
+              let map = swap(display_info["config"]["maps"][unit["map"]]);
+              for (var i = 0; i < unit["len"]; i++) {
+                framebuf[unit["addr"] + i] = parseInt(map[value[i]]) || 0;
+              }
+            } else if(unit["type"] == "map") {
+              // Already mapped
+              framebuf[unit["addr"]] = parseInt(value) || 0;
+            }
+          }
+          return framebuf;
+        }
+      }
+
+      function updateUnitBuffer(event) {
+        // If live update is disabled, only allow events from the update button
+        if (!liveUpdate) {
+          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
+            return;
+          }
+        }
+        
+        let fb = getUnitBuffer();
+        buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
+        
+        if (_CANVASDEBUG) {
+          console.log(fb);
+          console.log(buffer_b64);
+          setTimeout(onUpdateUnitBufferSuccess, 250);
+        } else {
+          if(unitBufferUpdateInProgress) return;
+          unitBufferUpdateInProgress = true;
+          $.ajax({
+            type: "POST",
+            contentType: "text/plain",
+            url: "/canvas/buffer/text",
+            data: buffer_b64,
+            success: onUpdateUnitBufferSuccess,
+            error: onUpdateUnitBufferError
+          });
+        }
+      }
+
+      function onUpdateUnitBufferSuccess(data, textStatus, jqXHR) {
+        unitBufferUpdateInProgress = false;
+      }
+
+      function onUpdateUnitBufferError(jqXHR, textStatus, errorThrown) {
+        unitBufferUpdateInProgress = false;
+        console.log("Error updating unit buffer!");
+        console.log(errorThrown);
+      }
+
+      /* ################################################################### */
+      
+      /* BRIGHTNESS FUNCTIONS ############################################## */
       function drawBrightnessControl() {
         $("#brightness-container").show();
       }
 
+      function onBrightnessChange(event) {
+        updateBrightness();
+      }
+
+      function getBrightnessFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/brightness.json",
+          success: onGetBrightnessFromDisplaySuccess,
+          error: onGetBrightnessFromDisplayError
+        });
+      }
+
+      function updateBrightness() {
+        let brightness = parseInt($("#brightness-input").val());
+        if (_CANVASDEBUG) {
+          console.log("Setting brightness to " + brightness);
+        } else {
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/brightness.json",
+            data: JSON.stringify({"brightness": brightness}),
+            success: onSetBrightnessSuccess,
+            error: onSetBrightnessError
+          });
+        }
+      }
+
+      function onGetBrightnessFromDisplaySuccess(data, textStatus, jqXHR) {
+        $("#brightness-input").val(data["brightness"]);
+      }
+
+      function onGetBrightnessFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting brightness from display!");
+        console.log(errorThrown);
+      }
+
+      function onSetBrightnessSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetBrightnessError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting brightness!");
+        console.log(errorThrown);
+      }
+
+      /* ################################################################### */
+      
+      /* SHADER FUNCTIONS ################################################## */
       function drawShaderControl() {
         shader_list.forEach(function(shader, i) {
           $('#shader-select').append($('<option>', {
@@ -404,165 +878,6 @@
         }
       }
 
-      function drawPixel(x, y, color) {
-        let canvas = $("#pixel-canvas")[0];
-        let margin = canvas.getBoundingClientRect();
-
-        x -= margin.left;
-        y -= margin.top;
-
-        let newPixel = new Pixel(x, y, pixelWidth, pixelHeight, gridLineWidth, color);
-        newPixel.draw();
-        let i = newPixel.getIndex();
-        pixels[i] = color;
-      }
-
-      function updateCanvasFromPixels() {
-        // Redraw interactive canvas from pixels array
-        for (let x = 0; x < display_info["width"]; x++) {
-          for (let y = 0; y < display_info["height"]; y++) {
-            let i = x * display_info["height"] + y;
-            let newPixel = new Pixel(x * (pixelWidth + gridLineWidth), y * (pixelHeight + gridLineWidth), pixelWidth, pixelHeight, gridLineWidth, pixels[i]);
-            newPixel.draw();
-          }
-        }
-      }
-
-      function padZero(str, len) {
-        len = len || 2;
-        var zeros = new Array(len).join('0');
-        return (zeros + str).slice(-len);
-      }
-
-      function invertHexColor(hex) {
-        if (hex.indexOf('#') === 0) {
-          hex = hex.slice(1);
-        }
-        // convert 3-digit hex to 6-digits.
-        if (hex.length === 3) {
-          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-        }
-        if (hex.length !== 6) {
-          throw new Error('Invalid HEX color.');
-        }
-        // invert color components
-        var r = (255 - parseInt(hex.slice(0, 2), 16)).toString(16),
-            g = (255 - parseInt(hex.slice(2, 4), 16)).toString(16),
-            b = (255 - parseInt(hex.slice(4, 6), 16)).toString(16);
-        // pad each with zeros and return
-        return '#' + padZero(r) + padZero(g) + padZero(b);
-      }
-
-      function clearCanvas() {
-        pixels = new Array(display_info["width"] * display_info["height"]);
-        pixels.fill(bgColor);
-        updateCanvasFromPixels();
-        updateDisplay(null);
-      }
-
-      function invertColors() {
-        for (let x = 0; x < display_info["width"]; x++) {
-          for (let y = 0; y < display_info["height"]; y++) {
-            let i = x * display_info["height"] + y;
-            pixels[i] = invertHexColor(pixels[i]);
-          }
-        }
-        updateCanvasFromPixels();
-        updateDisplay(null);
-      }
-
-      function onCanvasMouseDown(event) {
-        event.preventDefault();
-        if(event.button == 0) drawPixel(event.clientX, event.clientY, fgColor);
-        if(event.button == 2) drawPixel(event.clientX, event.clientY, bgColor);
-        buttonPressed = true;
-        updateDisplay(null);
-      }
-
-      function onCanvasMouseRightClick(event) {
-        event.preventDefault();
-      }
-
-      function onCanvasMouseMove(event) {
-        event.preventDefault();
-        if((event.buttons == 1 || event.buttons == 2) && !buttonPressed) {
-          // Mouse has entered the canvas with button pressed
-          buttonPressed = true;
-          updateDisplay(null);
-        }
-        if(event.buttons == 1){
-          drawPixel(event.clientX, event.clientY, fgColor);
-        } else if(event.buttons == 2) {
-          drawPixel(event.clientX, event.clientY, bgColor);
-        }
-      }
-
-      function onCanvasMouseUp(event) {
-        buttonPressed = false;
-        updateDisplay(null);
-      }
-
-      function onCanvasMouseOut(event) {
-        if(buttonPressed) updateDisplay(null);
-        buttonPressed = false;
-      }
-
-      function onTextInputInput(event) {
-        event.preventDefault();
-        updateDisplay(event);
-      }
-
-      function onBrightnessChange(event) {
-        updateBrightness();
-      }
-
-      function hexToRGB(hex) {
-        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? {
-          r: parseInt(result[1], 16),
-          g: parseInt(result[2], 16),
-          b: parseInt(result[3], 16)
-        } : null;
-      }
-      
-      function componentToHex(c) {
-        let hex = c.toString(16);
-        return hex.length == 1 ? "0" + hex : hex;
-      }
-      
-      function rgbToHex(r, g, b) {
-        return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
-      }
-      
-      function limitColorRange(color) {
-        switch(display_info["frame_type"]) {
-          case "1bpp": {
-            let lum = hexColorToLuminosity(color);
-            return lum > 127 ? "#ffffff" : "#000000";
-          }
-
-          case "8bpp": {
-            let lum = hexColorToLuminosity(color);
-            return luminosityToHexColor(lum);
-          }
-          
-          default:
-          case "24bpp": {
-            return color;
-          }
-        }
-      }
-
-      function hexColorToLuminosity(color) {
-        let rgb = hexToRGB(color);
-        let lum = Math.round(rgb["r"] * 0.2126 + rgb["g"] * 0.7152 + rgb["b"] * 0.0722);
-        return lum > 255 ? 255 : lum;
-      }
-
-      function luminosityToHexColor(luminosity) {
-        return rgbToHex(luminosity, luminosity, luminosity);
-      }
-
       function getShaders() {
         $.ajax({
           type: "GET",
@@ -570,26 +885,6 @@
           url: "/canvas/shaders.json",
           success: onGetShadersSuccess,
           error: onGetShadersError
-        });
-      }
-
-      function getFramebufferFromDisplay() {
-        $.ajax({
-          type: "GET",
-          dataType: "json",
-          url: "/canvas/buffer.json",
-          success: onGetFramebufferFromDisplaySuccess,
-          error: onGetFramebufferFromDisplayError
-        });
-      }
-
-      function getBrightnessFromDisplay() {
-        $.ajax({
-          type: "GET",
-          dataType: "json",
-          url: "/canvas/brightness.json",
-          success: onGetBrightnessFromDisplaySuccess,
-          error: onGetBrightnessFromDisplayError
         });
       }
 
@@ -646,175 +941,6 @@
         }
       }
 
-      function getActualCharCount(str) {
-        let count = 0;
-        if (display_info["quirks"].includes("combining_full_stop")) {
-          for (var i = 0; i < str.length; i++) {
-            if (i == 0) {
-              count++; // Always count first character
-            } else {
-              if (str[i] == ".") {
-                if (str[i-1] == ".") count++; // Only count full stop if preceded by another full stop
-              } else {
-                count++; // Always count non full stop characters
-              }
-            }
-          }
-        } else {
-          count = str.length;
-        }
-        return count;
-      }
-
-      function getFramebuffer() {
-        function swap(obj){
-          // Swap keys and values in object
-          var ret = {};
-          for(var key in obj){
-            ret[obj[key]] = key;
-          }
-          return ret;
-        }
-        
-        if (display_info["type"] == "pixel") {
-          switch(display_info["frame_type"]) {
-            case "1bpp": {
-              let framebuf = new Array(display_info["framebuf_size"]);
-              let fb_idx = 0;
-              let pixel_idx = 0;
-              for (let x = 0; x < display_info["frame_width"]; x++) {
-                let byte = 0x00;
-                for (let y = 0; y < display_info["frame_height"]; y++) {
-                  let bit = y % 8;
-                  if (!((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"])))) {
-                    if (hexColorToLuminosity(pixels[pixel_idx]) > 127) byte |= (1 << bit);
-                    pixel_idx++;
-                  }
-                  if ((bit == 7) || (y == display_info["frame_height"] - 1)) {
-                    framebuf[fb_idx++] = byte;
-                    byte = 0x00;
-                  }
-                }
-              }
-              return framebuf;
-            }
-
-            case "8bpp": {
-              let framebuf = new Array(display_info["framebuf_size"]);
-              let fb_idx = 0;
-              let pixel_idx = 0;
-              for (let x = 0; x < display_info["frame_width"]; x++) {
-                for (let y = 0; y < display_info["frame_height"]; y++) {
-                  if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
-                    framebuf[fb_idx++] = 0;
-                  } else {
-                    framebuf[fb_idx++] = hexColorToLuminosity(pixels[pixel_idx]);
-                    pixel_idx++;
-                  }
-                }
-              }
-              return framebuf;
-            }
-
-            case "24bpp": {
-              let framebuf = new Array(display_info["framebuf_size"]);
-              let fb_idx = 0;
-              let pixel_idx = 0;
-              for (let x = 0; x < display_info["frame_width"]; x++) {
-                for (let y = 0; y < display_info["frame_height"]; y++) {
-                  if ((x < display_info["viewport_offset_x"]) || (y < display_info["viewport_offset_y"]) || (x >= (display_info["width"] + display_info["viewport_offset_x"])) || (y >= (display_info["height"] + display_info["viewport_offset_y"]))) {
-                    framebuf[fb_idx++] = 0;
-                    framebuf[fb_idx++] = 0;
-                    framebuf[fb_idx++] = 0;
-                  } else {
-                    color = hexToRGB(pixels[pixel_idx]);
-                    framebuf[fb_idx++] = color["r"];
-                    framebuf[fb_idx++] = color["g"];
-                    framebuf[fb_idx++] = color["b"];
-                    pixel_idx++;
-                  }
-                }
-              }
-              return framebuf;
-            }
-          }
-        } else if (display_info["type"] == "character") {
-          let textbuf = new Array(display_info["textbuf_size"]);
-          let val = $("#text-input").val();
-          let valLen = val.length;
-          for (let i = 0; i < valLen && i < display_info["textbuf_size"]; i++) {
-            let code = val.charCodeAt(i);
-            textbuf[i] = code > 255 ? 0 : code;
-          }
-          return textbuf;
-        } else if (display_info["type"] == "selection") {
-          let framebuf = new Array(display_info["framebuf_size"]);
-          let inputs = $("[data-is-unit=true]");
-          for (const input of inputs) {
-            let unit_index = parseInt($(input).attr("data-unit-index"));
-            let unit = display_info["config"]["units"][unit_index];
-            let value = $(input).val();
-            if (unit["type"] == "text") {
-              // Convert text to positions using mapping
-              if (unit["flags"].includes("upper")) value = value.toUpperCase();
-              if (unit["flags"].includes("lower")) value = value.toLowerCase();
-
-              let map = swap(display_info["config"]["maps"][unit["map"]]);
-              for (var i = 0; i < unit["len"]; i++) {
-                framebuf[unit["addr"] + i] = parseInt(map[value[i]]) || 0;
-              }
-            } else if(unit["type"] == "map") {
-              // Already mapped
-              framebuf[unit["addr"]] = parseInt(value) || 0;
-            }
-          }
-          return framebuf;
-        }
-      }
-
-      function updateDisplay(event) {
-        // If live update is disabled, only allow events from the update button
-        if (!liveUpdate) {
-          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
-            return;
-          }
-        }
-        let fb = getFramebuffer();
-        let buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
-        if (_CANVASDEBUG) {
-          console.log(fb);
-          console.log(buffer_b64);
-          setTimeout(onUpdateDisplaySuccess, 250);
-        } else {
-          if(updateInProgress) return;
-          updateInProgress = true;
-          $.ajax({
-            type: "POST",
-            contentType: "application/json",
-            url: "/canvas/buffer.json",
-            data: JSON.stringify({"buffer": buffer_b64}),
-            success: onUpdateDisplaySuccess,
-            error: onUpdateDisplayError
-          });
-        }
-      }
-
-      function updateBrightness() {
-        let brightness = parseInt($("#brightness-input").val());
-        if (_CANVASDEBUG) {
-          console.log("Setting brightness to " + brightness);
-        } else {
-          $.ajax({
-            type: "POST",
-            contentType: "application/json",
-            url: "/canvas/brightness.json",
-            data: JSON.stringify({"brightness": brightness}),
-            success: onSetBrightnessSuccess,
-            error: onSetBrightnessError
-          });
-        }
-      }
-
       function updateShader() {
         var payload = getShaderData();
 
@@ -833,6 +959,130 @@
         }
       }
 
+      function onShaderSelectChange(event) {
+        selectedShaderId = parseInt($("#shader-select").val());
+        drawShaderParameters();
+        updateShader();
+      }
+
+      function onGetShadersSuccess(data, textStatus, jqXHR) {
+        if(!("shaders" in data)) return;
+        shader_list = data["shaders"];
+        drawShaderControl();
+        getShaderFromDisplay();
+      }
+
+      function onGetShadersError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting shaders!");
+        console.log(errorThrown);
+      }
+
+      function onSetShaderSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetShaderError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting shader!");
+        console.log(errorThrown);
+      }
+      
+      function onGetShaderFromDisplaySuccess(data, textStatus, jqXHR) {
+        if ($.isEmptyObject(data)) return;
+        setShaderData(data);
+      }
+
+      function onGetShaderFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting shader from display!");
+        console.log(errorThrown);
+      }
+      
+      /* ################################################################### */
+
+      /* UTILITY FUNCTIONS ################################################# */
+      function padZero(str, len) {
+        len = len || 2;
+        var zeros = new Array(len).join('0');
+        return (zeros + str).slice(-len);
+      }
+
+      function invertHexColor(hex) {
+        if (hex.indexOf('#') === 0) {
+          hex = hex.slice(1);
+        }
+        // convert 3-digit hex to 6-digits.
+        if (hex.length === 3) {
+          hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+        }
+        if (hex.length !== 6) {
+          throw new Error('Invalid HEX color.');
+        }
+        // invert color components
+        var r = (255 - parseInt(hex.slice(0, 2), 16)).toString(16),
+            g = (255 - parseInt(hex.slice(2, 4), 16)).toString(16),
+            b = (255 - parseInt(hex.slice(4, 6), 16)).toString(16);
+        // pad each with zeros and return
+        return '#' + padZero(r) + padZero(g) + padZero(b);
+      }
+
+      function hexToRGB(hex) {
+        var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      }
+      
+      function componentToHex(c) {
+        let hex = c.toString(16);
+        return hex.length == 1 ? "0" + hex : hex;
+      }
+      
+      function rgbToHex(r, g, b) {
+        return "#" + componentToHex(r) + componentToHex(g) + componentToHex(b);
+      }
+      
+      function limitColorRange(color) {
+        switch(display_info["pixbuf_type"]) {
+          case "1bpp": {
+            let lum = hexColorToLuminosity(color);
+            return lum > 127 ? "#ffffff" : "#000000";
+          }
+
+          case "8bpp": {
+            let lum = hexColorToLuminosity(color);
+            return luminosityToHexColor(lum);
+          }
+          
+          default:
+          case "24bpp": {
+            return color;
+          }
+        }
+      }
+
+      function hexColorToLuminosity(color) {
+        let rgb = hexToRGB(color);
+        let lum = Math.round(rgb["r"] * 0.2126 + rgb["g"] * 0.7152 + rgb["b"] * 0.0722);
+        return lum > 255 ? 255 : lum;
+      }
+
+      function luminosityToHexColor(luminosity) {
+        return rgbToHex(luminosity, luminosity, luminosity);
+      }
+
+      function swap(obj) {
+        // Swap keys and values in object
+        var ret = {};
+        for(var key in obj){
+          ret[obj[key]] = key;
+        }
+        return ret;
+      }
+
+      /* ################################################################### */
+
+      /* GENERAL FUNCTIONS ################################################# */
       function getDisplayInfo() {
         if (_CANVASDEBUG) {
           onGetDisplayInfoSuccess(_CANVASDEBUGINFO);
@@ -850,25 +1100,27 @@
       function onGetDisplayInfoSuccess(data, textStatus, jqXHR) {
         display_info = data;
         if(display_info["type"] == "pixel") {
-          pixels = new Array(data["width"] * data["height"]);
+          pixels = new Array(data["viewport_width_pixel"] * data["viewport_height_pixel"]);
           pixels.fill(bgColor);
           drawPixelCanvas();
-          $("#pixel-canvas").contextmenu(onCanvasMouseRightClick);
-          $("#pixel-canvas").mousedown(onCanvasMouseDown);
-          $("#pixel-canvas").mousemove(onCanvasMouseMove);
-          $("#pixel-canvas").mouseup(onCanvasMouseUp);
-          $("#pixel-canvas").mouseout(onCanvasMouseOut);
+          getPixelBufferFromDisplay();
         } else if(display_info["type"] == "character") {
           drawTextInput();
-          $("#text-input").on("input", onTextInputInput);
+          getTextBufferFromDisplay();
+        } else if(display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          pixels = new Array(data["viewport_width_pixel"] * data["viewport_height_pixel"]);
+          pixels.fill(bgColor);
+          drawPixelCanvas();
+          drawTextInput();
+          getPixelBufferFromDisplay();
+          getTextBufferFromDisplay();
         } else if(display_info["type"] == "selection") {
           drawSelectionInput();
+          getUnitBufferFromDisplay();
         } else {
           console.log("ERROR: Unsupported display type \"" + display_info["type"] + "\"");
           return;
         }
-        
-        getFramebufferFromDisplay();
 
         if(display_info["brightness_control"]) {
           getBrightnessFromDisplay();
@@ -883,35 +1135,12 @@
         $("body").html("<div style='color: #ff3333; font-weight: bold; font-size: 3vw;'>Error communicating with display!</div>");
       }
 
-      function onUpdateDisplaySuccess(data, textStatus, jqXHR) {
-        updateInProgress = false;
-        if(buttonPressed) updateDisplay(null);
+      function updateAllBuffers() {
+        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(null);
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(null);
+        if (display_info["type"] == "selection") updateUnitBuffer(null);
       }
 
-      function onUpdateDisplayError(jqXHR, textStatus, errorThrown) {
-        updateInProgress = false;
-        console.log("Error updating display!");
-        console.log(errorThrown);
-      }
-
-      function onSetBrightnessSuccess(data, textStatus, jqXHR) {
-        
-      }
-
-      function onSetBrightnessError(jqXHR, textStatus, errorThrown) {
-        console.log("Error setting brightness!");
-        console.log(errorThrown);
-      }
-
-      function onSetShaderSuccess(data, textStatus, jqXHR) {
-        
-      }
-
-      function onSetShaderError(jqXHR, textStatus, errorThrown) {
-        console.log("Error setting shader!");
-        console.log(errorThrown);
-      }
-      
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
         $("#hostname").text(data['hostname']);
@@ -919,114 +1148,6 @@
 
       function onGetDeviceInfoError(jqXHR, textStatus, errorThrown) {
         
-      }
-
-      function onGetShadersSuccess(data, textStatus, jqXHR) {
-        if(!("shaders" in data)) return;
-        shader_list = data["shaders"];
-        drawShaderControl();
-        getShaderFromDisplay();
-      }
-
-      function onGetShadersError(jqXHR, textStatus, errorThrown) {
-        console.log("Error getting shaders!");
-        console.log(errorThrown);
-      }
-
-      function onGetFramebufferFromDisplaySuccess(data, textStatus, jqXHR) {
-        // TODO: Make this work for all pixel buffer types
-        if (display_info["type"] == "pixel") {
-          let framebuf = Uint8Array.from(atob(data["buffer"]), c => c.charCodeAt(0));
-          switch(display_info["frame_type"]) {
-            case "1bpp": {
-              break;
-            }
-
-            case "8bpp": {
-              let fb_idx = 0;
-              let pixel_idx = 0;
-              for (let x = 0; x < display_info["frame_width"]; x++) {
-                for (let y = 0; y < display_info["frame_height"]; y++) {
-                  if ((x >= display_info["viewport_offset_x"]) && (y >= display_info["viewport_offset_y"]) && (x < (display_info["width"] + display_info["viewport_offset_x"])) && (y < (display_info["height"] + display_info["viewport_offset_y"]))) {
-                    pixels[pixel_idx++] = luminosityToHexColor(framebuf[fb_idx]);
-                  }
-                  fb_idx++;
-                }
-              }
-            }
-
-            case "24bpp": {
-              break;
-            }
-          }
-          updateCanvasFromPixels();
-        } else if (display_info["type"] == "character") {
-          let text = atob(data["buffer"]).replaceAll(/[ \x00]*$/g, "");
-          $("#text-input").val(text);
-        } else if (display_info["type"] == "selection") {
-          let moduleData = Uint8Array.from(atob(data["buffer"]), c => c.charCodeAt(0));
-          for (var i = 0; i < display_info["config"]["units"].length; i++) {
-            let unit = display_info["config"]["units"][i];
-            let input = $("[data-unit-index=" + i + "]");
-            if (unit["type"] == "map") {
-              input.val(moduleData[unit["addr"]]);
-            } else if (unit["type"] == "text") {
-              let text = "";
-              let map = display_info["config"]["maps"][unit["map"]];
-              for (var j = 0; j < unit["len"]; j++) {
-                let code = moduleData[unit["addr"]+j];
-                if (code in map) {
-                  text += map[code];
-                } else {
-                  text += " ";
-                }
-              }
-              input.val(text.trim());
-            }
-          }
-        }
-      }
-
-      function onGetFramebufferFromDisplayError(jqXHR, textStatus, errorThrown) {
-        console.log("Error getting framebuffer from display!");
-        console.log(errorThrown);
-      }
-
-      function onGetBrightnessFromDisplaySuccess(data, textStatus, jqXHR) {
-        $("#brightness-input").val(data["brightness"]);
-      }
-
-      function onGetBrightnessFromDisplayError(jqXHR, textStatus, errorThrown) {
-        console.log("Error getting brightness from display!");
-        console.log(errorThrown);
-      }
-
-      function onGetShaderFromDisplaySuccess(data, textStatus, jqXHR) {
-        if ($.isEmptyObject(data)) return;
-        setShaderData(data);
-      }
-
-      function onGetShaderFromDisplayError(jqXHR, textStatus, errorThrown) {
-        console.log("Error getting shader from display!");
-        console.log(errorThrown);
-      }
-      
-      function onForegroundColorChange(event) {
-        fgColor = limitColorRange($("#fg-color").val());
-        $("#fg-color").val(fgColor);
-        localStorage.setItem("fgColor", fgColor);
-      }
-      
-      function onBackgroundColorChange(event) {
-        bgColor = limitColorRange($("#bg-color").val());
-        $("#bg-color").val(bgColor);
-        localStorage.setItem("bgColor", bgColor);
-      }
-
-      function onShaderSelectChange(event) {
-        selectedShaderId = parseInt($("#shader-select").val());
-        drawShaderParameters();
-        updateShader();
       }
 
       function onLiveUpdateChange(event) {
@@ -1044,14 +1165,19 @@
         getShaders();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
+        brushSize = localStorage.getItem("brushSize") || brushSize;
         $("#check-live-update").change(onLiveUpdateChange);
-        $("#btn-update").click(updateDisplay);
+        $("#btn-update").click(updateAllBuffers);
         $("#fg-color").val(fgColor);
         $("#bg-color").val(bgColor);
+        $("#num-brush-size").val(brushSize);
         $("#fg-color").change(onForegroundColorChange);
         $("#bg-color").change(onBackgroundColorChange);
+        $("#num-brush-size").change(onBrushSizeChange);
       }
 
+      /* ################################################################### */
+      
       $(document).ready(onReady);
     </script>
   </body>

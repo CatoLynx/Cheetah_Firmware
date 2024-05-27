@@ -32,7 +32,7 @@ uint8_t wifi_gotIP = 0;
 extern char hostname[63];
 
 #if defined(DISPLAY_HAS_CHAR_BUFFER)
-extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
+extern uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE];
 #endif
 
 
@@ -86,10 +86,10 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 wifi_gotIP = 1;
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
-                #if defined(DISPLAY_HAS_CHAR_BUFFER)
+                #if defined(DISPLAY_HAS_CHAR_BUFFER) && defined(CONFIG_DISPLAY_SHOW_MESSAGES)
                 char temp[19];
                 sprintf(temp, IPSTR, IP2STR(&event->ip_info.ip));
-                STRCPY_TEXTBUF((char*)display_text_buffer, temp, DISPLAY_TEXTBUF_SIZE);
+                STRCPY_TEXTBUF((char*)display_text_buffer, temp, DISPLAY_TEXT_BUF_SIZE);
                 #endif
                 s_retry_num = 0;
                 ntp_sync_time();
@@ -129,7 +129,9 @@ void wifi_init_ap(void) {
     ESP_ERROR_CHECK(esp_wifi_start());
 
     ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s", ap_ssid, ap_pass);
-    STRCPY_TEXTBUF((char*)display_text_buffer, "AP MODE", DISPLAY_TEXTBUF_SIZE);
+    #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
+    STRCPY_TEXTBUF((char*)display_text_buffer, "AP MODE", DISPLAY_TEXT_BUF_SIZE);
+    #endif
 }
 
 void wifi_init(nvs_handle_t* nvsHandle) {
@@ -297,5 +299,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_wifi_start());
     ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname));
 
-    STRCPY_TEXTBUF((char*)display_text_buffer, "CONNECTING", DISPLAY_TEXTBUF_SIZE);
+    #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
+    STRCPY_TEXTBUF((char*)display_text_buffer, "CONNECTING", DISPLAY_TEXT_BUF_SIZE);
+    #endif
 }

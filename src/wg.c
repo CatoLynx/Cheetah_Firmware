@@ -7,7 +7,7 @@
 
 
 #if defined(DISPLAY_HAS_CHAR_BUFFER)
-extern uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE];
+extern uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE];
 #endif
 
 

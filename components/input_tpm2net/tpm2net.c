@@ -17,8 +17,8 @@
 static TaskHandle_t tpm2netTaskHandle;
 static uint8_t* tpm2net_temp_buffer;
 static size_t tpm2net_temp_buffer_size = 0;
-static uint8_t* tpm2net_out_buffer;
-static size_t tpm2net_out_buffer_size = 0;
+static uint8_t* tpm2net_pixel_buffer;
+static size_t tpm2net_pixel_buffer_size = 0;
 
 uint16_t tpm2net_chunkSize = 0;
 
@@ -96,23 +96,23 @@ static void tpm2net_task(void* arg) {
                     memcpy(&tpm2net_temp_buffer[tpm2net_chunkSize * (packetNum - 1)], &rx_buffer[6], packetLen);
                 }
 
-                #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
+                #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-                    buffer_8to1(tpm2net_temp_buffer, tpm2net_out_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    buffer_8to1(tpm2net_temp_buffer, tpm2net_pixel_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif
-                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
+                #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_8BPP)
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-                    memcpy(tpm2net_out_buffer, tpm2net_temp_buffer, tpm2net_temp_buffer_size);
+                    memcpy(tpm2net_pixel_buffer, tpm2net_temp_buffer, tpm2net_temp_buffer_size);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif
-                #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
+                #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
@@ -133,12 +133,12 @@ static void tpm2net_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void tpm2net_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize) {
+void tpm2net_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, size_t tmpBufSize) {
     ESP_LOGI(LOG_TAG, "Starting tpm2.net receiver");
     tpm2net_temp_buffer = tmpBuf;
     tpm2net_temp_buffer_size = tmpBufSize;
-    tpm2net_out_buffer = outBuf;
-    tpm2net_out_buffer_size = outBufSize;
+    tpm2net_pixel_buffer = pixBuf;
+    tpm2net_pixel_buffer_size = pixBufSize;
     xTaskCreatePinnedToCore(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle, 0);
 }
 

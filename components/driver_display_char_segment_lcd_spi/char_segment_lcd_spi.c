@@ -69,7 +69,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
         .sclk_io_num = CONFIG_CSEG_LCD_CLOCK_IO,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = DISPLAY_FRAMEBUF_SIZE
+        .max_transfer_sz = DISPLAY_OUT_BUF_SIZE
     };
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = CONFIG_CSEG_LCD_SPI_CLK_FREQ,

@@ -136,8 +136,8 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 uint16_t x = 0;
                 for (uint16_t x_offset = 0; x_offset < SAFLAP_PANEL_WIDTH; x_offset++) {
                     x = x_base + x_offset;
-                    colData |= ((uint16_t)BUFFER_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
-                    prevColData |= ((uint16_t)BUFFER_VAL(prevFrame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    colData |= ((uint16_t)PIX_BUF_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    prevColData |= ((uint16_t)PIX_BUF_VAL(prevFrame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
                 }
                 if (colData != prevColData) {
                     ESP_LOGD(LOG_TAG, "P%u R%u = %#03x", panelAddr, panelRow, colData);
@@ -155,7 +155,7 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 uint16_t x = 0;
                 for (uint16_t x_offset = 0; x_offset < SAFLAP_PANEL_WIDTH; x_offset++) {
                     x = x_base + x_offset;
-                    colData |= ((uint16_t)BUFFER_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    colData |= ((uint16_t)PIX_BUF_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
                 }
                 ESP_LOGD(LOG_TAG, "P%u R%u = 0x%03x", panelAddr, panelRow, colData);
                 display_setRowSingle(panelAddr, panelRow, colData);

@@ -36,84 +36,84 @@
 
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)
-#include "driver_display_flipdot_lawo_aluma.h"
+    #include "driver_display_flipdot_lawo_aluma.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_BROSE)
-#include "driver_display_flipdot_brose.h"
+    #include "driver_display_flipdot_brose.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_SAFLAP)
-#include "driver_display_flipdot_aesco_saflap.h"
+    #include "driver_display_flipdot_aesco_saflap.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER) || defined(CONFIG_DISPLAY_DRIVER_LED_SHIFT_REGISTER_I2S)
-#include "driver_display_led_shift_register.h"
+    #include "driver_display_led_shift_register.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_LED_AESYS_I2S)
-#include "driver_display_led_aesys.h"
+    #include "driver_display_led_aesys.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_SEG_LCD_SPI)
-#include "driver_display_char_segment_lcd_spi.h"
+    #include "driver_display_char_segment_lcd_spi.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_SPI)
-#include "driver_display_char_16seg_led_spi.h"
+    #include "driver_display_char_16seg_led_spi.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_KRONE_9000)
-#include "driver_display_char_krone_9000.h"
+    #include "driver_display_char_krone_9000.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
-#include "driver_display_char_16seg_led_ws281x.h"
+    #include "driver_display_char_16seg_led_ws281x.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID)
+    #include "driver_display_char_16seg_led_ws281x_hybrid.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)
-#include "driver_display_sel_krone_9000.h"
+    #include "driver_display_sel_krone_9000.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_8200_PST)
-#include "driver_display_sel_krone_8200_pst.h"
-#endif
-
-#if defined(DISPLAY_HAS_PIXEL_BUFFER)
-#if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
-#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
-#elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_8BPP
-#elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
-#define TPM2NET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
-#endif
-uint8_t tpm2net_output_buffer[TPM2NET_FRAMEBUF_SIZE] = {0};
-
-#if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
-#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_1BPP
-#elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
-#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_8BPP
-#elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
-#define ARTNET_FRAMEBUF_SIZE DISPLAY_FRAMEBUF_SIZE_24BPP
-#endif
-uint8_t artnet_output_buffer[ARTNET_FRAMEBUF_SIZE] = {0};
+    #include "driver_display_sel_krone_8200_pst.h"
 #endif
 
 #if defined(DISPLAY_HAS_CHAR_BUFFER)
-uint8_t display_char_buffer[DISPLAY_CHARBUF_SIZE] = {0};
-uint16_t display_quirk_flags_buffer[DISPLAY_CHARBUF_SIZE] = {0};
-uint8_t display_text_buffer[DISPLAY_TEXTBUF_SIZE] = {0};
+    uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
+    uint8_t display_char_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
+    uint16_t display_quirk_flags_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
-// For selection displays, use an additional mask to determine which of the units
-// are present. This is necessary since configuration is done dynamically
-// using a JSON file in SPIFFS. This mask buffer conatins a 1 bit
-// if the unit at the given address is present, otherwise a 0 bit.
-uint8_t display_framebuf_mask[DIV_CEIL(DISPLAY_FRAMEBUF_SIZE, 8)] = {0};
-uint16_t display_num_units = 0;
+    // For selection displays, use an additional mask to determine which of the units
+    // are present. This is necessary since configuration is done dynamically
+    // using a JSON file in SPIFFS. This mask buffer conatins a 1 bit
+    // if the unit at the given address is present, otherwise a 0 bit.
+    uint8_t display_framebuf_mask[DIV_CEIL(DISPLAY_OUT_BUF_SIZE, 8)] = {0};
+    uint16_t display_num_units = 0;
 #endif
-
-uint8_t display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-uint8_t temp_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
+    uint8_t display_pixel_buffer[DISPLAY_PIX_BUF_SIZE] = {0};
+
+    #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
+        #define TPM2NET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_1BPP
+    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+        #define TPM2NET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_8BPP
+    #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+        #define TPM2NET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_24BPP
+    #endif
+    uint8_t tpm2net_output_buffer[TPM2NET_FRAMEBUF_SIZE] = {0};
+
+    #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
+        #define ARTNET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_1BPP
+    #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
+        #define ARTNET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_8BPP
+    #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
+        #define ARTNET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_24BPP
+    #endif
+    uint8_t artnet_output_buffer[ARTNET_FRAMEBUF_SIZE] = {0};
 #endif
 
+uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
+
 #if defined(CONFIG_DISPLAY_USE_PREV_FRAMEBUF)
-    uint8_t prev_display_output_buffer[DISPLAY_FRAMEBUF_SIZE] = {0};
+    uint8_t prev_display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
 #else
     uint8_t* prev_display_output_buffer = NULL;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-uint8_t display_prevBrightness = 0;
-uint8_t display_brightness = 255;
+    uint8_t display_prevBrightness = 0;
+    uint8_t display_brightness = 255;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-cJSON* display_prevShader = NULL;
-cJSON* display_shader = NULL;
+    cJSON* display_prevShader = NULL;
+    cJSON* display_shader = NULL;
 #endif
 
 size_t hostname_length = 64;
@@ -123,49 +123,66 @@ char hostname[64];
 static void display_refresh_task(void* arg) {
     // Start with splashscreen
     #if defined(DISPLAY_HAS_CHAR_BUFFER)
-    char hostname_upper[64];
-    strncpy(hostname_upper, hostname, 63);
-    str_toUpper(hostname_upper);
+        char hostname_upper[64];
+        strncpy(hostname_upper, hostname, 63);
+        str_toUpper(hostname_upper);
 
-    char splash_text[74];
+        char splash_text[74];
 
-    #if defined(GIT_VERSION)
-    snprintf(splash_text, 74, "%s %s", hostname_upper, GIT_VERSION);
-    #else
-    snprintf(splash_text, 74, "%s", hostname_upper);
-    #endif
+        #if defined(GIT_VERSION)
+            snprintf(splash_text, 74, "%s %s", hostname_upper, GIT_VERSION);
+        #else
+            snprintf(splash_text, 74, "%s", hostname_upper);
+        #endif
 
-    STRCPY_TEXTBUF((char*)display_text_buffer, splash_text, DISPLAY_TEXTBUF_SIZE);
+        #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
+            STRCPY_TEXTBUF((char*)display_text_buffer, splash_text, DISPLAY_TEXT_BUF_SIZE);
 
-    buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXTBUF_SIZE, DISPLAY_CHARBUF_SIZE);
-    display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHARBUF_SIZE, DISPLAY_FRAMEBUF_SIZE);
-    display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+            #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
+                buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXT_BUF_SIZE, DISPLAY_CHAR_BUF_SIZE);
+                display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHAR_BUF_SIZE, DISPLAY_OUT_BUF_SIZE);
+                display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+            #endif
 
-    taskYIELD();
-    vTaskDelay(5000 / portTICK_PERIOD_MS);
+            taskYIELD();
+            vTaskDelay(5000 / portTICK_PERIOD_MS);
+        #endif
     #endif
 
     while (1) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
-            // Framebuffer format: Top-to-bottom columns
-            memcpy(temp_output_buffer, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-            #if defined(CONFIG_DISPLAY_FRAME_TYPE_1BPP)
-                display_render_frame_1bpp(temp_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-            #elif defined(CONFIG_DISPLAY_FRAME_TYPE_8BPP)
-                display_render_frame_8bpp(temp_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-            #elif defined(CONFIG_DISPLAY_FRAME_TYPE_24BPP)
-                display_render_frame_24bpp(temp_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-            #endif
+            display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-        buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXTBUF_SIZE, DISPLAY_CHARBUF_SIZE);
-        display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHARBUF_SIZE, DISPLAY_FRAMEBUF_SIZE);
-        display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+            buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXT_BUF_SIZE, DISPLAY_CHAR_BUF_SIZE);
+            // TODO: Rename and change signature for consistency
+            //display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHAR_BUF_SIZE, DISPLAY_OUT_BUF_SIZE);
+        #elif defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
+            buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXT_BUF_SIZE, DISPLAY_CHAR_BUF_SIZE);
+            display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
-        display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_FRAMEBUF_SIZE, display_framebuf_mask, display_num_units);
+            // TODO: Use a separate unit buffer instead of writing directly to the output buffer
+        #endif
+
+        // TODO: Single display_render_frame call for all display types - this should not be display specific anymore
+        #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
+            // Framebuffer format: Top-to-bottom columns
+            #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
+                display_render_frame_1bpp(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+            #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_8BPP)
+                display_render_frame_8bpp(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+            #elif defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+                display_render_frame_24bpp(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+            #endif
+        #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER) || defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
+            display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+        #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
+            display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_framebuf_mask, display_num_units);
         #endif
 
         #if defined(CONFIG_FAN_ENABLED)
-        fan_set_target_speed(display_get_fan_speed(display_output_buffer, DISPLAY_FRAMEBUF_SIZE));
+        // TODO: Should not rely on output buffer
+        fan_set_target_speed(display_get_fan_speed(display_output_buffer, DISPLAY_OUT_BUF_SIZE));
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
@@ -282,21 +299,33 @@ void app_main(void) {
     #endif
     if (ret == ESP_OK) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
-        tpm2net_init(display_output_buffer, tpm2net_output_buffer, DISPLAY_FRAMEBUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
-        artnet_init(display_output_buffer, artnet_output_buffer, DISPLAY_FRAMEBUF_SIZE, ARTNET_FRAMEBUF_SIZE);
-        browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-        remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
+        artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
+        browser_canvas_init(&server, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
+        // TODO: Rework remote poll with multi-buffer JSON scheme
+        //remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-        browser_canvas_init(&server, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
-        telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
-        remote_poll_init(&nvs_handle, display_text_buffer, DISPLAY_TEXTBUF_SIZE);
+        browser_canvas_init(&server, NULL, 0, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
+        telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
+        // TODO: Rework remote poll with multi-buffer JSON scheme
+        //remote_poll_init(&nvs_handle, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
+        #endif
+
+        #if defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
+        tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
+        artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
+        browser_canvas_init(&server, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
+        // TODO: Rework remote poll with multi-buffer JSON scheme
+        //remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
-        browser_canvas_init(&server, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
-        remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_FRAMEBUF_SIZE);
+        // TODO: Use separate unit buffer
+        browser_canvas_init(&server, NULL, 0, NULL, 0, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+        // TODO: Rework remote poll with multi-buffer JSON scheme
+        //remote_poll_init(&nvs_handle, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)

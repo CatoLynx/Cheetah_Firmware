@@ -15,5 +15,5 @@ typedef struct {
 } artnetPacket_t;
 
 
-void artnet_init(uint8_t* outBuf, uint8_t* tmpBuf, size_t outBufSize, size_t tmpBufSize);
+void artnet_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, size_t tmpBufSize);
 void artnet_deinit(void);

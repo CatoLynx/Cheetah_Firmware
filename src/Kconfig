@@ -170,6 +170,10 @@ choice DISPLAY_DRIVER
         depends on DISPLAY_TYPE_CHARACTER
         bool "16-segment LED (using WS281X)"
         
+    config DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID
+        depends on DISPLAY_TYPE_CHAR_ON_PIXEL
+        bool "16-segment LED (using WS281X) - Hybrid (char-on-pixel)"
+        
     config DISPLAY_DRIVER_SEL_KRONE_9000
         depends on DISPLAY_TYPE_SELECTION
         bool "KRONE 9000 Split-Flap (using UART peripheral)"
@@ -186,66 +190,140 @@ config DISPLAY_UNIT_BUF_SIZE
     help
         Size of the data buffer for unit data. Since selection displays are dynamically configured, this should be large enough to cover a large display. One unit is one selection module.
 
-config DISPLAY_WIDTH
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Actual display width"
-    default 0
-    help
-        Actual width of the display, as seen from the outside, in pixels or characters.
+choice DISPLAY_PIX_BUF_TYPE
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Pixel frame type"
+    default DISPLAY_PIX_BUF_TYPE_1BPP
 
-config DISPLAY_HEIGHT
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Actual display height"
-    default 0
-    help
-        Actual height of the display, as seen from the outside, in pixels or characters.
-
-choice DISPLAY_FRAME_TYPE
-    depends on DISPLAY_TYPE_PIXEL
-    bool "Display frame type"
-    default DISPLAY_FRAME_TYPE_1BPP
-
-    config DISPLAY_FRAME_TYPE_1BPP
+    config DISPLAY_PIX_BUF_TYPE_1BPP
         bool "1 bit per pixel (black/white)"
     
-    config DISPLAY_FRAME_TYPE_8BPP
+    config DISPLAY_PIX_BUF_TYPE_8BPP
         bool "8 bits per pixel (greyscale)"
     
-    config DISPLAY_FRAME_TYPE_24BPP
+    config DISPLAY_PIX_BUF_TYPE_24BPP
         bool "24 bits per pixel (RGB, 8 bits per colour)"
 endchoice
 
-config DISPLAY_FRAME_WIDTH
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Display frame width"
+config DISPLAY_VIEWPORT_WIDTH_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel viewport width"
     default 0
     help
-        Frame width of the display. Usually the same as the actual width, but can be different
-        in case of non-populated columns of pixels/characters or other mapping shenanigans.
+        Actual width of the pixel viewport, as seen from the outside, in pixels.
 
-config DISPLAY_FRAME_HEIGHT
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Display frame height"
+config DISPLAY_VIEWPORT_HEIGHT_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel viewport height"
     default 0
     help
-        Frame height of the display. Usually the same as the actual height, but can be different
-        in case of non-populated rows of pixels/characters or other mapping shenanigans.
+        Actual height of the pixel viewport, as seen from the outside, in pixels.
 
-config DISPLAY_VIEWPORT_OFFSET_X
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Display viewport X offset"
+config DISPLAY_VIEWPORT_WIDTH_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character viewport width"
     default 0
     help
-        In case the frame width is larger than the display width,
+        Actual width of the character viewport, as seen from the outside, in characters.
+
+config DISPLAY_VIEWPORT_HEIGHT_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character viewport height"
+    default 0
+    help
+        Actual height of the character viewport, as seen from the outside, in characters.
+
+config DISPLAY_FRAME_WIDTH_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel frame width"
+    default 0
+    help
+        Internal frame width of the pixel display. Can be larger than the viewport width
+        to allow scrolling or other effects.
+
+config DISPLAY_FRAME_HEIGHT_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel frame height"
+    default 0
+    help
+        Internal frame height of the pixel display. Can be larger than the viewport height
+        to allow scrolling or other effects.
+
+config DISPLAY_FRAME_WIDTH_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character frame width"
+    default 0
+    help
+        Internal frame width of the character display. Can be larger than the viewport width
+        to allow scrolling or other effects.
+
+config DISPLAY_FRAME_HEIGHT_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character frame height"
+    default 0
+    help
+        Internal frame height of the character display. Can be larger than the viewport height
+        to allow scrolling or other effects.
+
+config DISPLAY_VIEWPORT_OFFSET_X_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel viewport X offset"
+    default 0
+    help
+        In case the frame width is larger than the pixel display width,
         this specifies the X offset between the viewport and the framebuffer.
 
-config DISPLAY_VIEWPORT_OFFSET_Y
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
-    int "Display viewport Y offset"
+config DISPLAY_VIEWPORT_OFFSET_Y_PIXEL
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Pixel viewport Y offset"
     default 0
     help
-        In case the frame height is larger than the display height,
+        In case the frame height is larger than the pixel display height,
         this specifies the Y offset between the viewport and the framebuffer.
+
+config DISPLAY_VIEWPORT_OFFSET_X_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character viewport X offset"
+    default 0
+    help
+        In case the frame width is larger than the character display width,
+        this specifies the X offset between the viewport and the framebuffer.
+
+config DISPLAY_VIEWPORT_OFFSET_Y_CHAR
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Character viewport Y offset"
+    default 0
+    help
+        In case the frame height is larger than the character display height,
+        this specifies the Y offset between the viewport and the framebuffer.
+
+choice DISPLAY_OUTPUT_BUFFER_BASED_ON
+    depends on DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Output buffer based on"
+    default DISPLAY_OUTPUT_BUFFER_BASED_ON_PIXEL
+
+    config DISPLAY_OUTPUT_BUFFER_BASED_ON_PIXEL
+        bool "Output buffer based on pixel buffer"
+    
+    config DISPLAY_OUTPUT_BUFFER_BASED_ON_CHAR
+        bool "Output buffer based on character buffer"
+endchoice
+
+config DISPLAY_OUTPUT_WIDTH
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Output width"
+    default 0
+    help
+        Output width of the display. Usually the same as the actual width, but can be different
+        in case of non-populated columns of pixels/characters or other mapping shenanigans.
+
+config DISPLAY_OUTPUT_HEIGHT
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    int "Output height"
+    default 0
+    help
+        Output height of the display. Usually the same as the actual height, but can be different
+        in case of non-populated rows of pixels/characters or other mapping shenanigans.
 
 config DISPLAY_USE_PREV_FRAMEBUF
     bool "Use second framebuffer to store the previous frame"
@@ -253,15 +331,21 @@ config DISPLAY_USE_PREV_FRAMEBUF
         This allows the display to take advantage of knowing what has changed between the current
         and previous frames, thus enabling a quicker refresh.
 
+config DISPLAY_SHOW_MESSAGES
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Show status messages on display"
+    help
+        If set, show things like IP address or WiFi info on the display.
+
 config DISPLAY_FONT_BYTES_PER_CHAR
-    depends on DISPLAY_TYPE_CHARACTER
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     int "Bytes per character (for font)"
     default 1
     help
         How many bytes of data the font contains per character.
 
 config DISPLAY_FRAMEBUF_BITS_PER_CHAR
-    depends on DISPLAY_TYPE_CHARACTER
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     int "Bits per character (for framebuffer size)"
     default 8
     help
@@ -274,16 +358,23 @@ config DISPLAY_HAS_BRIGHTNESS_CONTROL
         Enable brightness control
 
 config DISPLAY_HAS_SHADERS
-    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     bool "Display has shaders (color effects)"
     default false
     help
         Enable shaders (color effects)
 
+config DISPLAY_SHADER_INCLUDE
+    depends on DISPLAY_HAS_SHADERS
+    string "Shader include filename"
+    help
+       Filename of the shader include
+
 
 menu "Quirks"
 
 config DISPLAY_QUIRKS_COMBINING_FULL_STOP
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     bool "Combining full stop"
     default false
     help

@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "macros.h"
-#include "char_16seg_led_ws281x.h"
+#include "char_16seg_led_ws281x_hybrid.h"
 #include "util_buffer.h"
 #include "util_generic.h"
 #include "util_gpio.h"
@@ -17,10 +17,10 @@
 #include "shaders_char.h"
 #include "math.h"
 
-#if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
+#if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID)
 
 
-#define LOG_TAG "CH-16SEG-LED-WS281X"
+#define LOG_TAG "CH-16SEG-LED-WS281X-HYB"
 
 spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
@@ -236,11 +236,11 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     color_t color;
     color_rgb_t calcColor_rgb;
 
-    memset(frameBuf, 0x88, frameBufSize);
+    memset(outBuf, 0x88, outBufSize);
 
     for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
         calcColor_rgb = shader_fromJSON(charBufIndex, charBufSize, charBuf[charBufIndex], display_currentShader);
@@ -250,10 +250,10 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8
         color.blue = calcColor_rgb.b * 255;
 
         if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(frameBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
+            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
         }
         if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(frameBuf, charBufIndex, 1, color);
+            display_setDecimalPointAt(outBuf, charBufIndex, 1, color);
         }
     }
 }

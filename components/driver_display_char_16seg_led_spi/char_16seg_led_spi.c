@@ -71,7 +71,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
         .sclk_io_num = CONFIG_16SEG_LED_CLOCK_IO,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = DISPLAY_FRAMEBUF_SIZE
+        .max_transfer_sz = DISPLAY_OUT_BUF_SIZE
     };
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = CONFIG_16SEG_LED_SPI_CLK_FREQ,
@@ -153,9 +153,9 @@ uint16_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
     // Calculate the frame buffer start index for the given character position
     // Position starts at 0 in the top left corner
     uint16_t fb_index = 0;
-    fb_index = CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * (DISPLAY_CHARBUF_SIZE - charPos - 1);
+    fb_index = CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * (DISPLAY_CHAR_BUF_SIZE - charPos - 1);
     #if defined(CONFIG_16SEG_LED_USE_DP_DATA)
-        fb_index += (DISPLAY_CHARBUF_SIZE - charPos - 1) / CONFIG_16SEG_LED_DP_DATA_INTERVAL;
+        fb_index += (DISPLAY_CHAR_BUF_SIZE - charPos - 1) / CONFIG_16SEG_LED_DP_DATA_INTERVAL;
     #endif
     return fb_index;
 }
@@ -164,7 +164,7 @@ uint16_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
 uint16_t display_calculateFrameBufferDecimalPointIndex(uint16_t charPos) {
     // Calculate the frame buffer start index for the decimal point for the given character position
     // Position starts at 0 in the top left corner
-    return (((DISPLAY_CHARBUF_SIZE - charPos - 1) / CONFIG_16SEG_LED_DP_DATA_INTERVAL) * (CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * CONFIG_16SEG_LED_DP_DATA_INTERVAL + 1)) + (CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * CONFIG_16SEG_LED_DP_DATA_INTERVAL);
+    return (((DISPLAY_CHAR_BUF_SIZE - charPos - 1) / CONFIG_16SEG_LED_DP_DATA_INTERVAL) * (CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * CONFIG_16SEG_LED_DP_DATA_INTERVAL + 1)) + (CONFIG_DISPLAY_FONT_BYTES_PER_CHAR * CONFIG_16SEG_LED_DP_DATA_INTERVAL);
 }
 
 uint8_t display_calculateDecimalPointSubIndex(uint16_t charPos) {
