@@ -214,17 +214,13 @@ void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pix
     color_t color, shaderColor;
     color_rgb_t calcColor_rgb;
 
-    /*
-    plan:
-    - go through every led
-    - check if corresponding segment is enabled using phys to segment mapping
-    - if so, copy pixels from bitmap using phys to bitmap mapping
-    */
-
     memset(outBuf, 0x88, outBufSize);
 
     for (uint16_t charPos = 0; charPos < charBufSize; charPos++) {
-        uint32_t charData = char_16seg_font[charBuf[charPos] - char_seg_font_min];
+        uint32_t charData = 0;
+        if (charBuf[charPos] >= char_seg_font_min && charBuf[charPos] <= char_seg_font_max) {
+            charData = char_16seg_font[charBuf[charPos] - char_seg_font_min];
+        }
         if (quirkFlagBuf[charPos] & QUIRK_FLAG_COMBINING_FULL_STOP) charData |= DP;
 
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
