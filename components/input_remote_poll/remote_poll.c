@@ -33,8 +33,12 @@ static bool rp_restart_cycle = false;
 static uint64_t rp_last_switch = 0;
 static uint64_t rp_last_update = 0;
 
-static uint8_t* output_buffer;
-static size_t output_buffer_size = 0;
+static uint8_t* pixel_buffer;
+static size_t pixel_buffer_size = 0;
+static uint8_t* text_buffer;
+static size_t text_buffer_size = 0;
+static uint8_t* unit_buffer;
+static size_t unit_buffer_size = 0;
 
 extern uint8_t wifi_gotIP;
 
@@ -72,7 +76,7 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
              */
             if (!esp_http_client_is_chunked_response(evt->client)) {
                 if (resp_buf == NULL) {
-                    resp_buf = (char *) malloc(esp_http_client_get_content_length(evt->client));
+                    resp_buf = (char *) heap_caps_malloc(esp_http_client_get_content_length(evt->client), MALLOC_CAP_SPIRAM);
                     resp_len = 0;
                     if (resp_buf == NULL) {
                         ESP_LOGE(LOG_TAG, "Failed to allocate memory for output buffer");
@@ -123,11 +127,15 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-void remote_poll_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize) {
+void remote_poll_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Initializing remote poll");
     rp_nvs_handle = *nvsHandle;
-    output_buffer = outBuf;
-    output_buffer_size = bufSize;
+    pixel_buffer = pixBuf;
+    pixel_buffer_size = pixBufSize;
+    text_buffer = textBuf;
+    text_buffer_size = textBufSize;
+    unit_buffer = unitBuf;
+    unit_buffer_size = unitBufSize;
 
     remote_poll_deinit();
 
@@ -174,12 +182,14 @@ void remote_poll_task(void* arg) {
                 rp_cur_buffer = 0;
             }
             if (rp_restart_cycle == true || rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
-                rp_last_switch = now;
+                rp_last_switch = esp_timer_get_time();
                 if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
                 rp_restart_cycle = false;
                 if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
                 ESP_LOGI(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
-                memcpy(output_buffer, rp_buffers[rp_cur_buffer].buffer, output_buffer_size);
+                if (rp_buffers[rp_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, rp_buffers[rp_cur_buffer].pixelBuffer, pixel_buffer_size);
+                if (rp_buffers[rp_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  rp_buffers[rp_cur_buffer].textBuffer,  text_buffer_size);
+                if (rp_buffers[rp_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  rp_buffers[rp_cur_buffer].unitBuffer,  unit_buffer_size);
             }
         }
 
@@ -229,17 +239,25 @@ void remote_poll_send_request() {
 
 esp_err_t remote_poll_process_response(cJSON* json) {
     /*
-    Expected JSON schema:
+    Expected JSON schema (only non-null buffers will be updated):
     {
         "restartCycle": false,
         "buffers": [
             {
                 "duration": <duration in seconds>,
-                "buffer": <base64-encoded buffer>
+                "buffer": {
+                    "pixel": <base64-encoded buffer>,
+                    "text": <base64-encoded buffer>,
+                    "unit": null
+                }
             },
             {
                 "duration": <duration in seconds>,
-                "buffer": <base64-encoded buffer>
+                "buffer": {
+                    "pixel": null,
+                    "text": <base64-encoded buffer>,
+                    "unit": null
+                }
             }
         ]
     }
@@ -279,7 +297,9 @@ esp_err_t remote_poll_process_response(cJSON* json) {
 
     // Free individual buffer arrays and the overall array
     for (uint8_t i = 0; i < rp_num_buffers; i++) {
-        free(rp_buffers[i].buffer);
+        free(rp_buffers[i].pixelBuffer);
+        free(rp_buffers[i].textBuffer);
+        free(rp_buffers[i].unitBuffer);
     }
     free(rp_buffers);
 
@@ -288,9 +308,6 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     rp_num_buffers = numBuffers;
     rp_buffers = malloc(rp_num_buffers * sizeof(rp_buffer_list_entry_t));
     memset(rp_buffers, 0x00, rp_num_buffers * sizeof(rp_buffer_list_entry_t));
-    for (uint16_t i = 0; i < numBuffers; i++) {
-        rp_buffers[i].buffer = malloc(output_buffer_size);
-    }
 
     // Populate new buffers
     for (uint8_t i = 0; i < rp_num_buffers; i++) {
@@ -301,18 +318,59 @@ esp_err_t remote_poll_process_response(cJSON* json) {
         rp_buffers[i].duration = cJSON_GetNumberValue(duration_field);
 
         cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
-        char* buffer_str = cJSON_GetStringValue(buffer_field);
-        size_t buffer_str_len = strlen(buffer_str);
-        unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-        int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-        if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-            // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-            // because this will always be returned when checking size
-            return ESP_FAIL;
-        } else {
-            b64_len = 0;
-            result = mbedtls_base64_decode(rp_buffers[i].buffer, output_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-            if (result != 0) return ESP_FAIL;
+
+        cJSON* pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel");
+        if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
+            char* buffer_str = cJSON_GetStringValue(pixbuf_field);
+            size_t buffer_str_len = strlen(buffer_str);
+            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                // because this will always be returned when checking size
+                return ESP_FAIL;
+            } else {
+                b64_len = 0;
+                rp_buffers[i].pixelBuffer = heap_caps_malloc(pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                result = mbedtls_base64_decode(rp_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result != 0) return ESP_FAIL;
+            }
+        }
+        
+        cJSON* textbuf_field = cJSON_GetObjectItem(buffer_field, "text");
+        if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
+            char* buffer_str = cJSON_GetStringValue(textbuf_field);
+            size_t buffer_str_len = strlen(buffer_str);
+            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                // because this will always be returned when checking size
+                return ESP_FAIL;
+            } else {
+                b64_len = 0;
+                rp_buffers[i].textBuffer = malloc(text_buffer_size);
+                result = mbedtls_base64_decode(rp_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result != 0) return ESP_FAIL;
+            }
+        }
+        
+        cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");
+        if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
+            char* buffer_str = cJSON_GetStringValue(unitbuf_field);
+            size_t buffer_str_len = strlen(buffer_str);
+            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                // because this will always be returned when checking size
+                return ESP_FAIL;
+            } else {
+                b64_len = 0;
+                rp_buffers[i].unitBuffer = malloc(unit_buffer_size);
+                result = mbedtls_base64_decode(rp_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result != 0) return ESP_FAIL;
+            }
         }
     }
 
