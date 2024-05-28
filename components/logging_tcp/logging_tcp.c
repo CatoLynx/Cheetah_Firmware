@@ -2,15 +2,14 @@
 #include <esp_log.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/semphr.h"
 #include <string.h>
 #include <errno.h>
 #include "sdkconfig.h"
 
 #include "logging_tcp.h"
 
-
 #if defined(CONFIG_TCP_LOG_ENABLED)
-
 
 static uint8_t numClientTasks = 0;
 static tcp_log_message_t logBuf[CONFIG_TCP_LOG_BUFFER_SIZE];
@@ -18,9 +17,10 @@ static uint16_t logBufWritePtr = 0;
 static uint16_t logBufReadPtr = 0;
 static uint8_t logBufEmpty = 1;
 static uint8_t logBufFull = 0;
-
+static SemaphoreHandle_t logBufMutex;
 
 void tcp_log_init() {
+    logBufMutex = xSemaphoreCreateMutex();
     esp_log_set_vprintf((vprintf_like_t)tcp_log_vprintf);
 }
 
@@ -29,7 +29,6 @@ void tcp_log_start() {
 }
 
 int tcp_log_vprintf(const char* format, va_list args) {
-    // vprintf(format, args);
     char* text;
     int textLen = vasprintf(&text, format, args);
     if (textLen < 0) {
@@ -46,22 +45,23 @@ int tcp_log_vprintf(const char* format, va_list args) {
 }
 
 void tcp_log_addToBuffer(tcp_log_message_t* msg) {
+    xSemaphoreTake(logBufMutex, portMAX_DELAY);
+
     if (logBufFull) {
         free(logBuf[logBufWritePtr].text);
     }
     logBuf[logBufWritePtr] = *msg;
     logBufEmpty = 0;
-    if (logBufFull) {
-        logBufReadPtr++;
-        if (logBufReadPtr >= CONFIG_TCP_LOG_BUFFER_SIZE) {
-            logBufReadPtr = 0;
-        }
-    }
     logBufWritePtr++;
     if (logBufWritePtr >= CONFIG_TCP_LOG_BUFFER_SIZE) {
-        logBufFull = 1;
         logBufWritePtr = 0;
+        logBufFull = 1;
     }
+    if (logBufFull) {
+        logBufReadPtr = logBufWritePtr;
+    }
+
+    xSemaphoreGive(logBufMutex);
 }
 
 void tcp_log_server_task(void* arg) {
@@ -69,8 +69,7 @@ void tcp_log_server_task(void* arg) {
 
     int sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (sock < 0) {
-        // ESP_LOGE(tag, "socket: %d %s", sock, strerror(errno));
-		vTaskDelete(NULL);
+        vTaskDelete(NULL);
         return;
     }
 
@@ -82,14 +81,12 @@ void tcp_log_server_task(void* arg) {
     serverAddr.sin_port = htons(CONFIG_TCP_LOG_PORT);
     int ret = bind(sock, (struct sockaddr *)&serverAddr, sizeof(serverAddr));
     if (ret < 0) {
-        // ESP_LOGE(tag, "bind: %d %s", rc, strerror(errno));
-		vTaskDelete(NULL);
+        vTaskDelete(NULL);
         return;
     }
 
     ret = listen(sock, CONFIG_TCP_LOG_BACKLOG);
     if (ret < 0) {
-        // ESP_LOGE(tag, "listen: %d %s", rc, strerror(errno));
         vTaskDelete(NULL);
         return;
     }
@@ -98,7 +95,6 @@ void tcp_log_server_task(void* arg) {
         socklen_t clientAddrLen = sizeof(clientAddr);
         int clientSock = accept(sock, (struct sockaddr *)&clientAddr, &clientAddrLen);
         if (clientSock < 0) {
-            // ESP_LOGE(tag, "accept: %d %s", clientSock, strerror(errno));
             vTaskDelete(NULL);
             return;
         }
@@ -117,7 +113,7 @@ void tcp_log_server_task(void* arg) {
         char taskName[CONFIG_FREERTOS_MAX_TASK_NAME_LEN];
         snprintf(taskName, CONFIG_FREERTOS_MAX_TASK_NAME_LEN, "tcp_log_%u", clientSock);
 #pragma GCC diagnostic pop
-        xTaskCreatePinnedToCore(tcp_log_client_handler_task, taskName, 4096, (void*)clientSock, 1, NULL, 0);
+        xTaskCreatePinnedToCore(tcp_log_client_handler_task, taskName, 4096, (void*)(intptr_t)clientSock, 1, NULL, 0);
     }
 }
 
@@ -127,14 +123,12 @@ void tcp_log_client_handler_task(void* arg) {
 
     numClientTasks++;
 
-    // printf("Starting TCP log client handler task\n");
-    // printf("Client handlers running: %u\n", numClientTasks);
-
-    int clientSock = (int)arg;
+    int clientSock = (intptr_t)arg;
     int bytesWritten;
     uint8_t prevRunIdle = 0;
     while (1) {
         if (prevRunIdle) vTaskDelay(1);
+        xSemaphoreTake(logBufMutex, portMAX_DELAY);
         if (!logBufEmpty && (!backlogStarted || bufPtr != logBufWritePtr)) {
             prevRunIdle = 0;
             backlogStarted = 1;
@@ -143,22 +137,21 @@ void tcp_log_client_handler_task(void* arg) {
             if (bufPtr >= CONFIG_TCP_LOG_BUFFER_SIZE) {
                 bufPtr = 0;
             }
+            xSemaphoreGive(logBufMutex);
 
             bytesWritten = send(clientSock, msg->text, msg->textLen, 0);
             if (bytesWritten < 0) {
-                // Error
                 break;
             }
         } else {
+            xSemaphoreGive(logBufMutex);
             prevRunIdle = 1;
         }
     }
 
     close(clientSock);
-    if (numClientTasks > 0) numClientTasks--;
+    numClientTasks--;
 
-    // printf("Stopping TCP log client handler task\n");
-    // printf("Client handlers running: %u\n", numClientTasks);
     vTaskDelete(NULL);
 }
 
