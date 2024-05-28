@@ -245,7 +245,7 @@ httpd_handle_t httpd_init(nvs_handle_t* nvsHandle) {
 
     httpd_nvs_handle = *nvsHandle;
 
-    config.max_uri_handlers = 32;
+    config.max_uri_handlers = 128;
 
     ESP_LOGI(LOG_TAG, "Starting HTTP server on port %d", config.server_port);
     if (httpd_start(&server, &config) != ESP_OK) {
