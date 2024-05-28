@@ -51,7 +51,6 @@ Some other noteworthy features include:
 ## Buffers and formats
 Since this firmware supports many different types of displays, there is a need for multiple different kinds of buffers and formats.
 One buffer is common to all of them: `display_output_buffer`, which holds the raw data that gets sent to the display in the format required by the display.
-Depending on the project configuration, displays can use double buffering, in which case `prev_display_output_buffer` also exists.
 
 Details about the buffers and the general operational workflow can be found in `docs/buffer_overview.pdf`.
 
@@ -65,12 +64,14 @@ Pixel-based displays use framebuffers. Depending on project configuration, the b
 Pixel-based displays use the following buffers:
 
 * `display_pixel_buffer`, which contains the bitmap data as vertical columns, starting at the top left, going down, from left to right
+* Optionally `display_prev_pixel_buffer`, which holds the pixel data from the previous display update
 * `display_output_buffer`, as explained above
 
 ### Character-based displays
 Character-based displays use the following buffers:
 
 * `display_text_buffer`, which holds the input text as entered by the user
+* Optionally `display_prev_text_buffer`, which holds the input text data from the previous display update
 * `display_char_buffer`, which holds an intermediary representation of each character, e.g. a different character set
 * `display_quirk_flags_buffer`, which holds additional data for each character, such as combining diacritical marks, in a display-specific format
 * `display_output_buffer`, as explained above

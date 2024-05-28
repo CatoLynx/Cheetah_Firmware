@@ -325,12 +325,6 @@ config DISPLAY_OUTPUT_HEIGHT
         Output height of the display. Usually the same as the actual height, but can be different
         in case of non-populated rows of pixels/characters or other mapping shenanigans.
 
-config DISPLAY_USE_PREV_FRAMEBUF
-    bool "Use second framebuffer to store the previous frame"
-    help
-        This allows the display to take advantage of knowing what has changed between the current
-        and previous frames, thus enabling a quicker refresh.
-
 config DISPLAY_SHOW_MESSAGES
     depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     bool "Show status messages on display"
@@ -369,6 +363,20 @@ config DISPLAY_SHADER_INCLUDE
     string "Shader include filename"
     help
        Filename of the shader include
+
+config DISPLAY_USE_PREV_PIX_BUF
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Use second pixel buffer to store the previous data"
+    help
+        This allows the display to take advantage of knowing what has changed between the current
+        and previous frames, thus enabling a quicker refresh or fancy effects.
+
+config DISPLAY_USE_PREV_TEXT_BUF
+    depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Use second text buffer to store the previous data"
+    help
+        This allows the display to take advantage of knowing what has changed between the current
+        and previous frames, thus enabling a quicker refresh or fancy effects.
 
 
 menu "Quirks"

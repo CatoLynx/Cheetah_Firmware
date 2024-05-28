@@ -65,6 +65,11 @@
     uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
     uint8_t display_char_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
     uint16_t display_quirk_flags_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
+    #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
+    uint8_t display_prev_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
+    #else
+    uint8_t* display_prev_text_buffer = NULL;
+    #endif
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
@@ -78,6 +83,11 @@
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
     uint8_t display_pixel_buffer[DISPLAY_PIX_BUF_SIZE] = {0};
+    #if defined(CONFIG_DISPLAY_USE_PREV_PIX_BUF)
+    uint8_t display_prev_pixel_buffer[DISPLAY_PIX_BUF_SIZE] = {0};
+    #else
+    uint8_t* display_prev_pixel_buffer = NULL;
+    #endif
 
     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
         #define TPM2NET_FRAMEBUF_SIZE DISPLAY_PIX_BUF_SIZE_1BPP
@@ -99,12 +109,6 @@
 #endif
 
 uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
-
-#if defined(CONFIG_DISPLAY_USE_PREV_FRAMEBUF)
-    uint8_t prev_display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
-#else
-    uint8_t* prev_display_output_buffer = NULL;
-#endif
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     uint8_t display_prevBrightness = 0;
@@ -158,13 +162,13 @@ static void display_refresh_task(void* arg) {
             //display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
             display_charbuf_to_framebuf(display_char_buffer, display_quirk_flags_buffer, display_output_buffer, DISPLAY_CHAR_BUF_SIZE, DISPLAY_OUT_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
-            buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXT_BUF_SIZE, DISPLAY_CHAR_BUF_SIZE);
-            display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
             // TODO: Use a separate unit buffer instead of writing directly to the output buffer
         #endif
 
-        // TODO: Single display_render_frame call for all display types - this should not be display specific anymore
+        // TODO: Combine all into display_update
+        /*
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
             // Framebuffer format: Top-to-bottom columns
             #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
@@ -179,6 +183,7 @@ static void display_refresh_task(void* arg) {
         #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
             display_render_frame(display_output_buffer, prev_display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_framebuf_mask, display_num_units);
         #endif
+        */
 
         #if defined(CONFIG_FAN_ENABLED)
         // TODO: Should not rely on output buffer

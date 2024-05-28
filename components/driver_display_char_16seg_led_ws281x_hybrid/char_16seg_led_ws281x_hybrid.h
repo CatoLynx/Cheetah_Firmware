@@ -31,4 +31,5 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
 uint8_t display_led_in_segment(uint16_t ledPos, seg_t segment);
 uint8_t display_led_in_char_data(uint16_t ledPos, uint32_t charData);
 void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);
+void display_render_frame(uint8_t* frame, uint16_t frameBufSize);
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);

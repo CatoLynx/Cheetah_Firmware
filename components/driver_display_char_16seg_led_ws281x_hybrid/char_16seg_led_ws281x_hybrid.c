@@ -248,7 +248,7 @@ void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pix
     }
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t outBufSize) {
+void display_render_frame(uint8_t* frame, uint16_t outBufSize) {
     if (display_transferOngoingUpper || display_transferOngoingLower) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame");
@@ -264,6 +264,12 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t outBufSiz
     ESP_ERROR_CHECK(spi_device_transmit(spiUpper, &spi_trans_upper));
     ESP_ERROR_CHECK(spi_device_transmit(spiLower, &spi_trans_lower));
     ets_delay_us(350); // Ensure reset pulse
+}
+
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
+    display_render_frame(outBuf, outBufSize);
 }
 
 #endif
