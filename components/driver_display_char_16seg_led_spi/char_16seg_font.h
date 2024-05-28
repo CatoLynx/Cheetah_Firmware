@@ -144,5 +144,5 @@ const uint32_t char_16seg_font[96] = {
   /* | */ M | S,
   /* } */ K | P | T,
   /* ~ */ P | U,
-  /* DEL */ A | B | C | D | E | F | G | H | K | M | N | P | R | S | T | U
+  /* DEL */ A | B | C | D | E | F | G | H | K | M | N | P | R | S | T | U | DP
 };
