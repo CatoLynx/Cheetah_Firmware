@@ -117,7 +117,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNullToObject(json, "viewport_offset_y_pixel");
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
     cJSON_AddNumberToObject(json, "viewport_width_char", DISPLAY_VIEWPORT_WIDTH_CHAR);
     cJSON_AddNumberToObject(json, "viewport_height_char", DISPLAY_VIEWPORT_HEIGHT_CHAR);
     cJSON_AddNumberToObject(json, "frame_width_char", DISPLAY_FRAME_WIDTH_CHAR);
@@ -139,7 +139,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNullToObject(json, "unitbuf_size");
 #endif
 
-#if defined(DISPLAY_HAS_PIXEL_BUFFER) || defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_PIXEL_BUFFER) || defined(DISPLAY_HAS_TEXT_BUFFER)
     cJSON_AddStringToObject(json, "output_buf_based_on", DISPLAY_OUTPUT_BUFFER_BASED_ON);
     cJSON_AddNumberToObject(json, "output_width", DISPLAY_OUTPUT_WIDTH);
     cJSON_AddNumberToObject(json, "output_height", DISPLAY_OUTPUT_HEIGHT);
@@ -157,7 +157,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNullToObject(json, "pixbuf_type");
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
     cJSON_AddNumberToObject(json, "textbuf_size", DISPLAY_TEXT_BUF_SIZE);
     cJSON_AddNumberToObject(json, "charbuf_size", DISPLAY_CHAR_BUF_SIZE);
 #else

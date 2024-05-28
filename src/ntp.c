@@ -7,7 +7,7 @@
 #define LOG_TAG "NTP"
 
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 extern uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE];
 #endif
 
@@ -17,7 +17,7 @@ bool ntp_started = false;
 
 void ntp_sync_cb(struct timeval *tv) {
     ESP_LOGI(LOG_TAG, "NTP time synced");
-    #if defined(DISPLAY_HAS_CHAR_BUFFER)
+    #if defined(DISPLAY_HAS_TEXT_BUFFER)
     //display_text_buffer[0] = 'N';
     #endif
     vTaskDelay(2000 / portTICK_PERIOD_MS);

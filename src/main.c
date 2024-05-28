@@ -61,7 +61,7 @@
     #include "driver_display_sel_krone_8200_pst.h"
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
     uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
     uint8_t display_char_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
     uint16_t display_quirk_flags_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
@@ -126,7 +126,7 @@ char hostname[64];
 
 static void display_refresh_task(void* arg) {
     // Start with splashscreen
-    #if defined(DISPLAY_HAS_CHAR_BUFFER)
+    #if defined(DISPLAY_HAS_TEXT_BUFFER)
         char hostname_upper[64];
         strncpy(hostname_upper, hostname, 63);
         str_toUpper(hostname_upper);

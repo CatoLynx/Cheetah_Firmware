@@ -41,10 +41,10 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_CHARACTER) || defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
-    #define DISPLAY_HAS_CHAR_BUFFER
+    #define DISPLAY_HAS_TEXT_BUFFER
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 #define STRCPY_TEXTBUF(dst, txt, len) strncpy(dst, txt, len);
 #else
 #define STRCPY_TEXTBUF(dst, txt, len)
@@ -61,7 +61,7 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #define DISPLAY_OUTPUT_HEIGHT CONFIG_DISPLAY_OUTPUT_HEIGHT
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
     #define DISPLAY_VIEWPORT_WIDTH_CHAR CONFIG_DISPLAY_VIEWPORT_WIDTH_CHAR
     #define DISPLAY_VIEWPORT_HEIGHT_CHAR CONFIG_DISPLAY_VIEWPORT_HEIGHT_CHAR
     #define DISPLAY_FRAME_WIDTH_CHAR CONFIG_DISPLAY_FRAME_WIDTH_CHAR
@@ -134,7 +134,7 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #endif
 #endif
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
     #define DISPLAY_CHAR_BUF_SIZE (DISPLAY_FRAME_WIDTH_CHAR * DISPLAY_FRAME_HEIGHT_CHAR)
 
     #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)

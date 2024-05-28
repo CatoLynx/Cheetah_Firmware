@@ -6,7 +6,7 @@
 #define LOG_TAG "WireGuard"
 
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 extern uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE];
 #endif
 
@@ -89,7 +89,7 @@ esp_err_t wg_start() {
     if (!wg_initialized) return ESP_FAIL;
     ESP_LOGI(LOG_TAG, "Connecting");
     if (wg_started) {
-        #if defined(DISPLAY_HAS_CHAR_BUFFER)
+        #if defined(DISPLAY_HAS_TEXT_BUFFER)
         //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Already connected!");
@@ -97,7 +97,7 @@ esp_err_t wg_start() {
     }
     esp_err_t ret = esp_wireguard_connect(&wg_ctx);
     if (ret == ESP_OK) {
-        #if defined(DISPLAY_HAS_CHAR_BUFFER)
+        #if defined(DISPLAY_HAS_TEXT_BUFFER)
         //display_text_buffer[0] = 'W';
         #endif
         ESP_LOGI(LOG_TAG, "Connected");

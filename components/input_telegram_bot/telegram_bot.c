@@ -10,7 +10,7 @@
 #include "util_nvs.h"
 
 
-#if defined(DISPLAY_HAS_CHAR_BUFFER)
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 
 #define LOG_TAG "TGBot"
 
