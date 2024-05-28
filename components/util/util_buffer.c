@@ -94,7 +94,7 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
             - If this is not the first character and the previous character was not a full stop, set the previous index's full stop flag and do not increase charBufIndex
             */
 
-            if (charBufIndex == 0) {
+            if (textBufIndex == 0) {
                 display_quirk_flags_buffer[charBufIndex] |= QUIRK_FLAG_COMBINING_FULL_STOP;
                 incrementCharBufIndex = 1;
             } else if (display_text_buffer[textBufIndex - 1] == '.') {
@@ -118,6 +118,10 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
             charBufRow++;
             characterHandlingCompleted = 1;
         }
+        
+        // We do not return earlier because even if the char buffer is full,
+        // a combining full stop might come afterwards, which would still fit
+        if (charBufIndex >= charBufSize) return;
 
         if (!characterHandlingCompleted) {
             // If none of the above cases were true, treat the character as a normal character
@@ -128,7 +132,6 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
         if (incrementCharBufIndex) {
             // Increase the char buffer index and positions if a character was added
             charBufIndex++;
-            if (charBufIndex >= charBufSize) return;
             charBufCol++;
             if (charBufCol >= DISPLAY_FRAME_WIDTH_CHAR) {
                 charBufCol = 0;
