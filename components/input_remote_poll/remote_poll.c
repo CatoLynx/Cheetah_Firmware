@@ -182,11 +182,11 @@ void remote_poll_task(void* arg) {
                 rp_cur_buffer = 0;
             }
             if (rp_restart_cycle == true || rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
-                rp_last_switch = esp_timer_get_time();
+                rp_last_switch = now;
                 if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
                 rp_restart_cycle = false;
                 if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
-                ESP_LOGI(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
+                ESP_LOGD(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
                 if (rp_buffers[rp_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, rp_buffers[rp_cur_buffer].pixelBuffer, pixel_buffer_size);
                 if (rp_buffers[rp_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  rp_buffers[rp_cur_buffer].textBuffer,  text_buffer_size);
                 if (rp_buffers[rp_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  rp_buffers[rp_cur_buffer].unitBuffer,  unit_buffer_size);
