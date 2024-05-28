@@ -45,7 +45,7 @@ config_entry_t config_entries[] = {
     {.key = "poll_url", .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "poll_token", .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "poll_interval", .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
-    {.key = "cv_use_auth", .dataType = U8, .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "canvas_use_auth", .dataType = U8, .flags = BC_FIELD_FLAGS_NONE},
 };
 
 

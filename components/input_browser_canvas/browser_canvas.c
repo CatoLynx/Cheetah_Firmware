@@ -457,7 +457,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
     basic_auth_info->realm    = "Cheetah Canvas";
 
-    esp_err_t ret = nvs_get_u8(*nvsHandle, "cv_use_auth", &canvas_use_auth);
+    esp_err_t ret = nvs_get_u8(*nvsHandle, "canvas_use_auth", &canvas_use_auth);
     if (ret != ESP_OK) canvas_use_auth = 0;
 
     if (canvas_use_auth) {
