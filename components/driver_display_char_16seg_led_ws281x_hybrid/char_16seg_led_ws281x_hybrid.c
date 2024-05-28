@@ -8,12 +8,11 @@
 #include "freertos/task.h"
 #include <string.h>
 
-#include "macros.h"
 #include "char_16seg_led_ws281x_hybrid.h"
 #include "util_buffer.h"
 #include "util_generic.h"
 #include "util_gpio.h"
-#include "char_16seg_font.h"
+#include "char_16seg_mapping.h"
 #include "shaders_char.h"
 #include "math.h"
 
@@ -22,10 +21,14 @@
 
 #define LOG_TAG "CH-16SEG-LED-WS281X-HYB"
 
-spi_device_handle_t spi;
-volatile uint8_t display_transferOngoing = false;
+spi_device_handle_t spiUpper;
+spi_device_handle_t spiLower;
+volatile uint8_t display_transferOngoingUpper = false;
+volatile uint8_t display_transferOngoingLower = false;
 uint8_t display_currentBrightness = 255;
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
 void* display_currentShader = NULL;
+#endif
 static const color_t OFF = { 0, 0, 0 };
 
 static const uint8_t ws281x_bit_patterns[4] = {
@@ -53,40 +56,71 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
         gammaLUT[i] = round(pow(i, gamma) / pow(255, (gamma - 1)));
     }
 
-    // Init SPI peripheral
-    spi_bus_config_t buscfg = {
+    // Init SPI peripherals
+    spi_bus_config_t buscfgUpper = {
         .miso_io_num = -1,
-        .mosi_io_num = CONFIG_16SEG_WS281X_DATA_IO,
+        .mosi_io_num = CONFIG_16SEG_WS281X_HYBRID_UPPER_DATA_IO,
         .sclk_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = DISPLAY_OUT_BUF_SIZE
+        .max_transfer_sz = UPPER_OUT_BUF_SIZE
     };
-    spi_device_interface_config_t devcfg = {
+    spi_device_interface_config_t devcfgUpper = {
         .clock_speed_hz = 3200000UL,    // 3.2 MHz gives correct timings
         .mode = 0,                      // positive clock, sample on rising edge
         .spics_io_num = -1,             // -1 = not used
         .queue_size = 1,                // max. 1 transaction in queue
-        .pre_cb = display_pre_transfer_cb,
-        .post_cb = display_post_transfer_cb,
+        .pre_cb = display_pre_transfer_cb_upper,
+        .post_cb = display_post_transfer_cb_upper,
+    };
+    spi_bus_config_t buscfgLower = {
+        .miso_io_num = -1,
+        .mosi_io_num = CONFIG_16SEG_WS281X_HYBRID_LOWER_DATA_IO,
+        .sclk_io_num = -1,
+        .quadwp_io_num = -1,
+        .quadhd_io_num = -1,
+        .max_transfer_sz = LOWER_OUT_BUF_SIZE
+    };
+    spi_device_interface_config_t devcfgLower = {
+        .clock_speed_hz = 3200000UL,    // 3.2 MHz gives correct timings
+        .mode = 0,                      // positive clock, sample on rising edge
+        .spics_io_num = -1,             // -1 = not used
+        .queue_size = 1,                // max. 1 transaction in queue
+        .pre_cb = display_pre_transfer_cb_lower,
+        .post_cb = display_post_transfer_cb_lower,
     };
 
-    #if defined(CONFIG_16SEG_WS281X_SPI_HOST_VSPI)
-    ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &buscfg, 1));
-    ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &devcfg, &spi));
-    #elif defined(CONFIG_16SEG_WS281X_SPI_HOST_HSPI)
-    ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfg, 1));
-    ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
+    #if defined(CONFIG_16SEG_WS281X_HYBRID_UPPER_SPI_HOST_VSPI)
+    ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &buscfgUpper, 1));
+    ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &devcfgUpper, &spiUpper));
+    #elif defined(CONFIG_16SEG_WS281X_HYBRID_UPPER_SPI_HOST_HSPI)
+    ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfgUpper, 1));
+    ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfgUpper, &spiUpper));
+    #endif
+    #if defined(CONFIG_16SEG_WS281X_HYBRID_LOWER_SPI_HOST_VSPI)
+    ESP_ERROR_CHECK(spi_bus_initialize(VSPI_HOST, &buscfgLower, 2));
+    ESP_ERROR_CHECK(spi_bus_add_device(VSPI_HOST, &devcfgLower, &spiLower));
+    #elif defined(CONFIG_16SEG_WS281X_HYBRID_LOWER_SPI_HOST_HSPI)
+    ESP_ERROR_CHECK(spi_bus_initialize(HSPI_HOST, &buscfgLower, 2));
+    ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfgLower, &spiLower));
     #endif
     return ESP_OK;
 }
 
-void display_pre_transfer_cb(spi_transaction_t *t) {
-    display_transferOngoing = true;
+void display_pre_transfer_cb_upper(spi_transaction_t *t) {
+    display_transferOngoingUpper = true;
 }
 
-void display_post_transfer_cb(spi_transaction_t *t) {
-    display_transferOngoing = false;
+void display_post_transfer_cb_upper(spi_transaction_t *t) {
+    display_transferOngoingUpper = false;
+}
+
+void display_pre_transfer_cb_lower(spi_transaction_t *t) {
+    display_transferOngoingLower = true;
+}
+
+void display_post_transfer_cb_lower(spi_transaction_t *t) {
+    display_transferOngoingLower = false;
 }
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
@@ -111,163 +145,128 @@ esp_err_t display_set_shader(void* shaderData) {
 }
 #endif
 
-uint32_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
-    // Calculate the frame buffer start index for the given character position
-    // Position starts at 0 in the top left corner
-    uint32_t fb_index = 0;
-    fb_index = DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8) * charPos;
-    return fb_index;
-}
-
-void display_setLEDColor(uint8_t* frameBuf, uint16_t ledPos, color_t color) {
+void display_setLEDColor(uint8_t* outBuf, uint16_t ledPos, color_t color) {
     color.red = gammaLUT[((uint16_t)color.red * display_currentBrightness) / 255];
     color.green = gammaLUT[((uint16_t)color.green * display_currentBrightness) / 255];
     color.blue = gammaLUT[((uint16_t)color.blue * display_currentBrightness) / 255];
 
-    frameBuf[ledPos * 12 + 3] = ws281x_bit_patterns[(color.green >> 0) & 0x03];
-    frameBuf[ledPos * 12 + 2] = ws281x_bit_patterns[(color.green >> 2) & 0x03];
-    frameBuf[ledPos * 12 + 1] = ws281x_bit_patterns[(color.green >> 4) & 0x03];
-    frameBuf[ledPos * 12 + 0] = ws281x_bit_patterns[(color.green >> 6) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 3] = ws281x_bit_patterns[(color.green >> 0) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 2] = ws281x_bit_patterns[(color.green >> 2) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 1] = ws281x_bit_patterns[(color.green >> 4) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 0] = ws281x_bit_patterns[(color.green >> 6) & 0x03];
     
-    frameBuf[ledPos * 12 + 7] = ws281x_bit_patterns[(color.red >> 0) & 0x03];
-    frameBuf[ledPos * 12 + 6] = ws281x_bit_patterns[(color.red >> 2) & 0x03];
-    frameBuf[ledPos * 12 + 5] = ws281x_bit_patterns[(color.red >> 4) & 0x03];
-    frameBuf[ledPos * 12 + 4] = ws281x_bit_patterns[(color.red >> 6) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 7] = ws281x_bit_patterns[(color.red >> 0) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 6] = ws281x_bit_patterns[(color.red >> 2) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 5] = ws281x_bit_patterns[(color.red >> 4) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 4] = ws281x_bit_patterns[(color.red >> 6) & 0x03];
     
-    frameBuf[ledPos * 12 + 11] = ws281x_bit_patterns[(color.blue >> 0) & 0x03];
-    frameBuf[ledPos * 12 + 10] = ws281x_bit_patterns[(color.blue >> 2) & 0x03];
-    frameBuf[ledPos * 12 + 9] = ws281x_bit_patterns[(color.blue >> 4) & 0x03];
-    frameBuf[ledPos * 12 + 8] = ws281x_bit_patterns[(color.blue >> 6) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 11] = ws281x_bit_patterns[(color.blue >> 0) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 10] = ws281x_bit_patterns[(color.blue >> 2) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 9] = ws281x_bit_patterns[(color.blue >> 4) & 0x03];
+    outBuf[ledPos * BYTES_PER_LED + 8] = ws281x_bit_patterns[(color.blue >> 6) & 0x03];
 }
 
-void display_setDecimalPointAt(uint8_t* frameBuf, uint16_t charPos, uint8_t state, color_t color) {
-    uint32_t fb_base_i = display_calculateFrameBufferCharacterIndex(charPos);
-
-    if (state) {
-        display_setLEDColor(&frameBuf[fb_base_i], 48, color);
-    } else {
-        display_setLEDColor(&frameBuf[fb_base_i], 48, OFF);
+uint8_t display_led_in_segment(uint16_t ledPos, seg_t segment) {
+    switch (segment) {
+        case A1: return ledPos >= SEG_A1_START && ledPos <= SEG_A1_END;
+        case A2: return ledPos >= SEG_A2_START && ledPos <= SEG_A2_END;
+        case B:  return ledPos >= SEG_B_START  && ledPos <= SEG_B_END;
+        case C:  return ledPos >= SEG_C_START  && ledPos <= SEG_C_END;
+        case D1: return ledPos >= SEG_D1_START && ledPos <= SEG_D1_END;
+        case D2: return ledPos >= SEG_D2_START && ledPos <= SEG_D2_END;
+        case E:  return ledPos >= SEG_E_START  && ledPos <= SEG_E_END;
+        case F:  return ledPos >= SEG_F_START  && ledPos <= SEG_F_END;
+        case G1: return ledPos >= SEG_G1_START && ledPos <= SEG_G1_END;
+        case G2: return ledPos >= SEG_G2_START && ledPos <= SEG_G2_END;
+        case H:  return ledPos >= SEG_H_START  && ledPos <= SEG_H_END;
+        case I:  return ledPos >= SEG_I_START  && ledPos <= SEG_I_END;
+        case J:  return ledPos >= SEG_J_START  && ledPos <= SEG_J_END;
+        case K:  return ledPos >= SEG_K_START  && ledPos <= SEG_K_END;
+        case L:  return ledPos >= SEG_L_START  && ledPos <= SEG_L_END;
+        case M:  return ledPos >= SEG_M_START  && ledPos <= SEG_M_END;
+        case DP: return ledPos >= SEG_DP_START && ledPos <= SEG_DP_END;
+        default: return 0;
     }
 }
 
-void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charData, color_t color) {
-    uint32_t fb_base_i = display_calculateFrameBufferCharacterIndex(charPos);
-    memset(&frameBuf[fb_base_i], 0x88, DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8));
-    
-    if (charData & A) {
-        display_setLEDColor(&frameBuf[fb_base_i], 0, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 1, color);
-    }
-    if (charData & B) {
-        display_setLEDColor(&frameBuf[fb_base_i], 2, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 3, color);
-    }
-    if (charData & C) {
-        display_setLEDColor(&frameBuf[fb_base_i], 4, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 5, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 6, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 7, color);
-    }
-    if (charData & D) {
-        display_setLEDColor(&frameBuf[fb_base_i], 8, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 9, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 10, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 11, color);
-    }
-    if (charData & E) {
-        display_setLEDColor(&frameBuf[fb_base_i], 12, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 13, color);
-    }
-    if (charData & F) {
-        display_setLEDColor(&frameBuf[fb_base_i], 14, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 15, color);
-    }
-    if (charData & G) {
-        display_setLEDColor(&frameBuf[fb_base_i], 16, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 17, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 18, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 19, color);
-    }
-    if (charData & H) {
-        display_setLEDColor(&frameBuf[fb_base_i], 20, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 21, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 22, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 23, color);
-    }
-    if (charData & K) {
-        display_setLEDColor(&frameBuf[fb_base_i], 24, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 25, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 26, color);
-    }
-    if (charData & M) {
-        display_setLEDColor(&frameBuf[fb_base_i], 27, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 28, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 29, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 30, color);
-    }
-    if (charData & N) {
-        display_setLEDColor(&frameBuf[fb_base_i], 31, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 32, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 33, color);
-    }
-    if (charData & R) {
-        display_setLEDColor(&frameBuf[fb_base_i], 45, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 46, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 47, color);
-    }
-    if (charData & S) {
-        display_setLEDColor(&frameBuf[fb_base_i], 41, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 42, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 43, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 44, color);
-    }
-    if (charData & T) {
-        display_setLEDColor(&frameBuf[fb_base_i], 38, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 39, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 40, color);
-    }
-    if (charData & U) {
-        display_setLEDColor(&frameBuf[fb_base_i], 36, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 37, color);
-    }
-    if (charData & P) {
-        display_setLEDColor(&frameBuf[fb_base_i], 34, color);
-        display_setLEDColor(&frameBuf[fb_base_i], 35, color);
-    }
+uint8_t display_led_in_char_data(uint16_t ledPos, uint32_t charData) {
+    if ((charData & A1) && display_led_in_segment(ledPos, A1)) return 1;
+    if ((charData & A2) && display_led_in_segment(ledPos, A2)) return 1;
+    if ((charData & B)  && display_led_in_segment(ledPos, B))  return 1;
+    if ((charData & C)  && display_led_in_segment(ledPos, C))  return 1;
+    if ((charData & D1) && display_led_in_segment(ledPos, D1)) return 1;
+    if ((charData & D2) && display_led_in_segment(ledPos, D2)) return 1;
+    if ((charData & E)  && display_led_in_segment(ledPos, E))  return 1;
+    if ((charData & F)  && display_led_in_segment(ledPos, F))  return 1;
+    if ((charData & G1) && display_led_in_segment(ledPos, G1)) return 1;
+    if ((charData & G2) && display_led_in_segment(ledPos, G2)) return 1;
+    if ((charData & H)  && display_led_in_segment(ledPos, H))  return 1;
+    if ((charData & I)  && display_led_in_segment(ledPos, I))  return 1;
+    if ((charData & J)  && display_led_in_segment(ledPos, J))  return 1;
+    if ((charData & K)  && display_led_in_segment(ledPos, K))  return 1;
+    if ((charData & L)  && display_led_in_segment(ledPos, L))  return 1;
+    if ((charData & M)  && display_led_in_segment(ledPos, M))  return 1;
+    if ((charData & DP) && display_led_in_segment(ledPos, DP)) return 1;
+    return 0;
 }
 
 void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
-    color_t color;
+    color_t color, shaderColor;
     color_rgb_t calcColor_rgb;
+
+    /*
+    plan:
+    - go through every led
+    - check if corresponding segment is enabled using phys to segment mapping
+    - if so, copy pixels from bitmap using phys to bitmap mapping
+    */
 
     memset(outBuf, 0x88, outBufSize);
 
-    for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
+    for (uint16_t charPos = 0; charPos < charBufSize; charPos++) {
+        uint32_t charData = char_16seg_font[charBuf[charPos] - char_seg_font_min];
+        if (quirkFlagBuf[charPos] & QUIRK_FLAG_COMBINING_FULL_STOP) charData |= DP;
+
+        #if defined(CONFIG_DISPLAY_HAS_SHADERS)
         calcColor_rgb = shader_fromJSON(charBufIndex, charBufSize, charBuf[charBufIndex], display_currentShader);
+        shaderColor.red = calcColor_rgb.r * 255;
+        shaderColor.green = calcColor_rgb.g * 255;
+        shaderColor.blue = calcColor_rgb.b * 255;
+        #endif
 
-        color.red = calcColor_rgb.r * 255;
-        color.green = calcColor_rgb.g * 255;
-        color.blue = calcColor_rgb.b * 255;
-
-        if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
-        }
-        if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(outBuf, charBufIndex, 1, color);
+        for (uint16_t led = 0; led < NUM_LEDS; led++) {
+            if (display_led_in_char_data(led, charData)) {
+                #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+                color = shaderColor;
+                #else
+                uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[led];
+                color.red = pixBuf[pixBufIndex];
+                color.green = pixBuf[pixBufIndex + 1];
+                color.blue = pixBuf[pixBufIndex + 2];
+                #endif
+            } else {
+                color = OFF;
+            }
+            display_setLEDColor(outBuf, led, color);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    if (display_transferOngoing) return;
+void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t outBufSize) {
+    if (display_transferOngoingUpper || display_transferOngoingLower) return;
 
-    ESP_LOGV(LOG_TAG, "Rendering frame:");
-    //ESP_LOG_BUFFER_HEX(LOG_TAG, frame, frameBufSize);
-    spi_transaction_t spi_trans = {
-        .length = (uint32_t)frameBufSize * 8,
+    ESP_LOGV(LOG_TAG, "Rendering frame");
+    //ESP_LOG_BUFFER_HEX(LOG_TAG, frame, outBufSize);
+    spi_transaction_t spi_trans_upper = {
+        .length = UPPER_OUT_BUF_SIZE * 8,
         .tx_buffer = frame,
     };
-    ESP_ERROR_CHECK(spi_device_transmit(spi, &spi_trans));
+    spi_transaction_t spi_trans_lower = {
+        .length = LOWER_OUT_BUF_SIZE * 8,
+        .tx_buffer = &frame[CONFIG_16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS * BYTES_PER_LED],
+    };
+    ESP_ERROR_CHECK(spi_device_transmit(spiUpper, &spi_trans_upper));
+    ESP_ERROR_CHECK(spi_device_transmit(spiLower, &spi_trans_lower));
     ets_delay_us(350); // Ensure reset pulse
 }
 

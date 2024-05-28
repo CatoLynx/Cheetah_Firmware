@@ -344,7 +344,7 @@ config DISPLAY_FONT_BYTES_PER_CHAR
     help
         How many bytes of data the font contains per character.
 
-config DISPLAY_FRAMEBUF_BITS_PER_CHAR
+config DISPLAY_OUT_BUF_BITS_PER_CHAR
     depends on DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     int "Bits per character (for framebuffer size)"
     default 8

@@ -115,7 +115,7 @@ uint32_t display_calculateFrameBufferCharacterIndex(uint16_t charPos) {
     // Calculate the frame buffer start index for the given character position
     // Position starts at 0 in the top left corner
     uint32_t fb_index = 0;
-    fb_index = DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8) * charPos;
+    fb_index = DIV_CEIL(CONFIG_DISPLAY_OUT_BUF_BITS_PER_CHAR, 8) * charPos;
     return fb_index;
 }
 
@@ -152,7 +152,7 @@ void display_setDecimalPointAt(uint8_t* frameBuf, uint16_t charPos, uint8_t stat
 
 void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charData, color_t color) {
     uint32_t fb_base_i = display_calculateFrameBufferCharacterIndex(charPos);
-    memset(&frameBuf[fb_base_i], 0x88, DIV_CEIL(CONFIG_DISPLAY_FRAMEBUF_BITS_PER_CHAR, 8));
+    memset(&frameBuf[fb_base_i], 0x88, DIV_CEIL(CONFIG_DISPLAY_OUT_BUF_BITS_PER_CHAR, 8));
     
     if (charData & A) {
         display_setLEDColor(&frameBuf[fb_base_i], 0, color);

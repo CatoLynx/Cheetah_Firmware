@@ -1,20 +1,43 @@
 menu "16-segment WS281x Hybrid Configuration"
 
-config 16SEG_WS281X_HYBRID_DATA_IO
-    int "Data GPIO"
+config 16SEG_WS281X_HYBRID_UPPER_DATA_IO
+    int "Upper data GPIO"
     default 0
     help
-        GPIO Pin for LED data
+        GPIO Pin for upper LED data
 
-choice 16SEG_WS281X_HYBRID_SPI_HOST
-    bool "SPI Host"
-    default 16SEG_WS281X_HYBRID_SPI_HOST_VSPI
+config 16SEG_WS281X_HYBRID_LOWER_DATA_IO
+    int "Lower data GPIO"
+    default 0
+    help
+        GPIO Pin for lower LED data
 
-    config 16SEG_WS281X_HYBRID_SPI_HOST_VSPI
+choice 16SEG_WS281X_HYBRID_UPPER_SPI_HOST
+    bool "Upper SPI Host"
+    default 16SEG_WS281X_HYBRID_UPPER_SPI_HOST_VSPI
+
+    config 16SEG_WS281X_HYBRID_UPPER_SPI_HOST_VSPI
         bool "VSPI"
     
-    config 16SEG_WS281X_HYBRID_SPI_HOST_HSPI
+    config 16SEG_WS281X_HYBRID_UPPER_SPI_HOST_HSPI
         bool "HSPI"
 endchoice
+
+choice 16SEG_WS281X_HYBRID_LOWER_SPI_HOST
+    bool "Lower SPI Host"
+    default 16SEG_WS281X_HYBRID_LOWER_SPI_HOST_VSPI
+
+    config 16SEG_WS281X_HYBRID_LOWER_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config 16SEG_WS281X_HYBRID_LOWER_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
+config 16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS
+    int "Split point between upper and lower LEDs"
+    default 0
+    help
+        First LED index of the lower half of the display
 
 endmenu
