@@ -19,6 +19,7 @@
 #define LOG_TAG "Canvas"
 
 static httpd_handle_t* canvas_server;
+static nvs_handle_t canvas_nvs_handle;
 static basic_auth_info_t* basic_auth_info;
 static uint8_t canvas_use_auth = 0;
 static uint8_t* canvas_pixel_buffer = NULL;
@@ -297,6 +298,13 @@ static esp_err_t canvas_brightness_post_handler(httpd_req_t *req) {
     }
     *canvas_brightness = (uint8_t)cJSON_GetNumberValue(brightness_field);
 
+    cJSON* default_field = cJSON_GetObjectItem(json, "saveDefault");
+    if (cJSON_IsBool(default_field)) {
+        if (cJSON_IsTrue(default_field)) {
+            nvs_set_u8(canvas_nvs_handle, "deflt_bright", *canvas_brightness);
+        }
+    }
+
     cJSON_Delete(json);
 
     // End response
@@ -445,6 +453,7 @@ static httpd_uri_t canvas_shader_post = {
 
 void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
+    canvas_nvs_handle = *nvsHandle;
     canvas_pixel_buffer = pixBuf;
     canvas_pixel_buffer_size = pixBufSize;
     canvas_text_buffer = textBuf;
@@ -457,7 +466,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
     basic_auth_info->realm    = "Cheetah Canvas";
 
-    esp_err_t ret = nvs_get_u8(*nvsHandle, "canvas_use_auth", &canvas_use_auth);
+    esp_err_t ret = nvs_get_u8(canvas_nvs_handle, "canvas_use_auth", &canvas_use_auth);
     if (ret != ESP_OK) canvas_use_auth = 0;
 
     if (canvas_use_auth) {
@@ -530,6 +539,8 @@ void browser_canvas_stop(void) {
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 void browser_canvas_register_brightness(httpd_handle_t* server, uint8_t* brightness) {
     canvas_brightness = brightness;
+    esp_err_t ret = nvs_get_u8(canvas_nvs_handle, "deflt_bright", canvas_brightness);
+    if (ret != ESP_OK) *canvas_brightness = 255;
     httpd_register_uri_handler(*server, &canvas_brightness_get);
     httpd_register_uri_handler(*server, &canvas_brightness_post);
 }

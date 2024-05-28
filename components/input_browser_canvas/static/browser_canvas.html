@@ -40,6 +40,7 @@
     <div id="brightness-container" style="display: none;">
       <label for="brightness-input">Brightness</label>
       <input type="range" id="brightness-input" name="brightness" min="0" max="255" value="255" />
+      <input type="button" id="btn-save-brightness" value="Save as default" /><br />
     </div>
     <div id="shader-container" style="display: none;">
       <label for="shader-select">Shader</label>
@@ -842,7 +843,7 @@
       }
 
       function onBrightnessChange(event) {
-        updateBrightness();
+        updateBrightness(false);
       }
 
       function getBrightnessFromDisplay() {
@@ -855,7 +856,7 @@
         });
       }
 
-      function updateBrightness() {
+      function updateBrightness(save) {
         let brightness = parseInt($("#brightness-input").val());
         if (_CANVASDEBUG) {
           console.log("Setting brightness to " + brightness);
@@ -864,7 +865,7 @@
             type: "POST",
             contentType: "application/json",
             url: "/canvas/brightness.json",
-            data: JSON.stringify({"brightness": brightness}),
+            data: JSON.stringify({"brightness": brightness, "saveDefault": !!save}),
             success: onSetBrightnessSuccess,
             error: onSetBrightnessError
           });
@@ -887,6 +888,10 @@
       function onSetBrightnessError(jqXHR, textStatus, errorThrown) {
         console.log("Error setting brightness!");
         console.log(errorThrown);
+      }
+
+      function saveDefaultBrightness(event) {
+        updateBrightness(true);
       }
 
       /* ################################################################### */
@@ -1196,6 +1201,7 @@
           getBrightnessFromDisplay();
           drawBrightnessControl();
           $("#brightness-input").change(onBrightnessChange);
+          $("#btn-save-brightness").click(saveDefaultBrightness);
         }
       }
 
