@@ -337,10 +337,6 @@ void app_main(void) {
         browser_canvas_register_shaders(&server, &display_shader);
         #endif
 
-        #if defined(DISPLAY_HAS_CHAR_BUFFER)
-        display_text_buffer[0] = '-';
-        #endif
-
         xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
 
         #if defined(CONFIG_FAN_ENABLED)
