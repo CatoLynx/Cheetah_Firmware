@@ -12,16 +12,24 @@
   <body>
     <h2 id="hostname">&nbsp;</h2>
     <div id="pixel-container" style="display: none;">
+      <canvas id="hidden-canvas" style="display: none;">
+        If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
+        Try enabling JavaScript and reload the page.
+      </canvas>
       <canvas id="pixel-canvas">
         If you can see this, it means that either your browser doesn't support HTML5 Canvas or you have JavaScript disabled.
         Try enabling JavaScript and reload the page.
       </canvas>
       <div>
-        <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label><br />
-        <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label><br />
+        <label for="fg-color"><input type="color" id="fg-color" name="fg-color" value="#ffffff" /> Left Click</label>
+        <label for="bg-color"><input type="color" id="bg-color" name="bg-color" value="#ffffff" /> Right Click</label>
         <input type="button" id="btn-clear" value="Clear" /><br />
         <input type="button" id="btn-invert-colors" value="Invert Colors" /><br />
         <label for="num-brush-size"><input type="number" min="1" max="50" value="1" id="num-brush-size" style="width: 4em;" /> Brush Size</label>
+        <input type="file" id="file-image" accept="image/*" /><br />
+        <label for="check-scale-down-image"><input type="checkbox" id="check-scale-down-image" /> Scale down</label>
+        <label for="check-scale-up-image"><input type="checkbox" id="check-scale-up-image" /> Scale up</label>
+        <label for="check-keep-aspect-ratio-image"><input type="checkbox" id="check-keep-aspect-ratio-image" /> Keep aspect ratio</label>
       </div>
     </div>
     <div id="text-container" style="display: none;">
@@ -41,8 +49,7 @@
       </table>
     </div>
     <div>
-      <input type="checkbox" id="check-live-update" />
-      <label for="check-live-update">Live Update</label><br />
+      <label for="check-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
       <input type="button" id="btn-update" value="Update" />
     </div>
 
@@ -182,6 +189,26 @@
             let i = x * display_info["viewport_height_pixel"] + y;
             let newPixel = new Pixel(x * (pixelSize + gridLineWidth), y * (pixelSize + gridLineWidth), pixelSize, pixelSize, gridLineWidth, pixels[i]);
             newPixel.draw();
+          }
+        }
+      }
+
+      function updatePixelsFromImage(imgData, width, height) {
+        // Load image data into pixels array
+        // Format: 32 bit RGBA, rows, left to right, top to bottom
+        let fb_idx = 0;
+        let pixel_idx = 0;
+        for (let x = 0; x < display_info["frame_width_pixel"]; x++) {
+          for (let y = 0; y < display_info["frame_height_pixel"]; y++) {
+            if ((x >= display_info["viewport_offset_x_pixel"]) && (y >= display_info["viewport_offset_y_pixel"]) && (x < (display_info["viewport_width_pixel"] + display_info["viewport_offset_x_pixel"])) && (y < (display_info["viewport_height_pixel"] + display_info["viewport_offset_y_pixel"]))) {
+              let img_x = (x - display_info["viewport_offset_x_pixel"]);
+              let img_y = (y - display_info["viewport_offset_y_pixel"]);
+              if (img_x < width && img_y < height) {
+                fb_idx = (img_y * width + img_x) * 4;
+                pixels[pixel_idx] = rgbToHex(imgData[fb_idx], imgData[fb_idx + 1], imgData[fb_idx + 2]);
+              }
+              pixel_idx++;
+            }
           }
         }
       }
@@ -382,9 +409,8 @@
       function updatePixelBuffer(event) {
         // If live update is disabled, only allow events from the update button
         if (!liveUpdate) {
-          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
-            return;
-          }
+          if (event === null) return;
+          if ($(event.target)[0] != $("#btn-update")[0]) return;
         }
         
         let fb = getPixelBuffer();
@@ -417,6 +443,52 @@
         pixelBufferUpdateInProgress = false;
         console.log("Error updating pixel buffer!");
         console.log(errorThrown);
+      }
+      
+      function onImageFileSelected(event) {
+        let file = event.target.files[0];
+        if (file) {
+          let reader = new FileReader();
+          reader.onload = function(e) {
+              let img = new Image();
+              img.onload = function() {
+                let maxWidth = display_info["viewport_width_pixel"];
+                let maxHeight = display_info["viewport_height_pixel"];
+                let width = img.width;
+                let height = img.height;
+
+                
+                if (($("#check-scale-down-image").prop("checked") && (width > maxWidth || height > maxHeight)) || ($("#check-scale-up-image").prop("checked") && (width < maxWidth || height < maxHeight))) {
+                  let widthRatio = maxWidth / width;
+                  let heightRatio = maxHeight / height;
+                  
+                  if ($("#check-keep-aspect-ratio-image").prop("checked")) {
+                    let scalingFactor = Math.min(widthRatio, heightRatio);
+                    width *= scalingFactor;
+                    height *= scalingFactor;
+                  } else {
+                    width *= widthRatio;
+                    height *= heightRatio;
+                  }
+                }
+                
+                width = Math.round(width);
+                height = Math.round(height);
+                
+                let canvas = $("#hidden-canvas")[0];
+                let ctx = canvas.getContext("2d");
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                updatePixelsFromImage(imageData.data, width, height);
+                updateCanvasFromPixels();
+                updatePixelBuffer(null);
+              };
+            img.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
       }
 
       /* ################################################################### */
@@ -493,9 +565,8 @@
       function updateTextBuffer(event) {
         // If live update is disabled, only allow events from the update button
         if (!liveUpdate) {
-          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
-            return;
-          }
+          if (event === null) return;
+          if ($(event.target)[0] != $("#btn-update")[0]) return;
         }
         
         let fb = getTextBuffer();
@@ -728,9 +799,8 @@
       function updateUnitBuffer(event) {
         // If live update is disabled, only allow events from the update button
         if (!liveUpdate) {
-          if (event !== null && $(event.target)[0] != $("#btn-update")[0]) {
-            return;
-          }
+          if (event === null) return;
+          if ($(event.target)[0] != $("#btn-update")[0]) return;
         }
         
         let fb = getUnitBuffer();
@@ -1135,10 +1205,10 @@
         $("body").html("<div style='color: #ff3333; font-weight: bold; font-size: 3vw;'>Error communicating with display!</div>");
       }
 
-      function updateAllBuffers() {
-        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(null);
-        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(null);
-        if (display_info["type"] == "selection") updateUnitBuffer(null);
+      function updateAllBuffers(event) {
+        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(event);
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(event);
+        if (display_info["type"] == "selection") updateUnitBuffer(event);
       }
 
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
@@ -1151,7 +1221,8 @@
       }
 
       function onLiveUpdateChange(event) {
-        liveUpdate = $("#check-live-update").is(":checked");
+        liveUpdate = $("#check-live-update").prop("checked");
+        localStorage.setItem("liveUpdate", liveUpdate);
         if (liveUpdate) {
           $("#btn-update").hide();
         } else {
@@ -1166,14 +1237,18 @@
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
         brushSize = localStorage.getItem("brushSize") || brushSize;
+        liveUpdate = (localStorage.getItem("liveUpdate") == "true") || liveUpdate;
         $("#check-live-update").change(onLiveUpdateChange);
         $("#btn-update").click(updateAllBuffers);
         $("#fg-color").val(fgColor);
         $("#bg-color").val(bgColor);
         $("#num-brush-size").val(brushSize);
+        $("#check-live-update").prop("checked", liveUpdate);
+        onLiveUpdateChange(null);
         $("#fg-color").change(onForegroundColorChange);
         $("#bg-color").change(onBackgroundColorChange);
         $("#num-brush-size").change(onBrushSizeChange);
+        $("#file-image").change(onImageFileSelected);
       }
 
       /* ################################################################### */
