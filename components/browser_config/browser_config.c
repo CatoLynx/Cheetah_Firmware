@@ -11,6 +11,7 @@
 #define LOG_TAG "BROWSER-CONFIG"
 
 static httpd_handle_t* config_server;
+static basic_auth_info_t* basic_auth_info;
 
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t browser_config_html_start[] asm("_binary_browser_config_html_start");
@@ -44,6 +45,7 @@ config_entry_t config_entries[] = {
     {.key = "poll_url", .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "poll_token", .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "poll_interval", .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "cv_use_auth", .dataType = U8, .flags = BC_FIELD_FLAGS_NONE},
 };
 
 
@@ -370,10 +372,10 @@ void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
-    basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
+    basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
-    basic_auth_info->realm    = "ESP32 Configuration";
+    basic_auth_info->realm    = "Cheetah Configuration";
     
     config_get.user_ctx = basic_auth_info;
     config_get_fields.user_ctx = basic_auth_info;
@@ -391,4 +393,5 @@ void browser_config_deinit(void) {
     httpd_unregister_uri_handler(*config_server, config_get.uri, config_get.method);
     httpd_unregister_uri_handler(*config_server, config_get_fields.uri, config_get_fields.method);
     httpd_unregister_uri_handler(*config_server, config_post_update.uri, config_post_update.method);
+    free(basic_auth_info);
 }

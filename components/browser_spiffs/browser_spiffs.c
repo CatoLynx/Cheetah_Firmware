@@ -355,7 +355,7 @@ void browser_spiffs_init(httpd_handle_t* server) {
     basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
-    basic_auth_info->realm    = "ESP32 Configuration";
+    basic_auth_info->realm    = "Cheetah SPIFFS";
     
     spiffs_get.user_ctx = basic_auth_info;
     spiffs_files_get.user_ctx = basic_auth_info;

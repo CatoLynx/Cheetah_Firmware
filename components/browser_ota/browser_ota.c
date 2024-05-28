@@ -286,7 +286,7 @@ void browser_ota_init(httpd_handle_t* server) {
     basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
-    basic_auth_info->realm    = "ESP32 Firmware Update";
+    basic_auth_info->realm    = "Cheetah Firmware Update";
     
     ota_get.user_ctx = basic_auth_info;
     ota_length_post.user_ctx = basic_auth_info;
