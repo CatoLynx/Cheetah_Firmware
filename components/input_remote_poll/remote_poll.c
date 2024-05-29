@@ -25,8 +25,8 @@ static uint8_t pollTokenInited = 0;
 
 // Dynamic array holding the current list of buffers
 static rp_buffer_list_entry_t* rp_buffers = NULL;
-static uint8_t rp_num_buffers = 0;
-static uint8_t rp_cur_buffer = 0;
+static uint16_t rp_num_buffers = 0;
+static uint16_t rp_cur_buffer = 0;
 static bool rp_restart_cycle = false;
 
 // Last switch / update times
@@ -195,8 +195,10 @@ void remote_poll_task(void* arg) {
 
         // Update if necessary
         if (rp_last_update == 0 || now - rp_last_update >= pollInterval * 1000000) {
-            rp_last_update = now;
-            if (wifi_gotIP) remote_poll_send_request();
+            if (wifi_gotIP) {
+                remote_poll_send_request();
+                rp_last_update = now;
+            }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
@@ -269,7 +271,10 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     */
 
     ESP_LOGD(LOG_TAG, "Processing response");
-    if (!cJSON_IsObject(json)) return ESP_FAIL;
+    if (!cJSON_IsObject(json)) {
+        ESP_LOGE(LOG_TAG, "Did not receive a valid JSON object");
+        return ESP_FAIL;
+    }
 
     cJSON* field_error = cJSON_GetObjectItem(json, "error");
     if (field_error != NULL) {
@@ -288,15 +293,18 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     }
 
     cJSON* buffers_arr = cJSON_GetObjectItem(json, "buffers");
-    if (!cJSON_IsArray(buffers_arr)) return ESP_FAIL;
+    if (!cJSON_IsArray(buffers_arr)) {
+        ESP_LOGE(LOG_TAG, "'buffers' is not an array'");
+        return ESP_FAIL;
+    }
     uint16_t numBuffers = cJSON_GetArraySize(buffers_arr);
-    if (numBuffers > 255) {
-        ESP_LOGE(LOG_TAG, "Got more than 255 buffers, aborting");
+    if (numBuffers > MAX_NUM_BUFFERS) {
+        ESP_LOGE(LOG_TAG, "Got more than %d buffers, aborting", MAX_NUM_BUFFERS);
         return ESP_FAIL;
     }
 
     // Free individual buffer arrays and the overall array
-    for (uint8_t i = 0; i < rp_num_buffers; i++) {
+    for (uint16_t i = 0; i < rp_num_buffers; i++) {
         free(rp_buffers[i].pixelBuffer);
         free(rp_buffers[i].textBuffer);
         free(rp_buffers[i].unitBuffer);
@@ -310,7 +318,7 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     memset(rp_buffers, 0x00, rp_num_buffers * sizeof(rp_buffer_list_entry_t));
 
     // Populate new buffers
-    for (uint8_t i = 0; i < rp_num_buffers; i++) {
+    for (uint16_t i = 0; i < rp_num_buffers; i++) {
         size_t b64_len = 0;
         cJSON* item = cJSON_GetArrayItem(buffers_arr, i);
 
@@ -328,12 +336,16 @@ esp_err_t remote_poll_process_response(cJSON* json) {
             if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
                 // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
                 // because this will always be returned when checking size
+                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
                 rp_buffers[i].pixelBuffer = heap_caps_malloc(pixel_buffer_size, MALLOC_CAP_SPIRAM);
                 result = mbedtls_base64_decode(rp_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) return ESP_FAIL;
+                if (result != 0) {
+                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
+                    return ESP_FAIL;
+                }
             }
         }
         
@@ -346,12 +358,16 @@ esp_err_t remote_poll_process_response(cJSON* json) {
             if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
                 // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
                 // because this will always be returned when checking size
+                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
                 rp_buffers[i].textBuffer = malloc(text_buffer_size);
                 result = mbedtls_base64_decode(rp_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) return ESP_FAIL;
+                if (result != 0) {
+                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
+                    return ESP_FAIL;
+                }
             }
         }
         
@@ -364,12 +380,16 @@ esp_err_t remote_poll_process_response(cJSON* json) {
             if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
                 // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
                 // because this will always be returned when checking size
+                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
                 rp_buffers[i].unitBuffer = malloc(unit_buffer_size);
                 result = mbedtls_base64_decode(rp_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) return ESP_FAIL;
+                if (result != 0) {
+                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
+                    return ESP_FAIL;
+                }
             }
         }
     }

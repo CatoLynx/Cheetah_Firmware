@@ -5,6 +5,9 @@
 #include "cJSON.h"
 
 
+#define MAX_NUM_BUFFERS 2048
+
+
 typedef struct {
     uint8_t* pixelBuffer;
     uint8_t* textBuffer;
