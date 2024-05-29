@@ -205,6 +205,13 @@ choice DISPLAY_PIX_BUF_TYPE
         bool "24 bits per pixel (RGB, 8 bits per colour)"
 endchoice
 
+config DISPLAY_PIX_BUF_INIT_WHITE
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Initialize pixel buffer to white instead of black"
+    default false
+    help
+        If set, pixel buffer will start out white
+
 config DISPLAY_VIEWPORT_WIDTH_PIXEL
     depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     int "Pixel viewport width"

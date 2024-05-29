@@ -349,6 +349,10 @@ void app_main(void) {
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
 
+    #if defined(DISPLAY_HAS_PIXEL_BUFFER) && defined(CONFIG_DISPLAY_PIX_BUF_INIT_WHITE)
+    memset(display_pixel_buffer, 0xFF, DISPLAY_PIX_BUF_SIZE);
+    #endif
+
     #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
     ret = display_init(&nvs_handle, display_framebuf_mask, &display_num_units);
     #else
