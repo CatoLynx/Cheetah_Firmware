@@ -14,6 +14,9 @@
 
 #include "config_global.h"
 #include "artnet.h"
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+#include "bitmap_generators.h"
+#endif
 #include "browser_canvas.h"
 #include "browser_config.h"
 #include "browser_spiffs.h"
@@ -126,6 +129,11 @@ uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
     cJSON* display_transition = NULL;
 #endif
 
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    cJSON* display_prevBitmapGenerator = NULL;
+    cJSON* display_bitmapGenerator = NULL;
+#endif
+
 size_t hostname_length = 64;
 char hostname[64];
 
@@ -160,6 +168,11 @@ static void display_refresh_task(void* arg) {
     #endif
 
     while (1) {
+        #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+        // TODO: Improve dramerate and maybe make own task
+        bitmap_generator_current(time_getSystemTime_us());
+        #endif
+
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
             display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
@@ -224,6 +237,19 @@ static void display_refresh_task(void* arg) {
                 cJSON_Delete(display_prevTransition);
             }
             display_prevTransition = display_transition;
+        }
+        #endif
+
+        #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+        if (display_bitmapGenerator != display_prevBitmapGenerator) {
+
+            bitmap_generator_select(display_bitmapGenerator);
+            
+            // Delete previous bitmap generator data if necessary
+            if (display_prevBitmapGenerator != NULL) {
+                cJSON_Delete(display_prevBitmapGenerator);
+            }
+            display_prevBitmapGenerator = display_bitmapGenerator;
         }
         #endif
 
@@ -326,6 +352,7 @@ void app_main(void) {
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
         remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
+        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
@@ -339,6 +366,7 @@ void app_main(void) {
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
         remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
+        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
@@ -352,13 +380,18 @@ void app_main(void) {
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-        ESP_LOGI(LOG_TAG, "register shaders: %p", display_shader);
+        ESP_LOGI(LOG_TAG, "Registering shaders");
         browser_canvas_register_shaders(&server, &display_shader);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
         ESP_LOGI(LOG_TAG, "Registering transitions");
         browser_canvas_register_transitions(&server, &display_transition);
+        #endif
+
+        #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+        ESP_LOGI(LOG_TAG, "Registering bitmap generators");
+        browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator);
         #endif
 
         xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);

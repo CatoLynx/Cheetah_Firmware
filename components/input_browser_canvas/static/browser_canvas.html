@@ -32,6 +32,13 @@
         <label for="check-keep-aspect-ratio-image"><input type="checkbox" id="check-keep-aspect-ratio-image" /> Keep aspect ratio</label>
       </div>
     </div>
+    <div id="bitmap-generator-container" style="display: none;">
+      <label for="bitmap-generator-select">Bitmap generator</label>
+      <select id="bitmap-generator-select" name="bitmap-generator-select"></select>
+      <table id="bitmap-generator-params">
+        <tbody></tbody>
+      </table>
+    </div>
     <div id="text-container" style="display: none;">
       <label for="text-input">Text</label>
       <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
@@ -94,8 +101,10 @@
       var display_info = {};
       var shader_list = [];
       var transition_list = [];
+      var bitmap_generator_list = [];
       var selectedShaderId = 0;
       var selectedTransitionId = 0;
+      var selectedBitmapGeneratorId = 0;
       var pixelSize = 10;
       var brushSize = 1;
       var baseColor = "#000000";
@@ -1080,6 +1089,8 @@
         console.log(errorThrown);
       }
       
+      /* ################################################################### */
+      
       /* TRANSITION FUNCTIONS ############################################## */
       function drawTransitionControl() {
         transition_list.forEach(function(transition, i) {
@@ -1257,6 +1268,181 @@
       
       /* ################################################################### */
       
+      /* BITMAP GENERATOR FUNCTIONS ######################################## */
+      function drawBitmapGeneratorControl() {
+        bitmap_generator_list.forEach(function(bitmapGenerator, i) {
+          $('#bitmap-generator-select').append($('<option>', {
+              value: i,
+              text: bitmapGenerator["name"]
+          }));
+        });
+
+        drawBitmapGeneratorParameters();
+        $("#bitmap-generator-select").change(onBitmapGeneratorSelectChange);
+        $("#bitmap-generator-container").show();
+      }
+
+      function drawBitmapGeneratorParameters() {
+        var selectedBitmapGenerator = bitmap_generator_list[selectedBitmapGeneratorId];
+        var params = selectedBitmapGenerator["params"];
+        $("#bitmap-generator-params").find("tbody").empty();
+        if(!params) return;
+
+        for (var paramName of Object.keys(params)) {
+          var paramData = params[paramName];
+
+          var field_element = $('<input type="' + paramData["type"] + '">');
+          field_element.prop("name", paramName);
+          field_element.prop("id", "bitmap-generator-param-" + paramName);
+          for (var propName of Object.keys(paramData)) {
+            if (propName == "type") continue;
+            field_element.prop(propName, paramData[propName]);
+          }
+          field_element.change(updateBitmapGenerator);
+
+          var td_name = $("<td>" + paramName + "</td>");
+          var td_field = $("<td>").append(field_element);
+
+          switch (paramData["type"]) {
+            case "range": {
+              var value_display = $('<span>');
+              value_display.prop("id", "bitmap-generator-param-display-" + paramName);
+              value_display.text(field_element.val());
+              field_element.change(function(event) {
+                $("#bitmap-generator-param-display-" + $(event.target).prop("name")).text($(event.target).val());
+              });
+              td_field.append(value_display);
+              break;
+            }
+
+            case "color": {
+              field_element.val("#ffffff");
+            }
+          }
+
+          var tr = $("<tr>").append(td_name).append(td_field);
+          $("#bitmap-generator-params").find("tbody").append(tr);
+        }
+      }
+
+      function getBitmapGenerators() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/bitmap_generators.json",
+          success: onGetBitmapGeneratorsSuccess,
+          error: onGetBitmapGeneratorsError
+        });
+      }
+
+      function getBitmapGeneratorFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/bitmap_generator.json",
+          success: onGetBitmapGeneratorFromDisplaySuccess,
+          error: onGetBitmapGeneratorFromDisplayError
+        });
+      }
+
+      function getBitmapGeneratorData() {
+        var data = {
+          generator: parseInt($("#bitmap-generator-select").val()),
+          params: {}
+        };
+
+        var inputs = $("#bitmap-generator-params input");
+        for (var i = 0; i < inputs.length; i++) {
+          var field_name = $(inputs[i]).prop("name");
+          var field_type = $(inputs[i]).prop("type");
+          if (["range", "number"].includes(field_type)) {
+            // Numerical field
+            var field_value = parseInt($(inputs[i]).val());
+          } else if (field_type == "color") {
+            var field_value = hexToRGB($(inputs[i]).val());
+          } else if (field_type == "checkbox") {
+            var field_value = $(inputs[i]).prop("checked");
+          } else {
+            var field_value = $(inputs[i]).val();
+          }
+          data["params"][field_name] = field_value;
+        }
+        return data;
+      }
+
+      function setBitmapGeneratorData(data) {
+        $("#bitmap-generator-select").val(data["generator"]);
+        $("#bitmap-generator-select").trigger("change");
+        let bitmap_generator_info = bitmap_generator_list[data["generator"]];
+
+        for (var paramName of Object.keys(data["params"])) {
+          let paramInfo = bitmap_generator_info["params"][paramName];
+          let paramCtrl = $("#bitmap-generator-param-" + paramName);
+
+          if (paramInfo["type"] == "color") {
+            paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
+          } else {
+            paramCtrl.val(data["params"][paramName]);
+          }
+          paramCtrl.trigger("change");
+        }
+      }
+
+      function updateBitmapGenerator() {
+        var payload = getBitmapGeneratorData();
+
+        if (_CANVASDEBUG) {
+          console.log("Bitmap generator data:");
+          console.log(payload);
+        } else {
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/bitmap_generator.json",
+            data: JSON.stringify(payload),
+            success: onSetBitmapGeneratorSuccess,
+            error: onSetBitmapGeneratorError
+          });
+        }
+      }
+
+      function onBitmapGeneratorSelectChange(event) {
+        selectedBitmapGeneratorId = parseInt($("#bitmap-generator-select").val());
+        drawBitmapGeneratorParameters();
+        updateBitmapGenerator();
+      }
+
+      function onGetBitmapGeneratorsSuccess(data, textStatus, jqXHR) {
+        if(!("generators" in data)) return;
+        bitmap_generator_list = data["generators"];
+        drawBitmapGeneratorControl();
+        getBitmapGeneratorFromDisplay();
+      }
+
+      function onGetBitmapGeneratorsError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting bitmap generators!");
+        console.log(errorThrown);
+      }
+
+      function onSetBitmapGeneratorSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetBitmapGeneratorError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting bitmap generator!");
+        console.log(errorThrown);
+      }
+      
+      function onGetBitmapGeneratorFromDisplaySuccess(data, textStatus, jqXHR) {
+        if ($.isEmptyObject(data)) return;
+        setBitmapGeneratorData(data);
+      }
+
+      function onGetBitmapGeneratorFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting bitmap generator from display!");
+        console.log(errorThrown);
+      }
+      
       /* ################################################################### */
 
       /* UTILITY FUNCTIONS ################################################# */
@@ -1427,6 +1613,7 @@
         getDisplayInfo();
         getShaders();
         getTransitions();
+        getBitmapGenerators();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
         brushSize = localStorage.getItem("brushSize") || brushSize;

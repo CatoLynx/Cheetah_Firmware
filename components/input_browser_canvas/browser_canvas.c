@@ -16,6 +16,9 @@
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
 #include TRANSITIONS_INCLUDE
 #endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    #include "bitmap_generators.h"
 #endif
 
 // TODO: Sometimes, the last change doesn't get sent
@@ -44,6 +47,10 @@ static cJSON** shader_data;
 
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
 static cJSON** transition_data;
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+static cJSON** bitmap_generator_data;
 #endif
 
 // Embedded files - refer to CMakeLists.txt
@@ -446,6 +453,68 @@ static esp_err_t canvas_transition_post_handler(httpd_req_t *req) {
 }
 #endif
 
+static esp_err_t canvas_get_bitmap_generators_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    cJSON* json = bitmap_generators_get_available();
+    #else
+    cJSON* json = cJSON_CreateObject();
+    #endif
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+static esp_err_t canvas_bitmap_generator_get_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    char* resp;
+    if (bitmap_generator_data == NULL || *bitmap_generator_data == NULL) {
+        cJSON* json = cJSON_CreateObject();
+        resp = cJSON_Print(json);
+        cJSON_Delete(json);
+    } else {
+        resp = cJSON_Print(*bitmap_generator_data);
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+static esp_err_t canvas_bitmap_generator_post_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, HTTPD_500);
+    }
+
+    *bitmap_generator_data = json;
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+#endif
+
 static httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -542,6 +611,26 @@ static httpd_uri_t canvas_transition_post = {
 };
 #endif
 
+static httpd_uri_t canvas_get_bitmap_generators = {
+    .uri       = "/canvas/bitmap_generators.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_get_bitmap_generators_handler
+};
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+static httpd_uri_t canvas_bitmap_generator_get = {
+    .uri       = "/canvas/bitmap_generator.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_bitmap_generator_get_handler
+};
+
+static httpd_uri_t canvas_bitmap_generator_post = {
+    .uri       = "/canvas/bitmap_generator.json",
+    .method    = HTTP_POST,
+    .handler   = canvas_bitmap_generator_post_handler
+};
+#endif
+
 void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
@@ -576,6 +665,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         canvas_unit_buffer_post.user_ctx = basic_auth_info;
         canvas_get_shaders.user_ctx = basic_auth_info;
         canvas_get_transitions.user_ctx = basic_auth_info;
+        canvas_get_bitmap_generators.user_ctx = basic_auth_info;
         
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
         canvas_brightness_get.user_ctx = basic_auth_info;
@@ -591,6 +681,11 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         canvas_transition_get.user_ctx = basic_auth_info;
         canvas_transition_post.user_ctx = basic_auth_info;
         #endif
+        
+        #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+        canvas_bitmap_generator_get.user_ctx = basic_auth_info;
+        canvas_bitmap_generator_post.user_ctx = basic_auth_info;
+        #endif
     }
 
     httpd_register_uri_handler(*server, &canvas_get);
@@ -602,6 +697,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     httpd_register_uri_handler(*server, &canvas_unit_buffer_post);
     httpd_register_uri_handler(*server, &canvas_get_shaders);
     httpd_register_uri_handler(*server, &canvas_get_transitions);
+    httpd_register_uri_handler(*server, &canvas_get_bitmap_generators);
     canvas_server = server;
 }
 
@@ -622,6 +718,7 @@ void browser_canvas_stop(void) {
     httpd_unregister_uri_handler(*canvas_server, canvas_unit_buffer_post.uri, canvas_unit_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_transitions.uri, canvas_get_transitions.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_get_bitmap_generators.uri, canvas_get_bitmap_generators.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_brightness_get.uri, canvas_brightness_get.method);
@@ -636,6 +733,11 @@ void browser_canvas_stop(void) {
     transition_data = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_transition_get.uri, canvas_transition_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_transition_post.uri, canvas_transition_post.method);
+    #endif
+    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    bitmap_generator_data = NULL;
+    httpd_unregister_uri_handler(*canvas_server, canvas_bitmap_generator_get.uri, canvas_bitmap_generator_get.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_bitmap_generator_post.uri, canvas_bitmap_generator_post.method);
     #endif
     free(basic_auth_info);
 }
@@ -663,5 +765,13 @@ void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transit
     transition_data = transitionData;
     httpd_register_uri_handler(*server, &canvas_transition_get);
     httpd_register_uri_handler(*server, &canvas_transition_post);
+}
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+void browser_canvas_register_bitmap_generators(httpd_handle_t* server, cJSON** bitmapGeneratorData) {
+    bitmap_generator_data = bitmapGeneratorData;
+    httpd_register_uri_handler(*server, &canvas_bitmap_generator_get);
+    httpd_register_uri_handler(*server, &canvas_bitmap_generator_post);
 }
 #endif
