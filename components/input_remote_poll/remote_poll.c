@@ -186,10 +186,18 @@ void remote_poll_task(void* arg) {
                 if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
                 rp_restart_cycle = false;
                 if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
-                ESP_LOGD(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
-                if (rp_buffers[rp_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, rp_buffers[rp_cur_buffer].pixelBuffer, pixel_buffer_size);
-                if (rp_buffers[rp_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  rp_buffers[rp_cur_buffer].textBuffer,  text_buffer_size);
-                if (rp_buffers[rp_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  rp_buffers[rp_cur_buffer].unitBuffer,  unit_buffer_size);
+
+                // If the remote poll input is disabled in NVS with this flag,
+                // It'll keep running in the background, but not outputting anything
+                // This gets checked every loop cycle so that it takes immediate effect
+                uint8_t active = 0;
+                nvs_get_u8(rp_nvs_handle, "poll_active", &active);
+                if (active) {
+                    ESP_LOGD(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
+                    if (rp_buffers[rp_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, rp_buffers[rp_cur_buffer].pixelBuffer, pixel_buffer_size);
+                    if (rp_buffers[rp_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  rp_buffers[rp_cur_buffer].textBuffer,  text_buffer_size);
+                    if (rp_buffers[rp_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  rp_buffers[rp_cur_buffer].unitBuffer,  unit_buffer_size);
+                }
             }
         }
 
