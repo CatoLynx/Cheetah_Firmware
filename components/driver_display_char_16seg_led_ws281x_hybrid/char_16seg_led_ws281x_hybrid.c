@@ -14,6 +14,7 @@
 #include "util_gpio.h"
 #include "char_16seg_mapping.h"
 #include "shaders_char.h"
+#include "transitions_pixel.h"
 #include "math.h"
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID)
@@ -28,6 +29,10 @@ volatile uint8_t display_transferOngoingLower = false;
 uint8_t display_currentBrightness = 255;
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
 void* display_currentShader = NULL;
+#endif
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+void* display_currentTransition = NULL;
+uint8_t display_transitionPixBuf[DISPLAY_PIX_BUF_SIZE] = {0};
 #endif
 static const color_t OFF = { 0, 0, 0 };
 
@@ -141,6 +146,17 @@ esp_err_t display_set_shader(void* shaderData) {
 }
 #else
 esp_err_t display_set_shader(void* shaderData) {
+    return ESP_OK;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+esp_err_t display_set_transition(void* transitionData) {
+    display_currentTransition = transitionData;
+    return ESP_OK;
+}
+#else
+esp_err_t display_set_transition(void* transitionData) {
     return ESP_OK;
 }
 #endif
@@ -268,7 +284,14 @@ void display_render_frame(uint8_t* frame, uint16_t outBufSize) {
 
 void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+    // TODO: This won't work. Need to a) actually render all the inbetween steps and b) work on masked bitmaps (segment mask for old and new buffers baked in)
+    // otherwise we would just transition the background instead of the whole thing
+    transition_fromJSON(prevPixBuf, pixBuf, display_transitionPixBuf, pixBufSize, display_currentTransition);
+    display_buffers_to_out_buf(outBuf, outBufSize, display_transitionPixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
+    #else
     display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
+    #endif
     display_render_frame(outBuf, outBufSize);
 }
 

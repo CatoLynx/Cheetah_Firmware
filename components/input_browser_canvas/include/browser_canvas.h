@@ -12,3 +12,6 @@ void browser_canvas_register_brightness(httpd_handle_t* server, uint8_t* brightn
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
 void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData);
 #endif
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transitionData);
+#endif

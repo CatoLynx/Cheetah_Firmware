@@ -10,6 +10,8 @@
 #include "esp_spiffs.h"
 #include "cJSON.h"
 
+#include "macros.h"
+
 #include "config_global.h"
 #include "artnet.h"
 #include "browser_canvas.h"
@@ -19,7 +21,6 @@
 #include "git_version.h"
 #include "httpd.h"
 #include "logging_tcp.h"
-#include "macros.h"
 #include "remote_poll.h"
 #include "telegram_bot.h"
 #include "tpm2net.h"
@@ -120,6 +121,11 @@ uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
     cJSON* display_shader = NULL;
 #endif
 
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+    cJSON* display_prevTransition = NULL;
+    cJSON* display_transition = NULL;
+#endif
+
 size_t hostname_length = 64;
 char hostname[64];
 
@@ -206,6 +212,18 @@ static void display_refresh_task(void* arg) {
                 cJSON_Delete(display_prevShader);
             }
             display_prevShader = display_shader;
+        }
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+        if (display_transition != display_prevTransition) {
+            display_set_transition(display_transition);
+            
+            // Delete previous transition data if necessary
+            if (display_prevTransition != NULL) {
+                cJSON_Delete(display_prevTransition);
+            }
+            display_prevTransition = display_transition;
         }
         #endif
 
@@ -336,6 +354,11 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
         ESP_LOGI(LOG_TAG, "register shaders: %p", display_shader);
         browser_canvas_register_shaders(&server, &display_shader);
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+        ESP_LOGI(LOG_TAG, "Registering transitions");
+        browser_canvas_register_transitions(&server, &display_transition);
         #endif
 
         xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);

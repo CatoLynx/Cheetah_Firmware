@@ -10,7 +10,12 @@
 #include "settings_secret.h"
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-#include SHADER_INCLUDE
+#include SHADERS_INCLUDE
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+#include TRANSITIONS_INCLUDE
+#endif
 #endif
 
 // TODO: Sometimes, the last change doesn't get sent
@@ -35,6 +40,10 @@ static uint8_t* canvas_brightness;
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
 static cJSON** shader_data;
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+static cJSON** transition_data;
 #endif
 
 // Embedded files - refer to CMakeLists.txt
@@ -375,6 +384,68 @@ static esp_err_t canvas_shader_post_handler(httpd_req_t *req) {
 }
 #endif
 
+static esp_err_t canvas_get_transitions_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+    cJSON* json = transition_get_available();
+    #else
+    cJSON* json = cJSON_CreateObject();
+    #endif
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+static esp_err_t canvas_transition_get_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    char* resp;
+    if (transition_data == NULL || *transition_data == NULL) {
+        cJSON* json = cJSON_CreateObject();
+        resp = cJSON_Print(json);
+        cJSON_Delete(json);
+    } else {
+        resp = cJSON_Print(*transition_data);
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
+static esp_err_t canvas_transition_post_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+
+    char* buf = malloc(req->content_len);
+    httpd_req_recv(req, buf, req->content_len);
+
+    cJSON* json = cJSON_Parse(buf);
+    free(buf);
+
+    if (!cJSON_IsObject(json)) {
+        cJSON_Delete(json);
+        return abortRequest(req, HTTPD_500);
+    }
+
+    *transition_data = json;
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+#endif
+
 static httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -451,6 +522,26 @@ static httpd_uri_t canvas_shader_post = {
 };
 #endif
 
+static httpd_uri_t canvas_get_transitions = {
+    .uri       = "/canvas/transitions.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_get_transitions_handler
+};
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+static httpd_uri_t canvas_transition_get = {
+    .uri       = "/canvas/transition.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_transition_get_handler
+};
+
+static httpd_uri_t canvas_transition_post = {
+    .uri       = "/canvas/transition.json",
+    .method    = HTTP_POST,
+    .handler   = canvas_transition_post_handler
+};
+#endif
+
 void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
@@ -484,6 +575,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         canvas_text_buffer_post.user_ctx = basic_auth_info;
         canvas_unit_buffer_post.user_ctx = basic_auth_info;
         canvas_get_shaders.user_ctx = basic_auth_info;
+        canvas_get_transitions.user_ctx = basic_auth_info;
         
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
         canvas_brightness_get.user_ctx = basic_auth_info;
@@ -493,6 +585,11 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
         canvas_shader_get.user_ctx = basic_auth_info;
         canvas_shader_post.user_ctx = basic_auth_info;
+        #endif
+        
+        #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+        canvas_transition_get.user_ctx = basic_auth_info;
+        canvas_transition_post.user_ctx = basic_auth_info;
         #endif
     }
 
@@ -504,6 +601,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     httpd_register_uri_handler(*server, &canvas_text_buffer_post);
     httpd_register_uri_handler(*server, &canvas_unit_buffer_post);
     httpd_register_uri_handler(*server, &canvas_get_shaders);
+    httpd_register_uri_handler(*server, &canvas_get_transitions);
     canvas_server = server;
 }
 
@@ -523,6 +621,7 @@ void browser_canvas_stop(void) {
     httpd_unregister_uri_handler(*canvas_server, canvas_text_buffer_post.uri, canvas_text_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_unit_buffer_post.uri, canvas_unit_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_get_transitions.uri, canvas_get_transitions.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_brightness_get.uri, canvas_brightness_get.method);
@@ -532,6 +631,11 @@ void browser_canvas_stop(void) {
     shader_data = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_shader_get.uri, canvas_shader_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_shader_post.uri, canvas_shader_post.method);
+    #endif
+    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+    transition_data = NULL;
+    httpd_unregister_uri_handler(*canvas_server, canvas_transition_get.uri, canvas_transition_get.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_transition_post.uri, canvas_transition_post.method);
     #endif
     free(basic_auth_info);
 }
@@ -551,5 +655,13 @@ void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData)
     shader_data = shaderData;
     httpd_register_uri_handler(*server, &canvas_shader_get);
     httpd_register_uri_handler(*server, &canvas_shader_post);
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transitionData) {
+    transition_data = transitionData;
+    httpd_register_uri_handler(*server, &canvas_transition_get);
+    httpd_register_uri_handler(*server, &canvas_transition_post);
 }
 #endif
