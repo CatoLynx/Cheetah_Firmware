@@ -1495,7 +1495,8 @@
       }
       
       function saveBitmapGeneratorPresets() {
-        localStorage.setItem("bitmapGeneratorPresets", JSON.stringify(bitmap_generator_presets));
+        // Skip first element (None)
+        localStorage.setItem("bitmapGeneratorPresets", JSON.stringify(bitmap_generator_presets.slice(1)));
       }
       
       /* ################################################################### */

@@ -360,7 +360,7 @@ void app_main(void) {
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
         remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
-        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
@@ -374,7 +374,7 @@ void app_main(void) {
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
         remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
-        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+        bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)

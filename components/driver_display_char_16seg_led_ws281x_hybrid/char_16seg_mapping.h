@@ -37,7 +37,8 @@
 #define SEG_DP_START 2018
 #define SEG_DP_END   2061
 
-static const uint16_t LED_TO_BITMAP_MAPPING[2062] = {
+#define MAPPING_LENGTH 2062
+const uint16_t LED_TO_BITMAP_MAPPING[MAPPING_LENGTH] = {
     11538,
     11235,
     10932,
