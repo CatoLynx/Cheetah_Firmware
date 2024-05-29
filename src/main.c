@@ -29,6 +29,7 @@
 #include "tpm2net.h"
 #include "ethernet.h"
 #include "wifi.h"
+#include "util_brightness.h"
 #include "util_buffer.h"
 #include "util_fan.h"
 #include "util_generic.h"
@@ -117,6 +118,9 @@ uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     uint8_t display_prevBrightness = 0;
     uint8_t display_brightness = 255;
+    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
+    uint8_t display_baseBrightness = 127;
+    #endif
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
@@ -318,6 +322,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(fan_init());
     #endif
 
+    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL) && defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
+    ESP_ERROR_CHECK(brightness_sensor_init(&display_brightness, &display_baseBrightness));
+    #endif
+
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
@@ -376,7 +384,14 @@ void app_main(void) {
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-        browser_canvas_register_brightness(&server, &display_brightness);
+            #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
+            browser_canvas_register_brightness(&server, &display_baseBrightness);
+            #else
+            browser_canvas_register_brightness(&server, &display_brightness);
+            #endif
+            #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
+            xTaskCreatePinnedToCore(brightness_adjust_task, "brightness_adjust", 4096, NULL, 3, NULL, 0);
+            #endif
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)

@@ -351,6 +351,48 @@ config DISPLAY_HAS_BRIGHTNESS_CONTROL
     help
         Enable brightness control
 
+config DISPLAY_HAS_BRIGHTNESS_SENSOR
+    depends on DISPLAY_HAS_BRIGHTNESS_CONTROL
+    bool "Display has brightness sensor"
+    default false
+    help
+        Enable brightness sensor
+
+config DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL
+    depends on DISPLAY_HAS_BRIGHTNESS_SENSOR
+    int "Brightness sensor ADC channel (ADC1)"
+    default 0
+    help
+        Channel number of ADC1 for brightness sensor
+
+config DISPLAY_BRIGHTNESS_SENSOR_DARK_VOLTAGE
+    depends on DISPLAY_HAS_BRIGHTNESS_SENSOR
+    int "Brightness sensor dark voltage (mV)"
+    default 0
+    help
+        ADC input voltage in mV in complete darkness
+
+config DISPLAY_BRIGHTNESS_SENSOR_BRIGHT_VOLTAGE
+    depends on DISPLAY_HAS_BRIGHTNESS_SENSOR
+    int "Brightness sensor bright voltage (mV)"
+    default 0
+    help
+        ADC input voltage in mV in full brightness
+
+config DISPLAY_BRIGHTNESS_SENSOR_MIN_OUT_VAL
+    depends on DISPLAY_HAS_BRIGHTNESS_SENSOR
+    int "Minimum output brightness when using sensor"
+    default 0
+    help
+        Minimum output brightness when using sensor
+
+config DISPLAY_BRIGHTNESS_SENSOR_MAX_OUT_VAL
+    depends on DISPLAY_HAS_BRIGHTNESS_SENSOR
+    int "Maximum output brightness when using sensor"
+    default 255
+    help
+        Maximum output brightness when using sensor
+
 config DISPLAY_HAS_SHADERS
     depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     bool "Display has shaders (color effects)"
