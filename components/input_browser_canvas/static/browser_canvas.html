@@ -38,6 +38,10 @@
       <table id="bitmap-generator-params">
         <tbody></tbody>
       </table>
+      <label for="bitmap-generator-preset-select">Presets</label>
+      <select id="bitmap-generator-preset-select" name="bitmap-generator-preset-select"></select>
+      <input type="button" id="btn-bitmap-generator-preset-save" value="Save" />
+      <input type="button" id="btn-bitmap-generator-preset-delete" value="Delete" /><br />
     </div>
     <div id="text-container" style="display: none;">
       <label for="text-input">Text</label>
@@ -93,9 +97,9 @@
         "pixbuf_type": "24bpp",
         "textbuf_size": 2,
         "charbuf_size": 1,
-        "brightness_control": false,
+        "brightness_control": true,
         "config": {},
-        "quirks": []
+        "quirks": ["combining_full_stop"]
       };
       
       var display_info = {};
@@ -105,6 +109,8 @@
       var selectedShaderId = 0;
       var selectedTransitionId = 0;
       var selectedBitmapGeneratorId = 0;
+      var bitmap_generator_presets = [];
+      var selectedBitmapGeneratorPresetId = 0;
       var pixelSize = 10;
       var brushSize = 1;
       var baseColor = "#000000";
@@ -1277,9 +1283,23 @@
           }));
         });
 
+        drawBitmapGeneratorPresetSelect();
         drawBitmapGeneratorParameters();
         $("#bitmap-generator-select").change(onBitmapGeneratorSelectChange);
+        $("#bitmap-generator-preset-select").change(onBitmapGeneratorPresetSelectChange);
+        $("#btn-bitmap-generator-preset-save").click(addBitmapGeneratorPreset);
+        $("#btn-bitmap-generator-preset-delete").click(deleteBitmapGeneratorPreset);
         $("#bitmap-generator-container").show();
+      }
+      
+      function drawBitmapGeneratorPresetSelect() {
+        $('#bitmap-generator-preset-select').find('option').remove();
+        bitmap_generator_presets.forEach(function(bitmapGeneratorPreset, i) {
+          $('#bitmap-generator-preset-select').append($('<option>', {
+              value: i,
+              text: bitmapGeneratorPreset["name"]
+          }));
+        });
       }
 
       function drawBitmapGeneratorParameters() {
@@ -1372,7 +1392,8 @@
 
       function setBitmapGeneratorData(data) {
         $("#bitmap-generator-select").val(data["generator"]);
-        $("#bitmap-generator-select").trigger("change");
+        selectedBitmapGeneratorId = parseInt($("#bitmap-generator-select").val());
+        drawBitmapGeneratorParameters();
         let bitmap_generator_info = bitmap_generator_list[data["generator"]];
 
         for (var paramName of Object.keys(data["params"])) {
@@ -1384,8 +1405,8 @@
           } else {
             paramCtrl.val(data["params"][paramName]);
           }
-          paramCtrl.trigger("change");
         }
+        updateBitmapGenerator();
       }
 
       function updateBitmapGenerator() {
@@ -1412,9 +1433,16 @@
         updateBitmapGenerator();
       }
 
+      function onBitmapGeneratorPresetSelectChange(event) {
+        selectedBitmapGeneratorPresetId = parseInt($("#bitmap-generator-preset-select").val());
+        let preset = bitmap_generator_presets[selectedBitmapGeneratorPresetId];
+        setBitmapGeneratorData(preset["data"]);
+      }
+
       function onGetBitmapGeneratorsSuccess(data, textStatus, jqXHR) {
         if(!("generators" in data)) return;
         bitmap_generator_list = data["generators"];
+        loadBitmapGeneratorPresets();
         drawBitmapGeneratorControl();
         getBitmapGeneratorFromDisplay();
       }
@@ -1441,6 +1469,33 @@
       function onGetBitmapGeneratorFromDisplayError(jqXHR, textStatus, errorThrown) {
         console.log("Error getting bitmap generator from display!");
         console.log(errorThrown);
+      }
+      
+      function addBitmapGeneratorPreset(event) {
+        let name = prompt("Please enter a name for the new preset.");
+        if (!name) return;
+        let data = getBitmapGeneratorData();
+        let preset = {"name": name, "data": data};
+        bitmap_generator_presets.push(preset);
+        saveBitmapGeneratorPresets();
+        drawBitmapGeneratorPresetSelect();
+      }
+      
+      function deleteBitmapGeneratorPreset(event) {
+        let i = parseInt($("#bitmap-generator-preset-select").val());
+        if (i == 0) return;
+        bitmap_generator_presets.splice(i, 1);
+        saveBitmapGeneratorPresets();
+        drawBitmapGeneratorPresetSelect();
+      }
+      
+      function loadBitmapGeneratorPresets() {
+        bitmap_generator_presets = [{"name": "None", "data": {}}];
+        bitmap_generator_presets = bitmap_generator_presets.concat(JSON.parse(localStorage.getItem("bitmapGeneratorPresets") || "[]"));
+      }
+      
+      function saveBitmapGeneratorPresets() {
+        localStorage.setItem("bitmapGeneratorPresets", JSON.stringify(bitmap_generator_presets));
       }
       
       /* ################################################################### */
@@ -1583,12 +1638,6 @@
         $("body").html("<div style='color: #ff3333; font-weight: bold; font-size: 3vw;'>Error communicating with display!</div>");
       }
 
-      function updateAllBuffers(event) {
-        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(event);
-        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(event);
-        if (display_info["type"] == "selection") updateUnitBuffer(event);
-      }
-
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
         $("#hostname").text(data['hostname']);
@@ -1606,6 +1655,12 @@
         } else {
           $("#btn-update").show();
         }
+      }
+
+      function updateAllBuffers(event) {
+        if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(event);
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(event);
+        if (display_info["type"] == "selection") updateUnitBuffer(event);
       }
 
       function onReady() {
