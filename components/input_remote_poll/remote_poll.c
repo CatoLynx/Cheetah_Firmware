@@ -182,8 +182,8 @@ void remote_poll_task(void* arg) {
                 rp_cur_buffer = 0;
             }
             if (rp_restart_cycle == true || rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
-                rp_last_switch = now;
                 if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
+                rp_last_switch = now;
                 rp_restart_cycle = false;
                 if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
 
