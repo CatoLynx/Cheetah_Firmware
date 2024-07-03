@@ -1,3 +1,9 @@
+hybrid:
+- Lauftext / Buchstaben nacheinander
+- Fade zwischen Buchstaben
+- Canvas: Bild optional so skalieren, dass aspect ratio bleibt und Frame gefüllt wird
+- remote poll: pixbuffer im json (zumindest bei 2 stück) führen zu riesen (~1.7 MB) spiram mallocs und LoadProhibites bei remote_poll_process_response(json)
+
 Support mapping framebuffer to actual display format (e.g. half-panel layouts)
 Add font renderer
 Add font support (via filesystem?)
