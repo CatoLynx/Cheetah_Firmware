@@ -10,6 +10,7 @@
 
 #include "tpm2net.h"
 #include "util_buffer.h"
+#include "macros.h"
 
 
 #define LOG_TAG "tpm2.net"
@@ -100,7 +101,7 @@ static void tpm2net_task(void* arg) {
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
-                    buffer_8to1(tpm2net_temp_buffer, tpm2net_pixel_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    buffer_8to1(tpm2net_temp_buffer, tpm2net_pixel_buffer, DISPLAY_FRAME_WIDTH_PIXEL, DISPLAY_FRAME_HEIGHT_PIXEL, MT_OVERWRITE);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif

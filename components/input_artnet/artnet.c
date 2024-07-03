@@ -10,6 +10,7 @@
 
 #include "artnet.h"
 #include "util_buffer.h"
+#include "macros.h"
 
 
 #define LOG_TAG "ArtNet"
@@ -93,7 +94,7 @@ static void artnet_task(void* arg) {
                     #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
-                    buffer_8to1(artnet_temp_buffer, artnet_pixel_buffer, CONFIG_DISPLAY_FRAME_WIDTH, CONFIG_DISPLAY_FRAME_HEIGHT, MT_OVERWRITE);
+                    buffer_8to1(artnet_temp_buffer, artnet_pixel_buffer, DISPLAY_FRAME_WIDTH_PIXEL, DISPLAY_FRAME_HEIGHT_PIXEL, MT_OVERWRITE);
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif

@@ -178,7 +178,7 @@ static void display_refresh_task(void* arg) {
         #endif
 
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
-            display_buffers_to_out_buf(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+            display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
             buffer_textbuf_to_charbuf(display_text_buffer, display_char_buffer, display_quirk_flags_buffer, DISPLAY_TEXT_BUF_SIZE, DISPLAY_CHAR_BUF_SIZE);
             // TODO: Rename and change signature for consistency

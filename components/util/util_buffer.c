@@ -61,6 +61,7 @@ void buffer_iso88591_to_utf8(char* dst, char* src) {
     }
 }
 
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_char_buffer, uint16_t* display_quirk_flags_buffer, uint16_t textBufSize, uint16_t charBufSize) {
      /*
      Convert a text buffer to a character buffer and a quirk flag buffer.
@@ -140,3 +141,4 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
         }
     }
 }
+#endif

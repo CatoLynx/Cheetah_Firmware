@@ -128,6 +128,10 @@ void display_flip() {
     gpio_pulse(CONFIG_BROSE_PAN_E_IO, 1, CONFIG_BROSE_FLIP_PULSE_WIDTH, CONFIG_BROSE_FLIP_PAUSE_LENGTH);
 }
 
+void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize) {
+    memcpy(outBuf, pixBuf, outBufSize < pixBufSize ? outBufSize : pixBufSize);
+}
+
 void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
     uint16_t prev_p, p, x, y_byte, y;
     prev_p = 0xFFFF;
@@ -175,6 +179,12 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         display_dirty = 0;
     }
     display_deselect();
+}
+
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {
+    display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize);
+    // TODO: This is fine since we just copy the frame, but maybe make it look less like outBuf is unnecessary here
+    display_render_frame_1bpp(pixBuf, prevPixBuf, pixBufSize);
 }
 
 #endif

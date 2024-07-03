@@ -10,8 +10,9 @@
 #include "math.h"
 
 
-#define LOG_TAG "SHD-CHAR-COLOR"
+#if defined(DISPLAY_HAS_TEXT_BUFFER)
 
+#define LOG_TAG "SHD-CHAR-COLOR"
 
 // Order of shaders. This is important!
 // This order needs to match the order in which the shaders
@@ -285,3 +286,5 @@ color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t
 
     return fallback;
 }
+
+#endif
