@@ -170,6 +170,10 @@ choice DISPLAY_DRIVER
         depends on DISPLAY_TYPE_CHARACTER
         bool "16-segment LED (using WS281X)"
         
+    config DISPLAY_DRIVER_CHAR_IBIS
+        depends on DISPLAY_TYPE_CHARACTER
+        bool "IBIS (using UART peripheral)"
+        
     config DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID
         depends on DISPLAY_TYPE_CHAR_ON_PIXEL
         bool "16-segment LED (using WS281X) - Hybrid (char-on-pixel)"

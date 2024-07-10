@@ -175,6 +175,8 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #define DISPLAY_DRIVER "char_krone_9000"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
     #define DISPLAY_DRIVER "char_16seg_led_ws281x"
+#elif defined(CONFIG_DISPLAY_DRIVER_CHAR_IBIS)
+    #define DISPLAY_DRIVER "char_ibis"
 #elif defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X_HYBRID)
     #define DISPLAY_DRIVER "char_16seg_led_ws281x_hybrid"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_9000)

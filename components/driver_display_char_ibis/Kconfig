@@ -1,0 +1,92 @@
+menu "IBIS Configuration"
+
+choice IBIS_TELEGRAM_TYPE
+    bool "Telegram type"
+    default IBIS_TELEGRAM_TYPE_DS009
+
+    config IBIS_TELEGRAM_TYPE_DS009
+        bool "DS009"
+endchoice
+
+config IBIS_ADDR
+    int "Display Address"
+    default 1
+    help
+        Address of display, if telegram type requires it
+
+config IBIS_TX_IO
+    int "Tx GPIO"
+    default 0
+    help
+        GPIO pin for data transmitted to display
+
+config IBIS_TX_INVERTED
+    bool "Tx Inverted"
+    default false
+    help
+        Whether to invert Tx pin logic
+
+choice IBIS_UART
+    bool "UART to use"
+    default IBIS_UART_1
+
+    config IBIS_UART_0
+        bool "UART0"
+
+    config IBIS_UART_1
+        bool "UART1"
+
+    config IBIS_UART_2
+        bool "UART2"
+endchoice
+
+config IBIS_TX_BUF_SIZE
+    int "Tx buffer size in bytes"
+    default 256
+    help
+        UART transmit buffer size. Set to 0 to disable buffer and block while sending data. Otherwise, must be greater that UART_FIFO_LEN.
+
+config IBIS_HAS_WS281X_BACKLIGHT
+    bool "Display has WS281x backlight"
+    help
+        If set, display has RGB backlight using WS281x LEDs
+
+config IBIS_WS281X_DATA_IO
+    depends on IBIS_HAS_WS281X_BACKLIGHT
+    int "WS281x Data GPIO"
+    default 0
+    help
+        GPIO Pin for WS281x LED data
+
+config IBIS_WS281X_NUM_LEDS
+    depends on IBIS_HAS_WS281X_BACKLIGHT
+    int "Number of WS281x LEDs"
+    default 1
+    help
+        How many WS281x LEDs make up the backlight
+
+choice IBIS_WS281X_SPI_HOST
+    depends on IBIS_HAS_WS281X_BACKLIGHT
+    bool "WS281x SPI Host"
+    default IBIS_WS281X_SPI_HOST_VSPI
+
+    config IBIS_WS281X_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config IBIS_WS281X_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
+choice IBIS_WS281X_COLOR_ORDER
+    depends on IBIS_HAS_WS281X_BACKLIGHT
+    bool "WS281x color order"
+    default IBIS_WS281X_COLOR_ORDER_GRB
+
+    config IBIS_WS281X_COLOR_ORDER_GRB
+        bool "GRB"
+    
+    config IBIS_WS281X_COLOR_ORDER_BRG
+        bool "BRG"
+endchoice
+
+endmenu
