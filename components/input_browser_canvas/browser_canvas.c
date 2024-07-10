@@ -214,6 +214,7 @@ static esp_err_t canvas_text_buffer_post_handler(httpd_req_t *req) {
     } else {
         b64_len = 0;
         result = mbedtls_base64_decode(canvas_text_buffer, canvas_text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        if (b64_len < canvas_text_buffer_size) canvas_text_buffer[b64_len] = 0; // Ensure null termination
         if (result != 0) {
             free(buf);
             ESP_LOGI(LOG_TAG, "result != 0");

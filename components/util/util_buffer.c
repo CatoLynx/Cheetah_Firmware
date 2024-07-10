@@ -77,11 +77,14 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
     uint8_t incrementCharBufIndex = 0; // Temporary flag to store whether a character was added to the char buffer
     uint8_t characterHandlingCompleted = 0; // Temporary flag to tellwhether a character needs to be handles further
 
-    // Reset the char buffer to spaces and the quirk flags buffer to 0x00
-    memset(display_char_buffer, ' ', charBufSize);
+    // Reset the char buffer to user-defined character and the quirk flags buffer to 0x00
+    memset(display_char_buffer, CONFIG_DISPLAY_CHAR_BUF_INIT_VALUE, charBufSize);
     memset(display_quirk_flags_buffer, 0x00, charBufSize * 2);
 
     for (uint16_t textBufIndex = 0; textBufIndex < textBufSize; textBufIndex++) {
+        // Stop at null byte
+        if (display_text_buffer[textBufIndex] == 0) return;
+
         incrementCharBufIndex = 0;
         characterHandlingCompleted = 0;
 
