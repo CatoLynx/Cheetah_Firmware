@@ -200,8 +200,8 @@ static color_rgb_t _color_rgb_from_json(cJSON* json, color_rgb_t fallback) {
 }
 
 color_rgb_t shader_fromJSON(uint16_t cb_i_display, uint16_t charBufSize, uint8_t character, cJSON* shaderData) {
-    // Fall back to white in case of error
-    color_rgb_t fallback = { .r = 1.0, .g = 1.0, .b = 1.0 };
+    // Fall back to black/off in case of error
+    color_rgb_t fallback = { .r = 0.0, .g = 0.0, .b = 0.0 };
 
     if (shaderData == NULL) return fallback;
 
