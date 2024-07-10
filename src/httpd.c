@@ -6,6 +6,7 @@
 #include "esp_ota_ops.h"
 #include "esp_spiffs.h"
 #include "wg.h"
+#include "git_version.h"
 
 #include "config_global.h"
 #include "util_disp_selection.h"
@@ -82,10 +83,26 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(json, "hostname", hostname);
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
+    cJSON_AddStringToObject(json, "git_version", GIT_VERSION);
     cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
     cJSON_AddBoolToObject(json, "wireguard_up", wg_is_up());
     cJSON_AddNumberToObject(json, "spiffs_size", spiffs_total);
     cJSON_AddNumberToObject(json, "spiffs_free", spiffs_total - spiffs_used);
+    #if defined(CONFIG_LOG_DEFAULT_LEVEL_NONE)
+    cJSON_AddStringToObject(json, "log_level", "none");
+    #elif defined(CONFIG_LOG_DEFAULT_LEVEL_ERROR)
+    cJSON_AddStringToObject(json, "log_level", "error");
+    #elif defined(CONFIG_LOG_DEFAULT_LEVEL_WARN)
+    cJSON_AddStringToObject(json, "log_level", "warn");
+    #elif defined(CONFIG_LOG_DEFAULT_LEVEL_INFO)
+    cJSON_AddStringToObject(json, "log_level", "info");
+    #elif defined(CONFIG_LOG_DEFAULT_LEVEL_DEBUG)
+    cJSON_AddStringToObject(json, "log_level", "debug");
+    #elif defined(CONFIG_LOG_DEFAULT_LEVEL_VERBOSE)
+    cJSON_AddStringToObject(json, "log_level", "verbose");
+    #else
+    cJSON_AddStringToObject(json, "log_level", "unknown");
+    #endif
 
     char *resp = cJSON_Print(json);
     httpd_resp_set_type(req, "application/json");

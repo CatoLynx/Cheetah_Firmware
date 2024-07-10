@@ -14,6 +14,7 @@
     <h1>xatLabs Cheetah</h1>
     <h2 id="hostname">&nbsp;</h2>
     <h3 id="fw-version">&nbsp;</h3>
+    <h4 id="log-level">&nbsp;</h4>
 
     <input type="file" id="file-firmware" accept=".bin" />
     <div id="div-file-info">&nbsp;</div>
@@ -149,7 +150,8 @@
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
         $("#hostname").html(data['hostname']);
-        $("#fw-version").html("Compiled: " + data['compile_date'] + " " + data['compile_time']);
+        $("#fw-version").html("Rev. " + data['git_version'] + ", " + data['compile_date'] + " " + data['compile_time']);
+        $("#log-level").html("Log Level: " + data['log_level']);
         if(data['app_verified']) {
           $("#btn-verify").hide();
           $("#verify-status").hide();
