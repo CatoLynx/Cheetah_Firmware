@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "browser_canvas.h"
 #include "util_httpd.h"
+#include "util_nvs.h"
 #include "settings_secret.h"
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
@@ -52,6 +53,8 @@ static cJSON** transition_data;
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
 static cJSON** bitmap_generator_data;
 #endif
+
+static cJSON* canvas_presets = NULL;
 
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t browser_canvas_html_start[] asm("_binary_browser_canvas_html_start");
@@ -516,6 +519,26 @@ static esp_err_t canvas_bitmap_generator_post_handler(httpd_req_t *req) {
 }
 #endif
 
+static esp_err_t canvas_get_presets_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+
+    char* resp;
+
+    if (canvas_presets == NULL) {
+        cJSON* json = cJSON_CreateObject();
+        resp = cJSON_Print(json);
+        cJSON_Delete(json);
+    } else {
+        resp = cJSON_Print(canvas_presets);
+    }
+
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
 static httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -632,6 +655,12 @@ static httpd_uri_t canvas_bitmap_generator_post = {
 };
 #endif
 
+static httpd_uri_t canvas_get_presets = {
+    .uri       = "/canvas/presets.json",
+    .method    = HTTP_GET,
+    .handler   = canvas_get_presets_handler
+};
+
 void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
@@ -667,6 +696,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         canvas_get_shaders.user_ctx = basic_auth_info;
         canvas_get_transitions.user_ctx = basic_auth_info;
         canvas_get_bitmap_generators.user_ctx = basic_auth_info;
+        canvas_get_presets.user_ctx = basic_auth_info;
         
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
         canvas_brightness_get.user_ctx = basic_auth_info;
@@ -689,6 +719,14 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         #endif
     }
 
+    char* presetFile = get_string_from_nvs(nvsHandle, "cnv_preset_file");
+    if (presetFile == NULL) {
+        ESP_LOGE(LOG_TAG, "Failed to get preset file name from NVS");
+    } else {
+        get_json_from_spiffs(presetFile, &canvas_presets, LOG_TAG);
+    }
+    free(presetFile);
+
     httpd_register_uri_handler(*server, &canvas_get);
     httpd_register_uri_handler(*server, &canvas_pixel_buffer_get);
     httpd_register_uri_handler(*server, &canvas_text_buffer_get);
@@ -699,6 +737,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     httpd_register_uri_handler(*server, &canvas_get_shaders);
     httpd_register_uri_handler(*server, &canvas_get_transitions);
     httpd_register_uri_handler(*server, &canvas_get_bitmap_generators);
+    httpd_register_uri_handler(*server, &canvas_get_presets);
     canvas_server = server;
 }
 
@@ -720,6 +759,7 @@ void browser_canvas_stop(void) {
     httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_transitions.uri, canvas_get_transitions.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_bitmap_generators.uri, canvas_get_bitmap_generators.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_get_presets.uri, canvas_get_presets.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_brightness_get.uri, canvas_brightness_get.method);

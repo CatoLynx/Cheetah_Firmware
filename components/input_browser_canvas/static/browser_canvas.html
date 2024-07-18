@@ -71,6 +71,10 @@
       <label for="check-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
       <input type="button" id="btn-update" value="Update" />
     </div>
+    <div id="preset-container" style="display: none;">
+      <div>Presets</div>
+      <div id="preset-list"></div>
+    </div>
 
     <script type="text/javascript">
       var _CANVASDEBUG = false;
@@ -106,6 +110,7 @@
       var shader_list = [];
       var transition_list = [];
       var bitmap_generator_list = [];
+      var preset_list = [];
       var selectedShaderId = 0;
       var selectedTransitionId = 0;
       var selectedBitmapGeneratorId = 0;
@@ -1022,9 +1027,9 @@
         return data;
       }
 
-      function setShaderData(data) {
+      function setShaderData(data, sendRequest = false) {
         $("#shader-select").val(data["shader"]);
-        $("#shader-select").trigger("change");
+        $("#shader-select").trigger("change", false);
         let shader_info = shader_list[data["shader"]];
 
         for (var paramName of Object.keys(data["params"])) {
@@ -1036,8 +1041,8 @@
           } else {
             paramCtrl.val(data["params"][paramName]);
           }
-          paramCtrl.trigger("change");
         }
+        if (sendRequest) updateShader();
       }
 
       function updateShader() {
@@ -1058,10 +1063,10 @@
         }
       }
 
-      function onShaderSelectChange(event) {
+      function onShaderSelectChange(event, sendRequest = true) {
         selectedShaderId = parseInt($("#shader-select").val());
         drawShaderParameters();
-        updateShader();
+        if (sendRequest) updateShader();
       }
 
       function onGetShadersSuccess(data, textStatus, jqXHR) {
@@ -1087,7 +1092,7 @@
       
       function onGetShaderFromDisplaySuccess(data, textStatus, jqXHR) {
         if ($.isEmptyObject(data)) return;
-        setShaderData(data);
+        setShaderData(data, sendRequest = false);
       }
 
       function onGetShaderFromDisplayError(jqXHR, textStatus, errorThrown) {
@@ -1201,7 +1206,7 @@
 
       function setTransitionData(data) {
         $("#transition-select").val(data["transition"]);
-        $("#transition-select").trigger("change");
+        $("#transition-select").trigger("change", false);
         let transition_info = transition_list[data["transition"]];
 
         for (var paramName of Object.keys(data["params"])) {
@@ -1235,10 +1240,10 @@
         }
       }
 
-      function onTransitionSelectChange(event) {
+      function onTransitionSelectChange(event, sendRequest = true) {
         selectedTransitionId = parseInt($("#transition-select").val());
         drawTransitionParameters();
-        updateTransition();
+        if (sendRequest) updateTransition();
       }
 
       function onGetTransitionsSuccess(data, textStatus, jqXHR) {
@@ -1501,6 +1506,48 @@
       
       /* ################################################################### */
 
+      /* PRESET FUNCTIONS ################################################## */
+      function drawPresetList() {
+        $("#preset-list").empty();
+        if (preset_list.length == 0) return;
+        preset_list.forEach(function(preset, i) {
+          let button = $('<input type="button">');
+          button.attr('value', preset["name"]);
+          button.click(function f() { applyPreset(preset); });
+          $("#preset-list").append(button).append("<br>");
+        });
+        $("#preset-container").show();
+      }
+
+      function applyPreset(preset) {
+        $("#text-input").val(preset["text"]);
+        $("#btn-update").trigger("click");
+        setShaderData(preset["shader"], sendRequest = true);
+      }
+      
+      function getPresets() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/presets.json",
+          success: onGetPresetsSuccess,
+          error: onGetPresetsError
+        });
+      }
+
+      function onGetPresetsSuccess(data, textStatus, jqXHR) {
+        if(!("presets" in data)) return;
+        preset_list = data["presets"];
+        drawPresetList();
+      }
+
+      function onGetPresetsError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting presets!");
+        console.log(errorThrown);
+      }
+
+      /* ################################################################### */
+
       /* UTILITY FUNCTIONS ################################################# */
       function padZero(str, len) {
         len = len || 2;
@@ -1670,6 +1717,7 @@
         getShaders();
         getTransitions();
         getBitmapGenerators();
+        getPresets();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);
         bgColor = limitColorRange(localStorage.getItem("bgColor") || bgColor);
         brushSize = localStorage.getItem("brushSize") || brushSize;
