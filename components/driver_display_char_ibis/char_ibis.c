@@ -215,7 +215,10 @@ void display_render_frame(uint8_t* outBuf, size_t outBufSize) {
     //ESP_LOG_BUFFER_HEX(LOG_TAG, outBuf, outBufSize);
 
     esp_err_t ret = uart_wait_tx_done(IBIS_UART, 10 / portTICK_PERIOD_MS);
-    if (ret != ESP_OK) return; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
+    if (ret != ESP_OK) {
+        ESP_LOGW(LOG_TAG, "Tx still ongoing, aborting");
+        return; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
+    }
 
     // Find first null byte
     uint16_t endPos = outBufSize - 1;
@@ -225,6 +228,10 @@ void display_render_frame(uint8_t* outBuf, size_t outBufSize) {
             break;
         }
     }
+
+    // If the data ends in \r, the checksum was 0x00, so extend by one byte
+    // Otherwise, the checksum will be cut off
+    if ((endPos > 0) && (outBuf[endPos - 1] == '\r') && (endPos < (outBufSize - 1))) endPos++;
 
     // Send everything up to (excluding) the first null byte
     uart_write_bytes(IBIS_UART, outBuf, endPos);
