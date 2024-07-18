@@ -61,9 +61,40 @@ static esp_err_t simplecss_get_handler(httpd_req_t *req) {
 
 static esp_err_t device_info_get_handler(httpd_req_t *req) {
     tcpip_adapter_ip_info_t ip_info;
-    tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
     char ip_str[16];
+    cJSON* ips = cJSON_CreateObject();
+    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
+    tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
     sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+    cJSON_AddStringToObject(ips, "wifi_sta", ip_str);
+    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
+    tcpip_adapter_get_ip_info(ESP_IF_WIFI_AP, &ip_info);
+    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+    cJSON_AddStringToObject(ips, "wifi_ap", ip_str);
+    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
+    tcpip_adapter_get_ip_info(ESP_IF_ETH, &ip_info);
+    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+    cJSON_AddStringToObject(ips, "eth", ip_str);
+
+    uint8_t mac_bytes[6];
+    char mac_str[18];
+    cJSON* macs = cJSON_CreateObject();
+    memset(mac_str, 0x00, 18);
+    esp_read_mac(mac_bytes, ESP_MAC_WIFI_STA);
+    sprintf(mac_str, MACSTR, MAC2STR(mac_bytes));
+    cJSON_AddStringToObject(macs, "wifi_sta", mac_str);
+    memset(mac_str, 0x00, 18);
+    esp_read_mac(mac_bytes, ESP_MAC_WIFI_SOFTAP);
+    sprintf(mac_str, MACSTR, MAC2STR(mac_bytes));
+    cJSON_AddStringToObject(macs, "wifi_ap", mac_str);
+    memset(mac_str, 0x00, 18);
+    esp_read_mac(mac_bytes, ESP_MAC_BT);
+    sprintf(mac_str, MACSTR, MAC2STR(mac_bytes));
+    cJSON_AddStringToObject(macs, "bt", mac_str);
+    memset(mac_str, 0x00, 18);
+    esp_read_mac(mac_bytes, ESP_MAC_ETH);
+    sprintf(mac_str, MACSTR, MAC2STR(mac_bytes));
+    cJSON_AddStringToObject(macs, "eth", mac_str);
 
     const esp_partition_t *partition = esp_ota_get_running_partition();
     esp_ota_img_states_t ota_state;
@@ -79,7 +110,8 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     ESP_ERROR_CHECK(esp_spiffs_info(SPIFFS_PARTITION_LABEL, &spiffs_total, &spiffs_used));
 
     cJSON* json = cJSON_CreateObject();
-    cJSON_AddStringToObject(json, "ip", ip_str);
+    cJSON_AddItemToObject(json, "ip", ips);
+    cJSON_AddItemToObject(json, "mac", macs);
     cJSON_AddStringToObject(json, "hostname", hostname);
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);

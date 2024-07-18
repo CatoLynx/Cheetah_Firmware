@@ -13,9 +13,52 @@
   <body>
     <h1>xatLabs Cheetah</h1>
     <h2 id="hostname">&nbsp;</h2>
-    <h3 id="fw-version">&nbsp;</h3>
-    <h4 id="log-level">&nbsp;</h4>
+    <table><tbody>
+      <tr>
+        <td colspan="2">Revision</td>
+        <td id="fw-version"></td>
+      </tr>
+      <tr>
+        <td colspan="2">Compiled</td>
+        <td id="compile-datetime"></td>
+      </tr>
+      <tr>
+        <td colspan="2">Log Level</td>
+        <td id="log-level"></td>
+      </tr>
+      <tr>
+        <td rowspan="3">IP</td>
+        <td>STA</td>
+        <td id="ip-sta"></td>
+      </tr>
+      <tr>
+        <td>AP</td>
+        <td id="ip-ap"></td>
+      </tr>
+      <tr>
+        <td>ETH</td>
+        <td id="ip-eth"></td>
+      </tr>
+      <tr>
+        <td rowspan="4">MAC</td>
+        <td>STA</td>
+        <td id="mac-sta"></td>
+      </tr>
+      <tr>
+        <td>AP</td>
+        <td id="mac-ap"></td>
+      </tr>
+      <tr>
+        <td>BT</td>
+        <td id="mac-bt"></td>
+      </tr>
+      <tr>
+        <td>ETH</td>
+        <td id="mac-eth"></td>
+      </tr>
+    </tbody></table>
 
+    <h4>Firmware Update</h4>
     <input type="file" id="file-firmware" accept=".bin" />
     <div id="div-file-info">&nbsp;</div>
     <input type="submit" id="btn-submit" value="Update Firmware">
@@ -150,8 +193,16 @@
       function onGetDeviceInfoSuccess(data, textStatus, jqXHR) {
         document.title += " - " + data['hostname'];
         $("#hostname").html(data['hostname']);
-        $("#fw-version").html("Rev. " + data['git_version'] + ", " + data['compile_date'] + " " + data['compile_time']);
-        $("#log-level").html("Log Level: " + data['log_level']);
+        $("#fw-version").html(data['git_version']);
+        $("#compile-datetime").html(data['compile_date'] + " " + data['compile_time']);
+        $("#log-level").html(data['log_level']);
+        $("#ip-sta").html(data['ip']['wifi_sta']);
+        $("#ip-ap").html(data['ip']['wifi_ap']);
+        $("#ip-eth").html(data['ip']['eth']);
+        $("#mac-sta").html(data['mac']['wifi_sta']);
+        $("#mac-ap").html(data['mac']['wifi_ap']);
+        $("#mac-bt").html(data['mac']['bt']);
+        $("#mac-eth").html(data['mac']['eth']);
         if(data['app_verified']) {
           $("#btn-verify").hide();
           $("#verify-status").hide();
