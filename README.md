@@ -22,6 +22,7 @@ The following display drivers currently exist in this firmware:
 | char_16seg_led_ws281x | Custom 16-segment LED boards with WS281x RGB LEDs |
 | char_krone_9000 | KRONE 9000 / 8200E split-flap system (alphanumeric) |
 | char_segment_lcd_spi | AEG MIS GV07 mosaic LCD (incomplete, untested) |
+| char_ibis | IBIS serial display |
 | flipdot_aesco_saflap | Aesco SAFLAP flipdot boards using their one-wire control system |
 | flipdot_brose | BROSE flipdot panels |
 | flipdot_lawo_aluma | XY10 flipdot system with PCB coils (should be renamed at some point) |
