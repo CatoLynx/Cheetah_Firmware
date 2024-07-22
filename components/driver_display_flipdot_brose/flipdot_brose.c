@@ -17,6 +17,7 @@
 #define LOG_TAG "FLIPDOT-BROSE"
 
 static uint8_t display_dirty = 1;
+static uint8_t full_update = 1;
 
 esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
@@ -135,7 +136,37 @@ void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pix
 void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
     uint16_t prev_p, p, x, y_byte, y;
     prev_p = 0xFFFF;
-    if(!display_dirty && prevFrame) {
+
+    #if !defined(CONFIG_BROSE_UPDATE_CHANGED_ONLY)
+    uint8_t full_update = 1;
+    #else
+    uint8_t full_update = display_dirty || !prevFrame;
+    #endif
+
+    if(full_update) {
+        ESP_LOGI(LOG_TAG, "Updating all pixels");
+        for(uint16_t i = 0; i < frameBufSize; i++) {
+            x = (i / DISPLAY_FRAME_HEIGHT_PIXEL_BYTES);
+            y_byte = i % DISPLAY_FRAME_HEIGHT_PIXEL_BYTES;
+            for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
+                y = (y_byte * 8) + y_bit;
+                p = x / CONFIG_BROSE_PANEL_WIDTH;
+                if (p != prev_p) {
+                    //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
+                    //display_select_panel(p);
+                    prev_p = p;
+                }
+                display_select_color(PIX_BUF_VAL(frame, x, y));
+                display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
+                display_select_row(y);
+                ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
+                display_flip();
+            }
+        }
+        if(prevFrame) memcpy(prevFrame, frame, frameBufSize);
+        display_dirty = 0;
+    } else {
+        ESP_LOGI(LOG_TAG, "Updating changed pixels");
         for(uint16_t i = 0; i < frameBufSize; i++) {
             x = (i / DISPLAY_FRAME_HEIGHT_PIXEL_BYTES);
             y_byte = i % DISPLAY_FRAME_HEIGHT_PIXEL_BYTES;
@@ -156,32 +187,14 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             }
         }
         memcpy(prevFrame, frame, frameBufSize);
-    } else {
-        for(uint16_t i = 0; i < frameBufSize; i++) {
-            x = (i / DISPLAY_FRAME_HEIGHT_PIXEL_BYTES);
-            y_byte = i % DISPLAY_FRAME_HEIGHT_PIXEL_BYTES;
-            for (uint8_t y_bit = 0; y_bit < 7; y_bit++) {
-                y = (y_byte * 8) + y_bit;
-                p = x / CONFIG_BROSE_PANEL_WIDTH;
-                if (p != prev_p) {
-                    //ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
-                    //display_select_panel(p);
-                    prev_p = p;
-                }
-                display_select_color(PIX_BUF_VAL(frame, x, y));
-                display_select_column(x % CONFIG_BROSE_PANEL_WIDTH);
-                display_select_row(y);
-                ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
-                display_flip();
-            }
-        }
-        if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);
-        display_dirty = 0;
     }
     display_deselect();
 }
 
 void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {
+    // Nothing to do if buffer hasn't changed
+    if (prevPixBuf != NULL && memcmp(pixBuf, prevPixBuf, pixBufSize) == 0) return;
+
     display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize);
     // TODO: This is fine since we just copy the frame, but maybe make it look less like outBuf is unnecessary here
     display_render_frame_1bpp(pixBuf, prevPixBuf, pixBufSize);

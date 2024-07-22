@@ -24,6 +24,12 @@ config BROSE_FLIP_PAUSE_LENGTH
     help
         Pixel flip pause length in microseconds
 
+config BROSE_UPDATE_CHANGED_ONLY
+    bool "Update only changed pixels"
+    default true
+    help
+        If checked, only pixels that have changed in the buffer will be flipped for quicker refresh.
+
 config BROSE_RD_EN_R_IO
     int "Row driver enable reset GPIO"
     default 0
