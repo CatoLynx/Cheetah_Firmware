@@ -277,8 +277,14 @@ void display_render_frame(uint8_t* frame, uint16_t outBufSize) {
         .length = LOWER_OUT_BUF_SIZE * 8,
         .tx_buffer = &frame[CONFIG_16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS * BYTES_PER_LED],
     };
-    ESP_ERROR_CHECK(spi_device_transmit(spiUpper, &spi_trans_upper));
-    ESP_ERROR_CHECK(spi_device_transmit(spiLower, &spi_trans_lower));
+    // Make sure to block for the larger of the two buffers
+    if (UPPER_OUT_BUF_SIZE > LOWER_OUT_BUF_SIZE) {
+        ESP_ERROR_CHECK(spi_device_queue_trans(spiLower, &spi_trans_lower, 10));
+        ESP_ERROR_CHECK(spi_device_transmit(spiUpper, &spi_trans_upper));
+    } else {
+        ESP_ERROR_CHECK(spi_device_queue_trans(spiUpper, &spi_trans_upper, 10));
+        ESP_ERROR_CHECK(spi_device_transmit(spiLower, &spi_trans_lower));
+    }
     ets_delay_us(350); // Ensure reset pulse
 }
 
