@@ -175,7 +175,7 @@ static void display_refresh_task(void* arg) {
 
     while (1) {
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-        // TODO: Improve dramerate and maybe make own task
+        // TODO: Improve framerate and maybe make own task
         bitmap_generator_current(time_getSystemTime_us());
         #endif
 
@@ -257,7 +257,6 @@ static void display_refresh_task(void* arg) {
         #endif
 
         taskYIELD();
-        vTaskDelay(1);
     }
 }
 

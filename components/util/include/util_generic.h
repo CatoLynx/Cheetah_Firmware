@@ -31,6 +31,12 @@ typedef struct {
 } color_rgb_t;
 
 typedef struct {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+} color_rgb_u8_t;
+
+typedef struct {
     double h;       // angle in degrees
     double s;       // a fraction between 0 and 1
     double v;       // a fraction between 0 and 1

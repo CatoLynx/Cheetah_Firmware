@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "bitmap_generators.h"
+#include "util_fixed_point.h"
 #include "macros.h"
 #include "util_buffer.h"
 #include "util_generic.h"
@@ -21,7 +22,7 @@ static size_t pixel_buffer_size = 0;
 static uint16_t frame_width = 0;
 static uint16_t frame_height = 0;
 static cJSON* current_bitmap_generator = NULL;
-static color_rgb_t white = {.r = 255, .g = 255, .b = 255};
+static color_rgb_u8_t white = {.r = 255, .g = 255, .b = 255};
 
 // TODO: This is REALLY UGLY and a hack for one specific display.
 // I don't have time right now to do it properly, but this can't stay like that.
@@ -36,7 +37,8 @@ enum generator_func {
     SOLID_SINGLE,
     RAINBOW_T,
     RAINBOW_GRADIENT,
-    HARD_GRADIENT_3
+    HARD_GRADIENT_3,
+    ON_OFF_100_FRAMES
 };
 
 
@@ -189,6 +191,13 @@ cJSON* bitmap_generators_get_available() {
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
 
+    // Generator: On/Off every 100 frames
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "on_off_100_frames");
+    params = cJSON_CreateObject();
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
     return json;
 }
 
@@ -196,45 +205,42 @@ void bitmap_generator_none(int64_t t) {
     
 }
 
-void bitmap_generator_solid_single(int64_t t, color_rgb_t color) {
+void bitmap_generator_solid_single(int64_t t, color_rgb_u8_t color) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
-    uint8_t red = color.r * 255;
-    uint8_t green = color.g * 255;
-    uint8_t blue = color.b * 255;
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         
-        pixel_buffer[pixBufIndex] = red;
-        pixel_buffer[pixBufIndex + 1] = green;
-        pixel_buffer[pixBufIndex + 2] = blue;
+        pixel_buffer[pixBufIndex] = color.r;
+        pixel_buffer[pixBufIndex + 1] = color.g;
+        pixel_buffer[pixBufIndex + 2] = color.b;
     }
     #endif
 }
 
 void bitmap_generator_rainbow_t(int64_t t, uint16_t speed) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
-    color_hsv_t calcColor_hsv;
-    calcColor_hsv.h = (double)speed * (double)t / 1000000.0;
-    calcColor_hsv.h = fmod(calcColor_hsv.h, 360.0);
-    calcColor_hsv.s = 1.0;
-    calcColor_hsv.v = 1.0;
-    color_rgb_t color = hsv2rgb(calcColor_hsv);
+    color_hsv_fx20_12_t calcColor_hsv_fx;
+    fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
+    fx52_12_t temp_fx = speed * t_sec_fx;
+    calcColor_hsv_fx.h = temp_fx % FX20_12(360);
+    calcColor_hsv_fx.s = FX20_12(1);
+    calcColor_hsv_fx.v = FX20_12(1);
+    color_rgb_u8_t color = hsv_fx20_12_to_rgb_u8(calcColor_hsv_fx);
     bitmap_generator_solid_single(t, color);
     #endif
 }
 
 void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint8_t s, uint8_t v) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
-    double angle_degrees = (double)angle;
-    double angle_radians = angle_degrees * M_PI / 180.0;
-    double sin_angle = sin(angle_radians);
-    double cos_angle = cos(angle_radians);
-    double normalized_scale = (double)scale / 100.0;
-    double normalized_s = (double)s / 255.0;
-    double normalized_v = (double)v / 255.0;
+    int32_t angle_units = (angle * 0x8000) / 360;
+    fx20_12_t sin_angle_fx = sin_i16_to_fx20_12(angle_units);
+    fx20_12_t cos_angle_fx = cos_i16_to_fx20_12(angle_units);
+    fx20_12_t normalized_scale_fx = FX20_12(scale) / 100;
+    fx20_12_t normalized_s_fx = FX20_12(s) / 255;
+    fx20_12_t normalized_v_fx = FX20_12(v) / 255;
 
     // Calculate the diagonal length of the frame
-    double diagonal_length = sqrt(frame_width * frame_width + frame_height * frame_height);
+    fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
 
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
@@ -242,36 +248,43 @@ void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle
         uint16_t y = pixBufIndex % (frame_height * 3) / 3;
         
         // Calculate the distance along the gradient direction
-        double distance_along_gradient = x * cos_angle + y * sin_angle;
+        fx20_12_t distance_along_gradient_fx = x * cos_angle_fx + y * sin_angle_fx;
+
         // Normalize the distance by the diagonal length to get a value between 0 and 1
-        double normalized_distance = distance_along_gradient / diagonal_length;
+        fx20_12_t normalized_distance_fx = FX20_12((int64_t)distance_along_gradient_fx) / diagonal_length_fx;
+
         // Scale the normalized distance to 360 degrees, add 1 to ensure we are positive
-        double offset = (normalized_distance + 1.0) * 360.0;
+        fx20_12_t offset_fx = (normalized_distance_fx + FX20_12(1)) * 360;
+
         // Apply manual scaling
-        offset *= normalized_scale;
+        offset_fx = UNFX20_12((int64_t)offset_fx * normalized_scale_fx);
         
-        color_hsv_t hsv;
-        hsv.h = fmod((double)speed * normalized_scale /*To compensate for scaling*/ * (double)t / 1000000.0 + offset, 360.0);
-        hsv.s = normalized_s;
-        hsv.v = normalized_v;
-        color_rgb_t rgb = hsv2rgb(hsv);
-        pixel_buffer[pixBufIndex] = rgb.r * 255;
-        pixel_buffer[pixBufIndex + 1] = rgb.g * 255;
-        pixel_buffer[pixBufIndex + 2] = rgb.b * 255;
+        color_hsv_fx20_12_t hsv_fx;
+        fx20_12_t normalized_speed_fx = speed * normalized_scale_fx; // Use scale to adjust speed so it appears constant
+        fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
+        fx52_12_t temp_fx = UNFX52_12((int64_t)normalized_speed_fx * t_sec_fx) + offset_fx;
+        hsv_fx.h = temp_fx % FX20_12(360);
+        hsv_fx.s = normalized_s_fx;
+        hsv_fx.v = normalized_v_fx;
+
+        // Get the color for the current segment
+        color_rgb_u8_t rgb_u8 = hsv_fx20_12_to_rgb_u8(hsv_fx);
+        pixel_buffer[pixBufIndex] = rgb_u8.r;
+        pixel_buffer[pixBufIndex + 1] = rgb_u8.g;
+        pixel_buffer[pixBufIndex + 2] = rgb_u8.b;
     }
     #endif
 }
 
-void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint16_t numColors, color_rgb_t* colors) {
+void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint16_t numColors, color_rgb_u8_t* colors) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
-    double angle_degrees = (double)angle;
-    double angle_radians = angle_degrees * M_PI / 180.0;
-    double sin_angle = sin(angle_radians);
-    double cos_angle = cos(angle_radians);
-    double normalized_scale = (double)scale / 100.0;
+    int32_t angle_units = (angle * 0x8000) / 360;
+    fx20_12_t sin_angle_fx = sin_i16_to_fx20_12(angle_units);
+    fx20_12_t cos_angle_fx = cos_i16_to_fx20_12(angle_units);
+    fx20_12_t normalized_scale_fx = FX20_12(scale) / 100;
 
     // Calculate the diagonal length of the frame
-    double diagonal_length = sqrt(frame_width * frame_width + frame_height * frame_height);
+    fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
     
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint32_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
@@ -279,45 +292,72 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         uint16_t y = pixBufIndex % (frame_height * 3) / 3;
         
         // Calculate the distance along the gradient direction
-        double distance_along_gradient = x * cos_angle + y * sin_angle;
+        fx20_12_t distance_along_gradient_fx = x * cos_angle_fx + y * sin_angle_fx;
+
         // Normalize the distance by the diagonal length to get a value between 0 and 1
-        double normalized_distance = distance_along_gradient / diagonal_length;
+        fx20_12_t normalized_distance_fx = FX20_12((int64_t)distance_along_gradient_fx) / diagonal_length_fx;
+
         // Add 1 to ensure we are positive
-        double offset = (normalized_distance + 1.0);
-        // Apply manual scaling
-        offset *= normalized_scale;
+        fx20_12_t offset_fx = normalized_distance_fx + FX20_12(1);
         
-        double temp = fmod((double)speed / 100.0 * normalized_scale /*To compensate for scaling*/ * (double)t / 1000000.0 + offset, 1.0);
+        // Apply manual scaling
+        offset_fx = UNFX20_12((int64_t)offset_fx * normalized_scale_fx);
+        
+        //double temp = fmod((double)speed / 100.0 * normalized_scale /*To compensate for scaling*/ * (double)t / 1000000.0 + offset, 1.0);
+        fx20_12_t normalized_speed_fx = (speed * normalized_scale_fx) / 100;
+        fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
+        fx52_12_t temp_fx = UNFX52_12((int64_t)normalized_speed_fx * t_sec_fx) + offset_fx;
+        temp_fx %= FX20_12(1);
+
         // Determine the segment index
-        uint16_t segment_index = (uint16_t)(temp * numColors) % numColors;
+        uint16_t segment_index = (uint16_t)UNFX20_12_ROUND(temp_fx * numColors) % numColors;
 
         // Get the color for the current segment
-        color_rgb_t color = colors[segment_index];
-        pixel_buffer[pixBufIndex] = color.r * 255;
-        pixel_buffer[pixBufIndex + 1] = color.g * 255;
-        pixel_buffer[pixBufIndex + 2] = color.b * 255;
+        color_rgb_u8_t color = colors[segment_index];
+        pixel_buffer[pixBufIndex] = color.r;
+        pixel_buffer[pixBufIndex + 1] = color.g;
+        pixel_buffer[pixBufIndex + 2] = color.b;
     }
     #endif
 }
 
-void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_t color1, color_rgb_t color2, color_rgb_t color3) {
+void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2, color_rgb_u8_t color3) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
-    color_rgb_t colors[3] = {color1, color2, color3};
+    color_rgb_u8_t colors[3] = {color1, color2, color3};
     bitmap_generator_hard_gradient(t, speed, angle, scale, 3, colors);
     #endif
 }
 
-static color_rgb_t _color_rgb_from_json(cJSON* json, color_rgb_t fallback) {
-    color_rgb_t color;
+static uint8_t on_off_100_frames_n = 0;
+static uint8_t on_off_100_frames_val = 255;
+void bitmap_generator_on_off_100_frames(int64_t t) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        
+        pixel_buffer[pixBufIndex] = on_off_100_frames_val;
+        pixel_buffer[pixBufIndex + 1] = on_off_100_frames_val;
+        pixel_buffer[pixBufIndex + 2] = on_off_100_frames_val;
+    }
+    on_off_100_frames_n++;
+    if (on_off_100_frames_n == 100) {
+        on_off_100_frames_n = 0;
+        on_off_100_frames_val = 255 - on_off_100_frames_val;
+    }
+    #endif
+}
+
+static color_rgb_u8_t _color_rgb_u8_from_json(cJSON* json, color_rgb_u8_t fallback) {
+    color_rgb_u8_t color;
     cJSON* r_field = cJSON_GetObjectItem(json, "r");
     if (!cJSON_IsNumber(r_field)) return fallback;
-    color.r = cJSON_GetNumberValue(r_field) / 255.0;
+    color.r = cJSON_GetNumberValue(r_field);
     cJSON* g_field = cJSON_GetObjectItem(json, "g");
     if (!cJSON_IsNumber(g_field)) return fallback;
-    color.g = cJSON_GetNumberValue(g_field) / 255.0;
+    color.g = cJSON_GetNumberValue(g_field);
     cJSON* b_field = cJSON_GetObjectItem(json, "b");
     if (!cJSON_IsNumber(b_field)) return fallback;
-    color.b = cJSON_GetNumberValue(b_field) / 255.0;
+    color.b = cJSON_GetNumberValue(b_field);
     return color;
 }
 
@@ -341,7 +381,7 @@ void bitmap_generator_current(int64_t t) {
         case SOLID_SINGLE: {
             cJSON* color_obj = cJSON_GetObjectItem(params, "color");
             if (!cJSON_IsObject(color_obj)) return;
-            color_rgb_t color = _color_rgb_from_json(color_obj, white);
+            color_rgb_u8_t color = _color_rgb_u8_from_json(color_obj, white);
             bitmap_generator_solid_single(t, color);
             return;
         }
@@ -386,14 +426,19 @@ void bitmap_generator_current(int64_t t) {
             uint16_t scale = (uint16_t)cJSON_GetNumberValue(scale_field);
             cJSON* color1_obj = cJSON_GetObjectItem(params, "color1");
             if (!cJSON_IsObject(color1_obj)) return;
-            color_rgb_t color1 = _color_rgb_from_json(color1_obj, white);
+            color_rgb_u8_t color1 = _color_rgb_u8_from_json(color1_obj, white);
             cJSON* color2_obj = cJSON_GetObjectItem(params, "color2");
             if (!cJSON_IsObject(color2_obj)) return;
-            color_rgb_t color2 = _color_rgb_from_json(color2_obj, white);
+            color_rgb_u8_t color2 = _color_rgb_u8_from_json(color2_obj, white);
             cJSON* color3_obj = cJSON_GetObjectItem(params, "color3");
             if (!cJSON_IsObject(color3_obj)) return;
-            color_rgb_t color3 = _color_rgb_from_json(color3_obj, white);
+            color_rgb_u8_t color3 = _color_rgb_u8_from_json(color3_obj, white);
             bitmap_generator_hard_gradient_3(t, speed, angle, scale, color1, color2, color3);
+            return;
+        }
+
+        case ON_OFF_100_FRAMES: {
+            bitmap_generator_on_off_100_frames(t);
             return;
         }
     }
