@@ -12,6 +12,8 @@ dll.solid_single.argtypes = [ctypes.c_int64, ctypes.c_uint8, ctypes.c_uint8, cty
 dll.rainbow_t.argtypes = [ctypes.c_int64, ctypes.c_uint16]
 dll.rainbow_gradient.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint8, ctypes.c_uint8]
 dll.hard_gradient_3.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
+dll.on_off_100_frames.argtypes = [ctypes.c_int64]
+dll.matrix.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
 dll.set_pixel_buffer.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32]
 
 # Define the frame size and upscaling factor
@@ -36,7 +38,9 @@ def update_frame(t):
     #dll.solid_single(t, 1, 0, 0.5)
     #dll.rainbow_t(t, 100)
     #dll.rainbow_gradient(t, 64, 0, 100, 255, 255)
-    dll.hard_gradient_3(t, 25, 97, 100, 255, 33, 140, 255, 216, 0, 33, 177, 255)
+    #dll.hard_gradient_3(t, 25, 97, 100, 255, 33, 140, 255, 216, 0, 33, 177, 255)
+    #dll.on_off_100_frames(t)
+    dll.matrix(t, 10, 0, 255, 0, 127, 255, 127)
 
     # Create an image from the pixel buffer
     img = Image.new('RGB', (frame_width, frame_height), 'black')
@@ -61,6 +65,6 @@ t = 0
 while True:
     t = round(time.time() * 1000000)
     update_frame(t)
-    time.sleep(0.01)  # Delay to control frame rate
+    #time.sleep(0.01)  # Delay to control frame rate
 
 root.mainloop()

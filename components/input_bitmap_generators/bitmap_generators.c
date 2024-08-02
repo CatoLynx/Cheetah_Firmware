@@ -38,7 +38,8 @@ enum generator_func {
     RAINBOW_T,
     RAINBOW_GRADIENT,
     HARD_GRADIENT_3,
-    ON_OFF_100_FRAMES
+    ON_OFF_100_FRAMES,
+    MATRIX
 };
 
 
@@ -198,6 +199,32 @@ cJSON* bitmap_generators_get_available() {
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
 
+    // Generator: Matrix
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "matrix");
+    params = cJSON_CreateObject();
+
+        // Parameter: Speed
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Base Color
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "base_color", param);
+
+        // Parameter: Lead Color
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "lead_color", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
     return json;
 }
 
@@ -327,10 +354,11 @@ void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle,
     #endif
 }
 
-static uint8_t on_off_100_frames_n = 0;
-static uint8_t on_off_100_frames_val = 255;
 void bitmap_generator_on_off_100_frames(int64_t t) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    static uint8_t on_off_100_frames_n = 0;
+    static uint8_t on_off_100_frames_val = 255;
+
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         
@@ -343,6 +371,78 @@ void bitmap_generator_on_off_100_frames(int64_t t) {
         on_off_100_frames_n = 0;
         on_off_100_frames_val = 255 - on_off_100_frames_val;
     }
+    #endif
+}
+
+typedef struct {
+    int32_t position;        // Current position of the matrix column (top-most pixel)
+    int32_t length;          // Length in pixels
+    int64_t next_update_us;  // Next update time in us
+    int64_t update_delay_us; // Delay between updates in us
+} matrix_column_t;
+static matrix_column_t* matrix_columns;
+static int64_t matrix_prev_t = 0;
+void bitmap_generator_matrix(int64_t t, uint16_t speed, color_rgb_u8_t base_color, color_rgb_u8_t lead_color) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    static int initialized = 0;
+
+    if (!initialized) {
+        matrix_columns = malloc(sizeof(matrix_column_t) * frame_width);
+        for (uint16_t i = 0; i < frame_width; i++) {
+            matrix_columns[i].position = rand() % frame_height;
+            matrix_columns[i].length = (rand() % (frame_height - 10 - (frame_height / 2))) + (frame_height / 2); // Random length
+            matrix_columns[i].next_update_us = rand() % 200000; // Random initial delay in us
+            matrix_columns[i].update_delay_us = (rand() % 90000) + 10000; // Speed with slight variation, 10000 ... 100000
+        }
+        matrix_prev_t = t;
+        initialized = 1;
+    }
+
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        uint16_t x = pixBufIndex / (frame_height * 3);
+        uint16_t y = pixBufIndex % (frame_height * 3) / 3;
+
+        // Check if the current matrix column should be updated
+        if (t >= matrix_columns[x].next_update_us) {
+            // Calculate the new position for the current column
+            matrix_columns[x].position++;
+            if (matrix_columns[x].position >= (int32_t)frame_height) matrix_columns[x].position = -matrix_columns[x].length;
+            fx52_12_t delay_fx = FX52_12(matrix_columns[x].update_delay_us);
+            fx20_12_t delay_factor_fx = FX20_12(10) / (speed + 1);
+            fx52_12_t next_update_fx = FX52_12(t) + UNFX52_12(delay_fx * delay_factor_fx);
+            matrix_columns[x].next_update_us = UNFX52_12_ROUND(next_update_fx);
+        }
+
+        // Determine if the current y position is within the "raining" character range
+        if (y >= matrix_columns[x].position && y < matrix_columns[x].position + matrix_columns[x].length) {
+            // Calculate the position of this pixel relative to the column (0 = top-most pixel)
+            uint16_t rel_pos = y - matrix_columns[x].position;
+            if (rel_pos == matrix_columns[x].length - 1) {
+                // Set the bottom-most pixel to lead color
+                pixel_buffer[pixBufIndex] = lead_color.r;
+                pixel_buffer[pixBufIndex + 1] = lead_color.g;
+                pixel_buffer[pixBufIndex + 2] = lead_color.b;
+            } else {
+                // Set the pixel to base color, fading to dark towards the top
+                color_hsv_fx20_12_t hsv_fx = rgb_u8_to_hsv_fx20_12(base_color);
+                fx20_12_t scale_fx = FX20_12(rel_pos) / matrix_columns[x].length;
+                hsv_fx.v = UNFX20_12(hsv_fx.v * scale_fx);
+                color_rgb_u8_t rgb = hsv_fx20_12_to_rgb_u8(hsv_fx);
+                pixel_buffer[pixBufIndex] = rgb.r;
+                pixel_buffer[pixBufIndex + 1] = rgb.g;
+                pixel_buffer[pixBufIndex + 2] = rgb.b;
+            }
+        } else {
+            // Set the pixel to black (background)
+            pixel_buffer[pixBufIndex] = 0;
+            pixel_buffer[pixBufIndex + 1] = 0;
+            pixel_buffer[pixBufIndex + 2] = 0;
+        }
+    }
+
+    // Update the previous timestamp
+    matrix_prev_t = t;
     #endif
 }
 
@@ -438,6 +538,20 @@ void bitmap_generator_current(int64_t t) {
 
         case ON_OFF_100_FRAMES: {
             bitmap_generator_on_off_100_frames(t);
+            return;
+        }
+
+        case MATRIX: {
+            cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
+            if (!cJSON_IsNumber(speed_field)) return;
+            uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
+            cJSON* base_color_obj = cJSON_GetObjectItem(params, "base_color");
+            if (!cJSON_IsObject(base_color_obj)) return;
+            color_rgb_u8_t base_color = _color_rgb_u8_from_json(base_color_obj, white);
+            cJSON* lead_color_obj = cJSON_GetObjectItem(params, "lead_color");
+            if (!cJSON_IsObject(lead_color_obj)) return;
+            color_rgb_u8_t lead_color = _color_rgb_u8_from_json(lead_color_obj, white);
+            bitmap_generator_matrix(t, speed, base_color, lead_color);
             return;
         }
     }

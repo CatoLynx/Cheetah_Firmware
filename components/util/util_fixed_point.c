@@ -57,58 +57,95 @@ fx20_12_t sqrt_i32_to_fx20_12(int32_t v) {
     return (fx20_12_t)q >> 4;
 }
 
-color_rgb_u8_t hsv_fx20_12_to_rgb_u8(color_hsv_fx20_12_t in) {
+color_rgb_u8_t hsv_fx20_12_to_rgb_u8(color_hsv_fx20_12_t hsv) {
     fx20_12_t hue_fp, p_fp, q_fp, t_fp, remainder_fp;
     uint8_t sector;
     color_rgb_u8_t out;
 
-    if(in.s == 0) {
-        out.r = UNFX20_12_ROUND(in.v * 255);
-        out.g = UNFX20_12_ROUND(in.v * 255);
-        out.b = UNFX20_12_ROUND(in.v * 255);
+    if(hsv.s == 0) {
+        out.r = UNFX20_12_ROUND(hsv.v * 255);
+        out.g = UNFX20_12_ROUND(hsv.v * 255);
+        out.b = UNFX20_12_ROUND(hsv.v * 255);
         return out;
     }
-    hue_fp = in.h;
+    hue_fp = hsv.h;
     if(hue_fp < 0 || hue_fp >= FX20_12(360)) hue_fp = 0;
     hue_fp /= 60;
     sector = (uint8_t)UNFX20_12(hue_fp);
     remainder_fp = hue_fp - FX20_12(sector);
-    p_fp = UNFX20_12(in.v * (FX20_12(1) - in.s));
-    q_fp = UNFX20_12(in.v * (FX20_12(1) - UNFX20_12(in.s * remainder_fp)));
-    t_fp = UNFX20_12(in.v * (FX20_12(1) - UNFX20_12(in.s * (FX20_12(1) - remainder_fp))));
+    p_fp = UNFX20_12(hsv.v * (FX20_12(1) - hsv.s));
+    q_fp = UNFX20_12(hsv.v * (FX20_12(1) - UNFX20_12(hsv.s * remainder_fp)));
+    t_fp = UNFX20_12(hsv.v * (FX20_12(1) - UNFX20_12(hsv.s * (FX20_12(1) - remainder_fp))));
 
     switch(sector) {
     case 0:
-        out.r = UNFX20_12_ROUND(in.v * 255);
+        out.r = UNFX20_12_ROUND(hsv.v * 255);
         out.g = UNFX20_12_ROUND(t_fp * 255);
         out.b = UNFX20_12_ROUND(p_fp * 255);
         break;
     case 1:
         out.r = UNFX20_12_ROUND(q_fp * 255);
-        out.g = UNFX20_12_ROUND(in.v * 255);
+        out.g = UNFX20_12_ROUND(hsv.v * 255);
         out.b = UNFX20_12_ROUND(p_fp * 255);
         break;
     case 2:
         out.r = UNFX20_12_ROUND(p_fp * 255);
-        out.g = UNFX20_12_ROUND(in.v * 255);
+        out.g = UNFX20_12_ROUND(hsv.v * 255);
         out.b = UNFX20_12_ROUND(t_fp * 255);
         break;
     case 3:
         out.r = UNFX20_12_ROUND(p_fp * 255);
         out.g = UNFX20_12_ROUND(q_fp * 255);
-        out.b = UNFX20_12_ROUND(in.v * 255);
+        out.b = UNFX20_12_ROUND(hsv.v * 255);
         break;
     case 4:
         out.r = UNFX20_12_ROUND(t_fp * 255);
         out.g = UNFX20_12_ROUND(p_fp * 255);
-        out.b = UNFX20_12_ROUND(in.v * 255);
+        out.b = UNFX20_12_ROUND(hsv.v * 255);
         break;
     case 5:
     default:
-        out.r = UNFX20_12_ROUND(in.v * 255);
+        out.r = UNFX20_12_ROUND(hsv.v * 255);
         out.g = UNFX20_12_ROUND(p_fp * 255);
         out.b = UNFX20_12_ROUND(q_fp * 255);
         break;
     }
     return out;     
+}
+
+color_hsv_fx20_12_t rgb_u8_to_hsv_fx20_12(color_rgb_u8_t rgb) {
+    color_hsv_fx20_12_t hsv_fx;
+    uint8_t max = rgb.r > rgb.g ? (rgb.r > rgb.b ? rgb.r : rgb.b) : (rgb.g > rgb.b ? rgb.g : rgb.b);
+    uint8_t min = rgb.r < rgb.g ? (rgb.r < rgb.b ? rgb.r : rgb.b) : (rgb.g < rgb.b ? rgb.g : rgb.b);
+    
+    int32_t delta = max - min;
+
+    // Calculate value
+    hsv_fx.v = FX20_12(max) / 255;
+
+    // Calculate saturation
+    if (max != 0) {
+        hsv_fx.s = FX20_12(delta) / max;
+    } else {
+        hsv_fx.s = 0;
+    }
+
+    // Calculate hue
+    if (delta == 0) {
+        hsv_fx.h = 0;
+    } else {
+        if (max == rgb.r) {
+            hsv_fx.h = 60 * ((rgb.g - rgb.b) * FX20_12(1) / delta % FX20_12(6));
+        } else if (max == rgb.g) {
+            hsv_fx.h = 60 * ((rgb.b - rgb.r) * FX20_12(1) / delta + FX20_12(2));
+        } else {
+            hsv_fx.h = 60 * ((rgb.r - rgb.g) * FX20_12(1) / delta + FX20_12(4));
+        }
+    }
+
+    if (hsv_fx.h < 0) {
+        hsv_fx.h += FX20_12(360);
+    }
+
+    return hsv_fx;
 }

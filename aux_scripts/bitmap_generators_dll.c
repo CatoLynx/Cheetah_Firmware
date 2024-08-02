@@ -1,8 +1,12 @@
 #define _USE_MATH_DEFINES
+#include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "char_16seg_mapping.h"
+
+#define CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP
 
 typedef int32_t fx20_12_t;
 typedef int64_t fx52_12_t;
@@ -147,8 +151,46 @@ color_rgb_u8_t hsv_fx20_12_to_rgb_u8(color_hsv_fx20_12_t in) {
     return out;     
 }
 
+color_hsv_fx20_12_t rgb_u8_to_hsv_fx20_12(color_rgb_u8_t rgb) {
+    color_hsv_fx20_12_t hsv_fx;
+    uint8_t max = rgb.r > rgb.g ? (rgb.r > rgb.b ? rgb.r : rgb.b) : (rgb.g > rgb.b ? rgb.g : rgb.b);
+    uint8_t min = rgb.r < rgb.g ? (rgb.r < rgb.b ? rgb.r : rgb.b) : (rgb.g < rgb.b ? rgb.g : rgb.b);
+    
+    int32_t delta = max - min;
+
+    // Calculate Value
+    hsv_fx.v = FX20_12(max) / 255;
+
+    // Calculate Saturation
+    if (max != 0) {
+        hsv_fx.s = FX20_12(delta) / max;
+    } else {
+        hsv_fx.s = 0;
+    }
+
+    // Calculate Hue
+    if (delta == 0) {
+        hsv_fx.h = 0;
+    } else {
+        if (max == rgb.r) {
+            hsv_fx.h = 60 * ((rgb.g - rgb.b) * FX20_12(1) / delta % FX20_12(6));
+        } else if (max == rgb.g) {
+            hsv_fx.h = 60 * ((rgb.b - rgb.r) * FX20_12(1) / delta + FX20_12(2));
+        } else {
+            hsv_fx.h = 60 * ((rgb.r - rgb.g) * FX20_12(1) / delta + FX20_12(4));
+        }
+    }
+
+    if (hsv_fx.h < 0) {
+        hsv_fx.h += FX20_12(360);
+    }
+
+    return hsv_fx;
+}
+
 
 void bitmap_generator_solid_single(int64_t t, color_rgb_u8_t color) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         
@@ -156,9 +198,11 @@ void bitmap_generator_solid_single(int64_t t, color_rgb_u8_t color) {
         pixel_buffer[pixBufIndex + 1] = color.g;
         pixel_buffer[pixBufIndex + 2] = color.b;
     }
+    #endif
 }
 
 void bitmap_generator_rainbow_t(int64_t t, uint16_t speed) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     color_hsv_fx20_12_t calcColor_hsv_fx;
     fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
     fx52_12_t temp_fx = speed * t_sec_fx;
@@ -167,9 +211,11 @@ void bitmap_generator_rainbow_t(int64_t t, uint16_t speed) {
     calcColor_hsv_fx.v = FX20_12(1);
     color_rgb_u8_t color = hsv_fx20_12_to_rgb_u8(calcColor_hsv_fx);
     bitmap_generator_solid_single(t, color);
+    #endif
 }
 
 void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint8_t s, uint8_t v) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     int32_t angle_units = (angle * 0x8000) / 360;
     fx20_12_t sin_angle_fx = sin_i16_to_fx20_12(angle_units);
     fx20_12_t cos_angle_fx = cos_i16_to_fx20_12(angle_units);
@@ -211,9 +257,11 @@ void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle
         pixel_buffer[pixBufIndex + 1] = rgb_u8.g;
         pixel_buffer[pixBufIndex + 2] = rgb_u8.b;
     }
+    #endif
 }
 
 void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint16_t numColors, color_rgb_u8_t* colors) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     int32_t angle_units = (angle * 0x8000) / 360;
     fx20_12_t sin_angle_fx = sin_i16_to_fx20_12(angle_units);
     fx20_12_t cos_angle_fx = cos_i16_to_fx20_12(angle_units);
@@ -253,11 +301,106 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         pixel_buffer[pixBufIndex + 1] = color.g;
         pixel_buffer[pixBufIndex + 2] = color.b;
     }
+    #endif
 }
 
 void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2, color_rgb_u8_t color3) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     color_rgb_u8_t colors[3] = {color1, color2, color3};
     bitmap_generator_hard_gradient(t, speed, angle, scale, 3, colors);
+    #endif
+}
+
+void bitmap_generator_on_off_100_frames(int64_t t) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    static uint8_t on_off_100_frames_n = 0;
+    static uint8_t on_off_100_frames_val = 255;
+    
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        
+        pixel_buffer[pixBufIndex] = on_off_100_frames_val;
+        pixel_buffer[pixBufIndex + 1] = on_off_100_frames_val;
+        pixel_buffer[pixBufIndex + 2] = on_off_100_frames_val;
+    }
+    on_off_100_frames_n++;
+    if (on_off_100_frames_n == 100) {
+        on_off_100_frames_n = 0;
+        on_off_100_frames_val = 255 - on_off_100_frames_val;
+    }
+    #endif
+}
+
+typedef struct {
+    int32_t position;        // Current position of the matrix column (top-most pixel)
+    int32_t length;          // Length in pixels
+    int64_t next_update_us;  // Next update time in us
+    int64_t update_delay_us; // Delay between updates in us
+} matrix_column_t;
+static matrix_column_t* matrix_columns;
+static int64_t matrix_prev_t = 0;
+void bitmap_generator_matrix(int64_t t, uint16_t speed, color_rgb_u8_t base_color, color_rgb_u8_t lead_color) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    static int initialized = 0;
+
+    if (!initialized) {
+        matrix_columns = malloc(sizeof(matrix_column_t) * frame_width);
+        for (uint16_t i = 0; i < frame_width; i++) {
+            matrix_columns[i].position = rand() % frame_height;
+            matrix_columns[i].length = (rand() % (frame_height - 10 - (frame_height / 2))) + (frame_height / 2); // Random length
+            matrix_columns[i].next_update_us = rand() % 200000; // Random initial delay in us
+            matrix_columns[i].update_delay_us = (rand() % 90000) + 10000; // Speed with slight variation, 10000 ... 100000
+        }
+        matrix_prev_t = t;
+        initialized = 1;
+    }
+
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        uint16_t x = pixBufIndex / (frame_height * 3);
+        uint16_t y = pixBufIndex % (frame_height * 3) / 3;
+
+        // Check if the current matrix column should be updated
+        if (t >= matrix_columns[x].next_update_us) {
+            // Calculate the new position for the current column
+            matrix_columns[x].position++;
+            if (matrix_columns[x].position >= (int32_t)frame_height) matrix_columns[x].position = -matrix_columns[x].length;
+            fx52_12_t delay_fx = FX52_12(matrix_columns[x].update_delay_us);
+            fx20_12_t delay_factor_fx = FX20_12(10) / (speed + 1);
+            fx52_12_t next_update_fx = FX52_12(t) + UNFX52_12(delay_fx * delay_factor_fx);
+            matrix_columns[x].next_update_us = UNFX52_12_ROUND(next_update_fx);
+        }
+
+        // Determine if the current y position is within the "raining" character range
+        if (y >= matrix_columns[x].position && y < matrix_columns[x].position + matrix_columns[x].length) {
+            // Calculate the position of this pixel relative to the column (0 = top-most pixel)
+            uint16_t rel_pos = y - matrix_columns[x].position;
+            if (rel_pos == matrix_columns[x].length - 1) {
+                // Set the bottom-most pixel to lead color
+                pixel_buffer[pixBufIndex] = lead_color.r;
+                pixel_buffer[pixBufIndex + 1] = lead_color.g;
+                pixel_buffer[pixBufIndex + 2] = lead_color.b;
+            } else {
+                // Set the pixel to base color, fading to dark towards the top
+                color_hsv_fx20_12_t hsv_fx = rgb_u8_to_hsv_fx20_12(base_color);
+                fx20_12_t scale_fx = FX20_12(rel_pos) / matrix_columns[x].length;
+                hsv_fx.v = UNFX20_12(hsv_fx.v * scale_fx);
+                color_rgb_u8_t rgb = hsv_fx20_12_to_rgb_u8(hsv_fx);
+                pixel_buffer[pixBufIndex] = rgb.r;
+                pixel_buffer[pixBufIndex + 1] = rgb.g;
+                pixel_buffer[pixBufIndex + 2] = rgb.b;
+            }
+        } else {
+            // Set the pixel to black (background)
+            pixel_buffer[pixBufIndex] = 0;
+            pixel_buffer[pixBufIndex + 1] = 0;
+            pixel_buffer[pixBufIndex + 2] = 0;
+        }
+    }
+
+    // Update the previous timestamp
+    matrix_prev_t = t;
+    #endif
 }
 
 #ifdef _WIN32
@@ -284,6 +427,16 @@ EXPORT void hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t 
     color_rgb_u8_t color2 = { r2, g2, b2 };
     color_rgb_u8_t color3 = { r3, g3, b3 };
     bitmap_generator_hard_gradient_3(t, speed, angle, scale, color1, color2, color3);
+}
+
+EXPORT void on_off_100_frames(int64_t t) {
+    bitmap_generator_on_off_100_frames(t);
+}
+
+EXPORT void matrix(int64_t t, uint16_t speed, uint8_t base_r, uint8_t base_g, uint8_t base_b, uint8_t lead_r, uint8_t lead_g, uint8_t lead_b) {
+    color_rgb_u8_t base_color = { base_r, base_g, base_b };
+    color_rgb_u8_t lead_color = { lead_r, lead_g, lead_b };
+    bitmap_generator_matrix(t, speed, base_color, lead_color);
 }
 
 EXPORT void set_pixel_buffer(uint8_t* buffer, uint32_t size, uint32_t width, uint32_t height) {
