@@ -303,7 +303,6 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         // Apply manual scaling
         offset_fx = UNFX20_12((int64_t)offset_fx * normalized_scale_fx);
         
-        //double temp = fmod((double)speed / 100.0 * normalized_scale /*To compensate for scaling*/ * (double)t / 1000000.0 + offset, 1.0);
         fx20_12_t normalized_speed_fx = (speed * normalized_scale_fx) / 100;
         fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
         fx52_12_t temp_fx = UNFX52_12((int64_t)normalized_speed_fx * t_sec_fx) + offset_fx;

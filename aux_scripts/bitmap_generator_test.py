@@ -8,10 +8,10 @@ from PIL import Image, ImageTk
 dll = ctypes.CDLL('./bitmap_generators.dll')
 
 # Define the function prototypes
-dll.solid_single.argtypes = [ctypes.c_int64, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+dll.solid_single.argtypes = [ctypes.c_int64, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
 dll.rainbow_t.argtypes = [ctypes.c_int64, ctypes.c_uint16]
 dll.rainbow_gradient.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint8, ctypes.c_uint8]
-dll.hard_gradient_3.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double, ctypes.c_double]
+dll.hard_gradient_3.argtypes = [ctypes.c_int64, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint16, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8, ctypes.c_uint8]
 dll.set_pixel_buffer.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_uint32, ctypes.c_uint32, ctypes.c_uint32]
 
 # Define the frame size and upscaling factor
@@ -35,8 +35,8 @@ def update_frame(t):
     # Call the generator function
     #dll.solid_single(t, 1, 0, 0.5)
     #dll.rainbow_t(t, 100)
-    #dll.rainbow_gradient(t, 100, 45, 100, 255, 255)
-    dll.hard_gradient_3(t, 25, 97, 100, 1.0, 0.129, 0.549, 1.0, 0.847, 0.0, 0.129, 0.694, 1.0)
+    #dll.rainbow_gradient(t, 64, 0, 100, 255, 255)
+    dll.hard_gradient_3(t, 25, 97, 100, 255, 33, 140, 255, 216, 0, 33, 177, 255)
 
     # Create an image from the pixel buffer
     img = Image.new('RGB', (frame_width, frame_height), 'black')
@@ -59,8 +59,8 @@ def update_frame(t):
 # Run the animation loop
 t = 0
 while True:
+    t = round(time.time() * 1000000)
     update_frame(t)
-    t += 10000  # Increment time (example: 10 milliseconds)
     time.sleep(0.01)  # Delay to control frame rate
 
 root.mainloop()
