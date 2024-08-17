@@ -189,20 +189,20 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
-    memset(frameBuf, 0x00, frameBufSize);
+void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    memset(outBuf, 0x00, outBufSize);
 
     for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
         if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(frameBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min]);
+            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min]);
         }
         if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(frameBuf, charBufIndex, 1);
+            display_setDecimalPointAt(outBuf, charBufIndex, 1);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+void display_render_frame(uint8_t* frame, size_t frameBufSize) {
     if (display_transferOngoing) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame");
@@ -211,6 +211,15 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
         .tx_buffer = frame,
     };
     ESP_ERROR_CHECK(spi_device_polling_transmit(spi, &spi_trans));
+}
+
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    // Nothing to do if buffer hasn't changed
+    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
+
+    buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
+    display_render_frame(outBuf, outBufSize);
 }
 
 uint8_t display_get_fan_speed(uint8_t* frameBuf, uint16_t frameBufSize) {
