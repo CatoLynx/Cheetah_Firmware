@@ -135,6 +135,11 @@ uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
     cJSON* display_transition = NULL;
 #endif
 
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+    cJSON* display_prevEffect = NULL;
+    cJSON* display_effect = NULL;
+#endif
+
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
     cJSON* display_prevBitmapGenerator = NULL;
     cJSON* display_bitmapGenerator = NULL;
@@ -173,7 +178,6 @@ static void display_refresh_task(void* arg) {
 
     while (1) {
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-        // TODO: Improve framerate and maybe make own task
         bitmap_generator_current(time_getSystemTime_us());
         #endif
 
@@ -238,6 +242,18 @@ static void display_refresh_task(void* arg) {
                 cJSON_Delete(display_prevTransition);
             }
             display_prevTransition = display_transition;
+        }
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+        if (display_effect != display_prevEffect) {
+            display_set_effect(display_effect);
+            
+            // Delete previous effect data if necessary
+            if (display_prevEffect != NULL) {
+                cJSON_Delete(display_prevEffect);
+            }
+            display_prevEffect = display_effect;
         }
         #endif
 
@@ -402,6 +418,11 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
         ESP_LOGI(LOG_TAG, "Registering transitions");
         browser_canvas_register_transitions(&server, &display_transition);
+        #endif
+
+        #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+        ESP_LOGI(LOG_TAG, "Registering effects");
+        browser_canvas_register_effects(&server, &display_effect);
         #endif
 
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)

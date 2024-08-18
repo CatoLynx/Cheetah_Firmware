@@ -437,6 +437,19 @@ config DISPLAY_TRANSITIONS_INCLUDE
     help
        Filename of the transitions include
 
+config DISPLAY_HAS_EFFECTS
+    depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
+    bool "Display has effects"
+    default false
+    help
+        Enable effects (color effects)
+
+config DISPLAY_EFFECTS_INCLUDE
+    depends on DISPLAY_HAS_EFFECTS
+    string "Effects include filename"
+    help
+       Filename of the effects include
+
 config DISPLAY_USE_PREV_PIX_BUF
     depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     bool "Use second pixel buffer to store the previous data"

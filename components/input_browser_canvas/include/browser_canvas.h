@@ -15,6 +15,9 @@ void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData)
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
 void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transitionData);
 #endif
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+void browser_canvas_register_effects(httpd_handle_t* server, cJSON** effectData);
+#endif
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
 void browser_canvas_register_bitmap_generators(httpd_handle_t* server, cJSON** bitmapGeneratorData);
 #endif

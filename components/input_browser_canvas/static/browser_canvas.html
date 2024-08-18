@@ -67,6 +67,13 @@
         <tbody></tbody>
       </table>
     </div>
+    <div id="effect-container" style="display: none;">
+      <label for="effect-select">Effect</label>
+      <select id="effect-select" name="effect-select"></select>
+      <table id="effect-params">
+        <tbody></tbody>
+      </table>
+    </div>
     <div>
       <label for="check-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
       <input type="button" id="btn-update" value="Update" />
@@ -109,10 +116,12 @@
       var display_info = {};
       var shader_list = [];
       var transition_list = [];
+      var effect_list = [];
       var bitmap_generator_list = [];
       var preset_list = [];
       var selectedShaderId = 0;
       var selectedTransitionId = 0;
+      var selectedEffectId = 0;
       var selectedBitmapGeneratorId = 0;
       var bitmap_generator_presets = [];
       var selectedBitmapGeneratorPresetId = 0;
@@ -1278,6 +1287,183 @@
       }
       
       /* ################################################################### */
+
+      /* EFFECT FUNCTIONS ################################################## */
+      function drawEffectControl() {
+        effect_list.forEach(function(effect, i) {
+          $('#effect-select').append($('<option>', {
+              value: i,
+              text: effect["name"]
+          }));
+        });
+
+        drawEffectParameters();
+        $("#effect-select").change(onEffectSelectChange);
+        $("#effect-container").show();
+      }
+
+      function drawEffectParameters() {
+        var selectedEffect = effect_list[selectedEffectId];
+        var params = selectedEffect["params"];
+        $("#effect-params").find("tbody").empty();
+        if(!params) return;
+
+        for (var paramName of Object.keys(params)) {
+          var paramData = params[paramName];
+
+          var field_element = $('<input type="' + paramData["type"] + '">');
+          field_element.prop("name", paramName);
+          field_element.prop("id", "effect-param-" + paramName);
+          for (var propName of Object.keys(paramData)) {
+            if (propName == "type") continue;
+            field_element.prop(propName, paramData[propName]);
+          }
+          field_element.change(updateEffect);
+
+          var td_name = $("<td>" + paramName + "</td>");
+          var td_field = $("<td>").append(field_element);
+
+          switch (paramData["type"]) {
+            case "range": {
+              var value_display = $('<span>');
+              value_display.prop("id", "effect-param-display-" + paramName);
+              value_display.text(field_element.val());
+              field_element.change(function(event) {
+                $("#effect-param-display-" + $(event.target).prop("name")).text($(event.target).val());
+              });
+              td_field.append(value_display);
+              break;
+            }
+
+            case "color": {
+              field_element.val("#ffffff");
+            }
+          }
+
+          var tr = $("<tr>").append(td_name).append(td_field);
+          $("#effect-params").find("tbody").append(tr);
+        }
+      }
+
+      function getEffects() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/effects.json",
+          success: onGetEffectsSuccess,
+          error: onGetEffectsError
+        });
+      }
+
+      function getEffectFromDisplay() {
+        $.ajax({
+          type: "GET",
+          dataType: "json",
+          url: "/canvas/effect.json",
+          success: onGetEffectFromDisplaySuccess,
+          error: onGetEffectFromDisplayError
+        });
+      }
+
+      function getEffectData() {
+        var data = {
+          effect: parseInt($("#effect-select").val()),
+          params: {}
+        };
+
+        var inputs = $("#effect-params input");
+        for (var i = 0; i < inputs.length; i++) {
+          var field_name = $(inputs[i]).prop("name");
+          var field_type = $(inputs[i]).prop("type");
+          if (["range", "number"].includes(field_type)) {
+            // Numerical field
+            var field_value = parseInt($(inputs[i]).val());
+          } else if (field_type == "color") {
+            var field_value = hexToRGB($(inputs[i]).val());
+          } else if (field_type == "checkbox") {
+            var field_value = $(inputs[i]).prop("checked");
+          } else {
+            var field_value = $(inputs[i]).val();
+          }
+          data["params"][field_name] = field_value;
+        }
+        return data;
+      }
+
+      function setEffectData(data, sendRequest = false) {
+        $("#effect-select").val(data["effect"]);
+        $("#effect-select").trigger("change", false);
+        let effect_info = effect_list[data["effect"]];
+
+        for (var paramName of Object.keys(data["params"])) {
+          let paramInfo = effect_info["params"][paramName];
+          let paramCtrl = $("#effect-param-" + paramName);
+
+          if (paramInfo["type"] == "color") {
+            paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
+          } else {
+            paramCtrl.val(data["params"][paramName]);
+          }
+        }
+        if (sendRequest) updateEffect();
+      }
+
+      function updateEffect() {
+        var payload = getEffectData();
+
+        if (_CANVASDEBUG) {
+          console.log("Effect data:");
+          console.log(payload);
+        } else {
+          $.ajax({
+            type: "POST",
+            contentType: "application/json",
+            url: "/canvas/effect.json",
+            data: JSON.stringify(payload),
+            success: onSetEffectSuccess,
+            error: onSetEffectError
+          });
+        }
+      }
+
+      function onEffectSelectChange(event, sendRequest = true) {
+        selectedEffectId = parseInt($("#effect-select").val());
+        drawEffectParameters();
+        if (sendRequest) updateEffect();
+      }
+
+      function onGetEffectsSuccess(data, textStatus, jqXHR) {
+        if(!("effects" in data)) return;
+        effect_list = data["effects"];
+        drawEffectControl();
+        getEffectFromDisplay();
+      }
+
+      function onGetEffectsError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting effects!");
+        console.log(errorThrown);
+      }
+
+      function onSetEffectSuccess(data, textStatus, jqXHR) {
+        
+      }
+
+      function onSetEffectError(jqXHR, textStatus, errorThrown) {
+        console.log("Error setting effect!");
+        console.log(errorThrown);
+      }
+      
+      function onGetEffectFromDisplaySuccess(data, textStatus, jqXHR) {
+        if ($.isEmptyObject(data)) return;
+        setEffectData(data, sendRequest = false);
+      }
+
+      function onGetEffectFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting effect from display!");
+        console.log(errorThrown);
+      }
+      
+      /* ################################################################### */
       
       /* BITMAP GENERATOR FUNCTIONS ######################################## */
       function drawBitmapGeneratorControl() {
@@ -1716,6 +1902,7 @@
         getDisplayInfo();
         getShaders();
         getTransitions();
+        getEffects();
         getBitmapGenerators();
         getPresets();
         fgColor = limitColorRange(localStorage.getItem("fgColor") || fgColor);

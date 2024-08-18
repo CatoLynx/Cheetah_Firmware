@@ -279,3 +279,17 @@ int32_t map_int32(int32_t in, int32_t inMin, int32_t inMax, int32_t outMin, int3
 double map_double(double in, double inMin, double inMax, double outMin, double outMax) {
   return (in - inMin) * (outMax - outMin) / (inMax - inMin) + outMin;
 }
+
+int32_t rand_range(int32_t min, int32_t max) {
+  // Return a random number between <min> (inclusive)
+  // and <max> (exclusive)
+  if (max == min) return max;
+  return rand() % (max - min) + min;
+}
+
+int32_t rand_spread(int32_t nominal, int32_t spread) {
+  // Return a random number uniformly spread around <nominal>
+  // with a spread of ±<spread>
+  if (spread == 0) return nominal;
+  return nominal + (rand() % (spread * 2)) - spread;
+}
