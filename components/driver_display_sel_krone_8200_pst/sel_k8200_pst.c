@@ -116,8 +116,6 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
     }
     free(buf);
 
-    if (prevFrame != NULL) memcpy(prevFrame, frame, frameBufSize);
-
     // TODO: Implement better monitoring by querying rotation status using framebuffer mask
     vTaskDelay(CONFIG_K8200_PST_SEL_ROTATION_TIMEOUT / portTICK_PERIOD_MS);
     k8200_pst_set_nmi(1);

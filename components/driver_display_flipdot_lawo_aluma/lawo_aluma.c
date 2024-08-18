@@ -194,7 +194,6 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
-        memcpy(prevFrame, frame, frameBufSize);
     } else {
         for(uint16_t i = 0; i < frameBufSize; i++) {
             x = (i / CONFIG_DISPLAY_FRAME_HEIGHT);
@@ -212,7 +211,6 @@ void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
             display_flip();
         }
-        if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);
         display_dirty = 0;
     }
     display_deselect();

@@ -145,7 +145,6 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 }
             }
         }
-        memcpy(prevFrame, frame, frameBufSize);
     } else {
         for (uint16_t x_base = 0; x_base < DISPLAY_FRAME_WIDTH; x_base += SAFLAP_PANEL_WIDTH) {
             for (uint16_t y = 0; y < DISPLAY_FRAME_HEIGHT; y++) {
@@ -161,7 +160,6 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 display_setRowSingle(panelAddr, panelRow, colData);
             }
         }
-        if(display_dirty && prevFrame) memcpy(prevFrame, frame, frameBufSize);
         display_dirty = 0;
     }
 }

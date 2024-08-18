@@ -274,8 +274,6 @@ void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
     display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
     display_render_frame(outBuf, outBufSize);
-    
-    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
 }
 
 #endif

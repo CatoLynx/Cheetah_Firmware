@@ -169,6 +169,9 @@ static void display_refresh_task(void* arg) {
 
             #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
                 display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+                #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
+                memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
+                #endif
             #endif
 
             taskYIELD();
@@ -183,10 +186,22 @@ static void display_refresh_task(void* arg) {
 
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
             display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+            #if defined(CONFIG_DISPLAY_USE_PREV_PIX_BUF)
+            memcpy(display_prev_pixel_buffer, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+            #endif
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
             display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
+            memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
+            #endif
         #elif defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
             display_update(display_output_buffer, DISPLAY_OUT_BUF_SIZE, display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            #if defined(CONFIG_DISPLAY_USE_PREV_PIX_BUF)
+            memcpy(display_prev_pixel_buffer, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
+            #endif
+            #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
+            memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
+            #endif
         #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
             // TODO: Use a separate unit buffer instead of writing directly to the output buffer
         #endif

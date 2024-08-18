@@ -81,8 +81,6 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
 
     uart_write_bytes(K9000_UART, buf, bufSize);
     free(buf);
-
-    if (prevFrame != NULL) memcpy(prevFrame, frame, frameBufSize);
 }
 
 #endif

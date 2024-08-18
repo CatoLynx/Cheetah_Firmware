@@ -163,7 +163,6 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 display_flip();
             }
         }
-        if(prevFrame) memcpy(prevFrame, frame, frameBufSize);
         display_dirty = 0;
     } else {
         ESP_LOGI(LOG_TAG, "Updating changed pixels");
@@ -186,7 +185,6 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 display_flip();
             }
         }
-        memcpy(prevFrame, frame, frameBufSize);
     }
     display_deselect();
 }

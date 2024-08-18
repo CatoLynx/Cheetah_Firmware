@@ -87,8 +87,6 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
     ESP_LOG_BUFFER_HEX(LOG_TAG, buf, bufSize);
     uart_write_bytes(K9000_SEL_UART, buf, bufSize);
     free(buf);
-
-    if (prevFrame != NULL) memcpy(prevFrame, frame, frameBufSize);
 }
 
 #endif
