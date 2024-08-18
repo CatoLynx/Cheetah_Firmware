@@ -242,7 +242,7 @@ void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_
     uint8_t charBufModified = effect_fromJSON(charBuf, charBufSize, display_currentEffect);
     // Only evaluate charBufModified when the text buf hasn't changed
     // Otherwise, an update is required anyway
-    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) {
+    if ((prevTextBuf == NULL) || (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0)) {
         // TODO: This isn't quite right yet. It checks if the effect modified the buffer,
         // and if it did, triggers an update. If it didn't, the update is skipped,
         // but only if the buffer wasn't modified in the previous run either.
