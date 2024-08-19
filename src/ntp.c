@@ -27,10 +27,10 @@ void ntp_sync_cb(struct timeval *tv) {
 void ntp_init(void) {
     if (ntp_initialized) return;
     ESP_LOGI(LOG_TAG, "Initializing SNTP");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_set_time_sync_notification_cb(ntp_sync_cb);
-    sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_set_time_sync_notification_cb(ntp_sync_cb);
+    esp_sntp_init();
     ntp_initialized = true;
 }
 
@@ -39,7 +39,7 @@ void ntp_sync_time(void) {
 
     int retry = 0;
     const int retry_count = 20;
-    while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
+    while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET && ++retry < retry_count) {
         ESP_LOGI(LOG_TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
     }
