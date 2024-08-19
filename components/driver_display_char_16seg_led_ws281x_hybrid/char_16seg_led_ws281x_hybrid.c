@@ -7,6 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
+#include "rom/ets_sys.h"
 
 #include "char_16seg_led_ws281x_hybrid.h"
 #include "util_buffer.h"

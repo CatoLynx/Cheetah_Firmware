@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
+#include "rom/ets_sys.h"
 
 #include "flipdot_brose.h"
 #include "util_gpio.h"

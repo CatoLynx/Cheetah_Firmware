@@ -3,6 +3,7 @@
 #include <string.h>
 #include "sys/param.h"
 #include "esp_http_client.h"
+#include "esp_timer.h"
 #include "mbedtls/base64.h"
 
 #include "remote_poll.h"
@@ -50,6 +51,11 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR: {
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ERROR");
+            break;
+        }
+
+        case HTTP_EVENT_REDIRECT: {
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_REDIRECT");
             break;
         }
 
@@ -237,7 +243,7 @@ void remote_poll_send_request() {
     cJSON_free(post_data);
 
     if (err == ESP_OK) {
-        ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %d",
+        ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %lld",
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
     } else {

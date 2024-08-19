@@ -29,6 +29,9 @@
  *
  */
 
+// FIX FOR ESP-IDF v5: https://github.com/trombik/esp_wireguard/issues/33#issuecomment-1568503651
+// In short: Enable CONFIG_LWIP_PPP_SUPPORT
+
 #include <assert.h>
 #include <string.h>
 #include <inttypes.h>

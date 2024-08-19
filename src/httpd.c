@@ -5,6 +5,7 @@
 #include "cJSON.h"
 #include "esp_ota_ops.h"
 #include "esp_spiffs.h"
+#include "esp_mac.h"
 #include "wg.h"
 #include "git_version.h"
 
@@ -22,6 +23,10 @@ extern const uint8_t util_js_start[] asm("_binary_util_js_start");
 extern const uint8_t util_js_end[]   asm("_binary_util_js_end");
 extern const uint8_t simple_css_start[] asm("_binary_simple_css_start");
 extern const uint8_t simple_css_end[]   asm("_binary_simple_css_end");
+
+extern esp_netif_t* netif_wifi_sta;
+extern esp_netif_t* netif_wifi_ap;
+extern esp_netif_t* netif_eth;
 
 extern char hostname[63];
 
@@ -60,21 +65,36 @@ static esp_err_t simplecss_get_handler(httpd_req_t *req) {
 }
 
 static esp_err_t device_info_get_handler(httpd_req_t *req) {
-    tcpip_adapter_ip_info_t ip_info;
+    esp_netif_ip_info_t ip_info;
     char ip_str[16];
     cJSON* ips = cJSON_CreateObject();
-    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
-    tcpip_adapter_get_ip_info(ESP_IF_WIFI_STA, &ip_info);
-    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
-    cJSON_AddStringToObject(ips, "wifi_sta", ip_str);
-    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
-    tcpip_adapter_get_ip_info(ESP_IF_WIFI_AP, &ip_info);
-    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
-    cJSON_AddStringToObject(ips, "wifi_ap", ip_str);
-    memset(&ip_info, 0x00, sizeof(tcpip_adapter_ip_info_t));
-    tcpip_adapter_get_ip_info(ESP_IF_ETH, &ip_info);
-    sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
-    cJSON_AddStringToObject(ips, "eth", ip_str);
+
+    if (netif_wifi_sta != NULL) {
+        memset(&ip_info, 0x00, sizeof(esp_netif_ip_info_t));
+        esp_netif_get_ip_info(netif_wifi_sta, &ip_info);
+        sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+        cJSON_AddStringToObject(ips, "wifi_sta", ip_str);
+    } else {
+        cJSON_AddStringToObject(ips, "wifi_sta", "0.0.0.0");
+    }
+
+    if (netif_wifi_ap != NULL) {
+        memset(&ip_info, 0x00, sizeof(esp_netif_ip_info_t));
+        esp_netif_get_ip_info(netif_wifi_ap, &ip_info);
+        sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+        cJSON_AddStringToObject(ips, "wifi_ap", ip_str);
+    } else {
+        cJSON_AddStringToObject(ips, "wifi_ap", "0.0.0.0");
+    }
+
+    if (netif_eth != NULL) {
+        memset(&ip_info, 0x00, sizeof(esp_netif_ip_info_t));
+        esp_netif_get_ip_info(netif_eth, &ip_info);
+        sprintf(ip_str, IPSTR, IP2STR(&ip_info.ip));
+        cJSON_AddStringToObject(ips, "eth", ip_str);
+    } else {
+        cJSON_AddStringToObject(ips, "eth", "0.0.0.0");
+    }
 
     uint8_t mac_bytes[6];
     char mac_str[18];

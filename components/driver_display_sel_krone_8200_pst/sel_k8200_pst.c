@@ -7,6 +7,7 @@
 #include "freertos/task.h"
 #include <string.h>
 #include "driver/uart.h"
+#include "rom/ets_sys.h"
 
 #include "macros.h"
 #include "util_generic.h"

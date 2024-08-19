@@ -9,6 +9,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include <string.h>
+#include "rom/ets_sys.h"
 
 #include "macros.h"
 #include "char_ibis.h"

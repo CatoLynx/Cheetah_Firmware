@@ -75,7 +75,7 @@ static esp_err_t ota_length_post_handler(httpd_req_t *req) {
     buf[length] = 0x00;
 
     ota_payload_length = atoi(buf);
-    ESP_LOGI(LOG_TAG, "OTA payload length: %d bytes", ota_payload_length);
+    ESP_LOGI(LOG_TAG, "OTA payload length: %ld bytes", ota_payload_length);
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
@@ -151,7 +151,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
                 ESP_LOGE(LOG_TAG, "Failed to initialise OTA, status %d", err);
                 return abortRequest(req, HTTPD_500);
             }
-            ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%x", update_partition->subtype, update_partition->address);
+            ESP_LOGI(LOG_TAG, "Writing to partition subtype %d at offset 0x%lx", update_partition->subtype, update_partition->address);
 
             // Write the first chunk
             chunk_length = MIN((ota_payload_length - ota_rx_len), body_part_len);
@@ -178,7 +178,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
         // Update the boot partition
         if (esp_ota_set_boot_partition(update_partition) == ESP_OK) {
             const esp_partition_t *boot_partition = esp_ota_get_boot_partition();
-            ESP_LOGI(LOG_TAG, "Next boot partition subtype %d at offset 0x%x", boot_partition->subtype, boot_partition->address);
+            ESP_LOGI(LOG_TAG, "Next boot partition subtype %d at offset 0x%lx", boot_partition->subtype, boot_partition->address);
             xEventGroupSetBits(restart_event_group, restart_BIT);
             ota_success = 1;
             ESP_LOGI(LOG_TAG, "OTA success! Restart flag set.");

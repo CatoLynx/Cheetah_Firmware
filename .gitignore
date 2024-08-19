@@ -8,5 +8,6 @@
 sdkconfig*.old
 include/settings_secret.h
 include/git_version.h
+managed_components/
 __pycache__/
 *.dll

@@ -38,6 +38,11 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
             break;
         }
 
+        case HTTP_EVENT_REDIRECT: {
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_REDIRECT");
+            break;
+        }
+
         case HTTP_EVENT_ON_CONNECTED: {
             ESP_LOGD(LOG_TAG, "HTTP_EVENT_ON_CONNECTED");
             break;
@@ -172,7 +177,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
         }
 
         case TG_GET_UPDATES: {
-            sprintf(url, "https://api.telegram.org/bot%s/getUpdates?allowed_updates=[\"message\"]&limit=%u&offset=%u&timeout=%u", apiToken, CONFIG_TG_BOT_MESSAGE_LIMIT, last_update_id + 1, CONFIG_TG_BOT_POLLING_TIMEOUT);
+            sprintf(url, "https://api.telegram.org/bot%s/getUpdates?allowed_updates=[\"message\"]&limit=%u&offset=%lu&timeout=%u", apiToken, CONFIG_TG_BOT_MESSAGE_LIMIT, last_update_id + 1, CONFIG_TG_BOT_POLLING_TIMEOUT);
             config.url = url;
             config.timeout_ms = (CONFIG_TG_BOT_POLLING_TIMEOUT + 2) * 1000;
             break;
@@ -222,7 +227,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
     }
 
     if (err == ESP_OK) {
-        ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %d",
+        ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %lld",
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
     } else {

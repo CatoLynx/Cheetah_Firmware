@@ -1,6 +1,5 @@
 #pragma once
 
-#include "driver/ledc.h"
 #include "esp_system.h"
 
 esp_err_t fan_init();

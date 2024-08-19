@@ -3,6 +3,7 @@
  */
 
 #include "util_gpio.h"
+#include "rom/ets_sys.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

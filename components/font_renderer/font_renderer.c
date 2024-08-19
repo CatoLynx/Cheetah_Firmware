@@ -50,13 +50,13 @@ int32_t putLRECharAt(int32_t line, int32_t col, uint32_t c, int32_t h, const RLE
             {
                 int8_t rl = -fontPtr->glyphData[of++];
 
-                printf("%d:rl = %d -> ", of, rl);
+                printf("%ld:rl = %d -> ", of, rl);
                 if(rl > 0)
                 {
                     uint32_t d = fontPtr->glyphData[of++];
                     for(uint8_t i = 0; i < rl; i++)
                     {
-                        printf("%d %d %02X | ", col, line_of, d);
+                        printf("%ld %ld %02lX | ", col, line_of, d);
                         if(col >= 0 && col < 156)
                         {
                             buffer[col] |= d << line_of;
@@ -73,7 +73,7 @@ int32_t putLRECharAt(int32_t line, int32_t col, uint32_t c, int32_t h, const RLE
                     for(int32_t i = 0; i < -rl; i++)
                     {
                         uint32_t d = fontPtr->glyphData[of++];
-                        printf("%d %d %02X | ", col, line_of, d);
+                        printf("%ld %ld %02lX | ", col, line_of, d);
                         if(col >= 0 && col < 156)
                         {
                             buffer[col] |= d << line_of;
@@ -161,7 +161,7 @@ uint32_t utf8DecodeChar(uint8_t **s)
             c = (c << 6) | (*(*s)++ & 0x3F);
         } else
         {
-            printf("UTF8 Decoding error! c = %08X", c);
+            printf("UTF8 Decoding error! c = %08lX", c);
         }
     }
     return c;

@@ -2,6 +2,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "esp_log.h"
+#include "esp_mac.h"
+#include "esp_netif.h"
 #include "esp_wifi.h"
 #include "esp_wpa2.h"
 
@@ -28,6 +30,8 @@ static char sta_pass[65];
 static char ap_ssid[33];
 static char ap_pass[65];
 uint8_t wifi_gotIP = 0;
+esp_netif_t* netif_wifi_sta = NULL;
+esp_netif_t* netif_wifi_ap = NULL;
 
 extern char hostname[63];
 
@@ -102,7 +106,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 void wifi_init_ap(void) {
     ESP_ERROR_CHECK(esp_netif_init());
 
-    esp_netif_create_default_wifi_ap();
+    netif_wifi_ap = esp_netif_create_default_wifi_ap();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -223,7 +227,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     }
 
     // Init WiFi in STA mode, AP will be automatically used as fallback
-    esp_netif_create_default_wifi_sta();
+    netif_wifi_sta = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -297,7 +301,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
     if (sta_enterprise) ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
     ESP_ERROR_CHECK(esp_wifi_start());
-    ESP_ERROR_CHECK(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname));
+    if (netif_wifi_sta != NULL) ESP_ERROR_CHECK(esp_netif_set_hostname(netif_wifi_sta, hostname));
 
     #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
     STRCPY_TEXTBUF((char*)display_text_buffer, "CONNECTING", DISPLAY_TEXT_BUF_SIZE);

@@ -12,6 +12,8 @@
 
 #include "ethernet.h"
 
+esp_netif_t* netif_eth = NULL;
+
 #if defined(CONFIG_ETHERNET_ENABLED)
 
 #define LOG_TAG "Ethernet"
@@ -67,8 +69,8 @@ static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
 
 void ethernet_init(void) {
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
-    esp_netif_t *eth_netif = esp_netif_new(&cfg);
-    ESP_ERROR_CHECK(esp_eth_set_default_handlers(eth_netif));
+    esp_netif_t *netif_eth = esp_netif_new(&cfg);
+    ESP_ERROR_CHECK(esp_eth_set_default_handlers(netif_eth));
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ESP_EVENT_ANY_ID, &eth_event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &got_ip_event_handler, NULL));
 
@@ -121,7 +123,7 @@ void ethernet_init(void) {
         0x02, 0x00, 0x00, 0x12, 0x34, 0x56
     }));
 
-    ESP_ERROR_CHECK(esp_netif_attach(eth_netif, esp_eth_new_netif_glue(eth_handle)));
+    ESP_ERROR_CHECK(esp_netif_attach(netif_eth, esp_eth_new_netif_glue(eth_handle)));
     ESP_ERROR_CHECK(esp_eth_start(eth_handle));
 }
 
