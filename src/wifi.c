@@ -5,7 +5,7 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
-#include "esp_wpa2.h"
+#include "esp_eap_client.h"
 
 #include "wifi.h"
 #include "ntp.h"
@@ -263,7 +263,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
 
         // If the parameters for WPA2 Enterprise are set, set corresponsding parameters
         if (sta_enterprise) {
-            esp_wifi_sta_wpa2_ent_set_identity((uint8_t*)sta_anon_ident, strlen(sta_anon_ident));
+            esp_eap_client_set_identity((uint8_t*)sta_anon_ident, strlen(sta_anon_ident));
 
             switch (sta_phase2) {
                 case WPA2E_PH2_TLS: {
@@ -272,15 +272,15 @@ void wifi_init(nvs_handle_t* nvsHandle) {
                 }
 
                 case WPA2E_PH2_PEAP: {
-                    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
-                    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
+                    ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
+                    ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
                     break;
                 }
 
                 case WPA2E_PH2_TTLS: {
-                    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
-                    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
-                    ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_set_ttls_phase2_method((esp_eap_ttls_phase2_types)sta_phase2_ttls));
+                    ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
+                    ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
+                    ESP_ERROR_CHECK(esp_eap_client_set_ttls_phase2_method((esp_eap_ttls_phase2_types)sta_phase2_ttls));
                     break;
                 }
             }
@@ -299,7 +299,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     }
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    if (sta_enterprise) ESP_ERROR_CHECK(esp_wifi_sta_wpa2_ent_enable());
+    if (sta_enterprise) ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
     ESP_ERROR_CHECK(esp_wifi_start());
     if (netif_wifi_sta != NULL) ESP_ERROR_CHECK(esp_netif_set_hostname(netif_wifi_sta, hostname));
 

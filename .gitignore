@@ -11,3 +11,4 @@ include/git_version.h
 managed_components/
 __pycache__/
 *.dll
+dependencies.lock
