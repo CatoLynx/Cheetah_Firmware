@@ -2,6 +2,8 @@
  * Functions for WS281x based LED displays
  */
 
+// TODO: Maybe with the RMT driver redesign in ESP-IDF v5 RMT is now viable instead of SPI?
+
 #include "driver/spi_master.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
