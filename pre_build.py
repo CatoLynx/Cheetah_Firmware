@@ -5,7 +5,7 @@ import subprocess
 
 print("Removing compiled main/httpd component to update compile date and time")
 try:
-    os.remove(".pio/build/{}/src/httpd.o".format(env["PIOENV"]))
+    os.remove(".pio/build/{}/src/httpd.c.o".format(env["PIOENV"]))
 except FileNotFoundError:
     print("File not found")
 
