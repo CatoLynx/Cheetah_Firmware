@@ -37,7 +37,7 @@ The following input methods are supported:
 |--|--|
 | input_artnet | ArtNet (only for pixel displays) |
 | input_browser_canvas | Interactive browser input |
-| input_remote_poll | Periodic polling of framebuffer from configurable remote URL |
+| input_playlist | Periodic polling of framebuffer from configurable remote URL or JSON file in SPIFFS |
 | input_telegram_bot | Telegram bot (only for character displays) |
 | input_tpm2net | tpm2**​**.net protocol (only for pixel displays) |
 

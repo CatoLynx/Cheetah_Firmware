@@ -24,7 +24,7 @@
 #include "git_version.h"
 #include "httpd.h"
 #include "logging_tcp.h"
-#include "remote_poll.h"
+#include "playlist.h"
 #include "telegram_bot.h"
 #include "tpm2net.h"
 #include "ethernet.h"
@@ -390,28 +390,28 @@ void app_main(void) {
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
-        remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
+        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, NULL, 0, NULL, 0);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
         browser_canvas_init(&server, &nvs_handle, NULL, 0, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
         telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
-        remote_poll_init(&nvs_handle, NULL, 0, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
+        playlist_init(&nvs_handle, NULL, 0, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
         #endif
 
         #if defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
-        remote_poll_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
+        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, NULL, 0);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
         // TODO: Use separate unit buffer
         browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, 0, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
-        remote_poll_init(&nvs_handle, NULL, 0, NULL, 0, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
+        playlist_init(&nvs_handle, NULL, 0, NULL, 0, display_output_buffer, DISPLAY_OUT_BUF_SIZE);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)

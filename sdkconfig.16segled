@@ -2085,11 +2085,6 @@ CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX=127
 # end of Remote Poll Configuration
 
 #
-# Remote Poll Configuration
-#
-# end of Remote Poll Configuration
-
-#
 # Telegram Bot Configuration
 #
 # end of Telegram Bot Configuration

@@ -6,18 +6,18 @@
 #include "esp_timer.h"
 #include "mbedtls/base64.h"
 
-#include "remote_poll.h"
+#include "playlist.h"
 #include "macros.h"
 #include "util_buffer.h"
 #include "util_generic.h"
 #include "util_nvs.h"
 
 
-#define LOG_TAG "Poll"
+#define LOG_TAG "Playlist"
 
 
-static TaskHandle_t rp_task_handle;
-static nvs_handle_t rp_nvs_handle;
+static TaskHandle_t pl_task_handle;
+static nvs_handle_t pl_nvs_handle;
 static char* pollUrl = NULL;
 static char* pollToken = NULL;
 static uint16_t pollInterval = 0;
@@ -25,14 +25,14 @@ static uint8_t pollUrlInited = 0;
 static uint8_t pollTokenInited = 0;
 
 // Dynamic array holding the current list of buffers
-static rp_buffer_list_entry_t* rp_buffers = NULL;
-static uint16_t rp_num_buffers = 0;
-static uint16_t rp_cur_buffer = 0;
-static bool rp_restart_cycle = false;
+static pl_buffer_list_entry_t* pl_buffers = NULL;
+static uint16_t pl_num_buffers = 0;
+static uint16_t pl_cur_buffer = 0;
+static bool pl_restart_cycle = false;
 
 // Last switch / update times
-static uint64_t rp_last_switch = 0;
-static uint64_t rp_last_update = 0;
+static uint64_t pl_last_switch = 0;
+static uint64_t pl_last_update = 0;
 
 static uint8_t* pixel_buffer;
 static size_t pixel_buffer_size = 0;
@@ -44,7 +44,7 @@ static size_t unit_buffer_size = 0;
 extern uint8_t wifi_gotIP;
 
 
-esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
+esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
     static char *resp_buf;
     static int resp_len;
 
@@ -108,7 +108,7 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
             }
             resp_len = 0;
 
-            esp_err_t ret = remote_poll_process_response(json);
+            esp_err_t ret = playlist_process_response(json);
             if (ret != ESP_OK) {
                 //memset(output_buffer, 0x00, output_buffer_size);
                 ESP_LOGE(LOG_TAG,  "Error");
@@ -133,9 +133,9 @@ esp_err_t remote_poll_http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-void remote_poll_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
-    ESP_LOGI(LOG_TAG, "Initializing remote poll");
-    rp_nvs_handle = *nvsHandle;
+void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
+    ESP_LOGI(LOG_TAG, "Initializing playlist");
+    pl_nvs_handle = *nvsHandle;
     pixel_buffer = pixBuf;
     pixel_buffer_size = pixBufSize;
     text_buffer = textBuf;
@@ -143,26 +143,26 @@ void remote_poll_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSiz
     unit_buffer = unitBuf;
     unit_buffer_size = unitBufSize;
 
-    remote_poll_deinit();
+    playlist_deinit();
 
-    esp_err_t ret = nvs_get_u16(*nvsHandle, "poll_interval", &pollInterval);
+    esp_err_t ret = nvs_get_u16(*nvsHandle, "pl_poll_intvl", &pollInterval);
     if (ret != ESP_OK) pollInterval = 0;
 
-    pollUrl = get_string_from_nvs(nvsHandle, "poll_url");
+    pollUrl = get_string_from_nvs(nvsHandle, "pl_poll_url");
     if (pollUrl != NULL) pollUrlInited = 1;
 
-    pollToken = get_string_from_nvs(nvsHandle, "poll_token");
+    pollToken = get_string_from_nvs(nvsHandle, "pl_poll_token");
     if (pollToken != NULL) pollTokenInited = 1;
 
     if (pollInterval != 0 && pollUrl != NULL && pollToken != NULL) {
         if (strlen(pollUrl) != 0 && strlen(pollToken) != 0) {
-            ESP_LOGI(LOG_TAG, "Starting remote poll task");
-            xTaskCreatePinnedToCore(remote_poll_task, "remote_poll", 4096, NULL, 5, &rp_task_handle, 0);
+            ESP_LOGI(LOG_TAG, "Starting playlist task");
+            xTaskCreatePinnedToCore(playlist_task, "playlist", 4096, NULL, 5, &pl_task_handle, 0);
         }
     }
 }
 
-void remote_poll_deinit() {
+void playlist_deinit() {
     // Free allocated memory
     if (pollUrlInited) {
         free(pollUrl);
@@ -176,42 +176,42 @@ void remote_poll_deinit() {
     }
 }
 
-void remote_poll_task(void* arg) {
+void playlist_task(void* arg) {
     while (1) {
         uint64_t now = esp_timer_get_time(); // Microseconds!
 
         // Switch buffer if necessary
-        if (rp_num_buffers > 0) {
-            if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0; // In case rp_num_buffers got smaller
-            if (rp_restart_cycle == true) {
+        if (pl_num_buffers > 0) {
+            if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0; // In case pl_num_buffers got smaller
+            if (pl_restart_cycle == true) {
                 ESP_LOGI(LOG_TAG, "Restarting cycle");
-                rp_cur_buffer = 0;
+                pl_cur_buffer = 0;
             }
-            if (rp_restart_cycle == true || rp_last_switch == 0 || now - rp_last_switch >= rp_buffers[rp_cur_buffer].duration * 1000000) {
-                if (!(rp_restart_cycle == true || rp_last_switch == 0)) rp_cur_buffer++;
-                rp_last_switch = now;
-                rp_restart_cycle = false;
-                if (rp_cur_buffer >= rp_num_buffers) rp_cur_buffer = 0;
+            if (pl_restart_cycle == true || pl_last_switch == 0 || now - pl_last_switch >= pl_buffers[pl_cur_buffer].duration * 1000000) {
+                if (!(pl_restart_cycle == true || pl_last_switch == 0)) pl_cur_buffer++;
+                pl_last_switch = now;
+                pl_restart_cycle = false;
+                if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0;
 
-                // If the remote poll input is disabled in NVS with this flag,
+                // If the playlist input is disabled in NVS with this flag,
                 // It'll keep running in the background, but not outputting anything
                 // This gets checked every loop cycle so that it takes immediate effect
                 uint8_t active = 0;
-                nvs_get_u8(rp_nvs_handle, "poll_active", &active);
+                nvs_get_u8(pl_nvs_handle, "playlist_active", &active);
                 if (active) {
-                    ESP_LOGD(LOG_TAG, "Switching to buffer %d", rp_cur_buffer);
-                    if (rp_buffers[rp_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, rp_buffers[rp_cur_buffer].pixelBuffer, pixel_buffer_size);
-                    if (rp_buffers[rp_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  rp_buffers[rp_cur_buffer].textBuffer,  text_buffer_size);
-                    if (rp_buffers[rp_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  rp_buffers[rp_cur_buffer].unitBuffer,  unit_buffer_size);
+                    ESP_LOGD(LOG_TAG, "Switching to buffer %d", pl_cur_buffer);
+                    if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
+                    if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
+                    if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
                 }
             }
         }
 
         // Update if necessary
-        if (rp_last_update == 0 || now - rp_last_update >= pollInterval * 1000000) {
+        if (pl_last_update == 0 || now - pl_last_update >= pollInterval * 1000000) {
             if (wifi_gotIP) {
-                remote_poll_send_request();
-                rp_last_update = now;
+                playlist_send_request();
+                pl_last_update = now;
             }
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
@@ -219,9 +219,9 @@ void remote_poll_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void remote_poll_send_request() {
+void playlist_send_request() {
     esp_http_client_config_t config = {
-        .event_handler = remote_poll_http_event_handler,
+        .event_handler = playlist_http_event_handler,
         .disable_auto_redirect = false,
         .url = pollUrl
     };
@@ -253,7 +253,7 @@ void remote_poll_send_request() {
     esp_http_client_cleanup(client);
 }
 
-esp_err_t remote_poll_process_response(cJSON* json) {
+esp_err_t playlist_process_response(cJSON* json) {
     /*
     Expected JSON schema (only non-null buffers will be updated):
     {
@@ -301,9 +301,9 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     // Useful if the newly received message should be displayed immediately
     cJSON* field_restart = cJSON_GetObjectItem(json, "restartCycle");
     if (field_restart != NULL) {
-        rp_restart_cycle = cJSON_IsTrue(field_restart);
+        pl_restart_cycle = cJSON_IsTrue(field_restart);
     } else {
-        rp_restart_cycle = false;
+        pl_restart_cycle = false;
     }
 
     cJSON* buffers_arr = cJSON_GetObjectItem(json, "buffers");
@@ -318,26 +318,26 @@ esp_err_t remote_poll_process_response(cJSON* json) {
     }
 
     // Free individual buffer arrays and the overall array
-    for (uint16_t i = 0; i < rp_num_buffers; i++) {
-        free(rp_buffers[i].pixelBuffer);
-        free(rp_buffers[i].textBuffer);
-        free(rp_buffers[i].unitBuffer);
+    for (uint16_t i = 0; i < pl_num_buffers; i++) {
+        free(pl_buffers[i].pixelBuffer);
+        free(pl_buffers[i].textBuffer);
+        free(pl_buffers[i].unitBuffer);
     }
-    free(rp_buffers);
+    free(pl_buffers);
 
     // Allocate new buffers
     ESP_LOGD(LOG_TAG, "Allocating %d buffers", numBuffers);
-    rp_num_buffers = numBuffers;
-    rp_buffers = malloc(rp_num_buffers * sizeof(rp_buffer_list_entry_t));
-    memset(rp_buffers, 0x00, rp_num_buffers * sizeof(rp_buffer_list_entry_t));
+    pl_num_buffers = numBuffers;
+    pl_buffers = malloc(pl_num_buffers * sizeof(pl_buffer_list_entry_t));
+    memset(pl_buffers, 0x00, pl_num_buffers * sizeof(pl_buffer_list_entry_t));
 
     // Populate new buffers
-    for (uint16_t i = 0; i < rp_num_buffers; i++) {
+    for (uint16_t i = 0; i < pl_num_buffers; i++) {
         size_t b64_len = 0;
         cJSON* item = cJSON_GetArrayItem(buffers_arr, i);
 
         cJSON* duration_field = cJSON_GetObjectItem(item, "duration");
-        rp_buffers[i].duration = cJSON_GetNumberValue(duration_field);
+        pl_buffers[i].duration = cJSON_GetNumberValue(duration_field);
 
         cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
 
@@ -354,8 +354,8 @@ esp_err_t remote_poll_process_response(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                rp_buffers[i].pixelBuffer = heap_caps_malloc(pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                result = mbedtls_base64_decode(rp_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                pl_buffers[i].pixelBuffer = heap_caps_malloc(pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                result = mbedtls_base64_decode(pl_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
                     return ESP_FAIL;
@@ -376,8 +376,8 @@ esp_err_t remote_poll_process_response(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                rp_buffers[i].textBuffer = malloc(text_buffer_size);
-                result = mbedtls_base64_decode(rp_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                pl_buffers[i].textBuffer = malloc(text_buffer_size);
+                result = mbedtls_base64_decode(pl_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
                     return ESP_FAIL;
@@ -398,8 +398,8 @@ esp_err_t remote_poll_process_response(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                rp_buffers[i].unitBuffer = malloc(unit_buffer_size);
-                result = mbedtls_base64_decode(rp_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                pl_buffers[i].unitBuffer = malloc(unit_buffer_size);
+                result = mbedtls_base64_decode(pl_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
                     return ESP_FAIL;
