@@ -20,9 +20,15 @@ static TaskHandle_t pl_task_handle;
 static nvs_handle_t pl_nvs_handle;
 static char* pollUrl = NULL;
 static char* pollToken = NULL;
+static char* playlistFile = NULL;
 static uint16_t pollInterval = 0;
+static uint8_t pl_save_to_file = 0;
 static uint8_t pollUrlInited = 0;
 static uint8_t pollTokenInited = 0;
+static uint8_t playlistFileInited = 0;
+static uint8_t pollUrlValid = 0;
+static uint8_t pollTokenValid = 0;
+static uint8_t playlistFileValid = 0;
 
 // Dynamic array holding the current list of buffers
 static pl_buffer_list_entry_t* pl_buffers = NULL;
@@ -108,7 +114,7 @@ esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
             }
             resp_len = 0;
 
-            esp_err_t ret = playlist_process_response(json);
+            esp_err_t ret = playlist_process_json(json);
             if (ret != ESP_OK) {
                 //memset(output_buffer, 0x00, output_buffer_size);
                 ESP_LOGE(LOG_TAG,  "Error");
@@ -148,17 +154,30 @@ void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, 
     esp_err_t ret = nvs_get_u16(*nvsHandle, "pl_poll_intvl", &pollInterval);
     if (ret != ESP_OK) pollInterval = 0;
 
+    ret = nvs_get_u8(*nvsHandle, "pl_save_to_file", &pl_save_to_file);
+    if (ret != ESP_OK) pl_save_to_file = 0;
+
     pollUrl = get_string_from_nvs(nvsHandle, "pl_poll_url");
-    if (pollUrl != NULL) pollUrlInited = 1;
+    if (pollUrl != NULL) {
+        pollUrlInited = 1;
+        if (strlen(pollUrl) != 0) pollUrlValid = 1;
+    }
 
     pollToken = get_string_from_nvs(nvsHandle, "pl_poll_token");
-    if (pollToken != NULL) pollTokenInited = 1;
+    if (pollToken != NULL) {
+        pollTokenInited = 1;
+        if (strlen(pollToken) != 0) pollTokenValid = 1;
+    }
 
-    if (pollInterval != 0 && pollUrl != NULL && pollToken != NULL) {
-        if (strlen(pollUrl) != 0 && strlen(pollToken) != 0) {
-            ESP_LOGI(LOG_TAG, "Starting playlist task");
-            xTaskCreatePinnedToCore(playlist_task, "playlist", 4096, NULL, 5, &pl_task_handle, 0);
-        }
+    playlistFile = get_string_from_nvs(nvsHandle, "playlist_file");
+    if (playlistFile != NULL) {
+        playlistFileInited = 1;
+        if (strlen(playlistFile) != 0) playlistFileValid = 1;
+    }
+
+    if ((pollInterval != 0 && pollUrlValid && pollTokenValid) || playlistFileValid) {
+        ESP_LOGI(LOG_TAG, "Starting playlist task");
+        xTaskCreatePinnedToCore(playlist_task, "playlist", 4096, NULL, 5, &pl_task_handle, 0);
     }
 }
 
@@ -168,11 +187,19 @@ void playlist_deinit() {
         free(pollUrl);
         pollUrl = NULL;
         pollUrlInited = 0;
+        pollUrlValid = 0;
     }
     if (pollTokenInited) {
         free(pollToken);
         pollToken = NULL;
         pollTokenInited = 0;
+        pollTokenValid = 0;
+    }
+    if (playlistFileInited) {
+        free(playlistFile);
+        playlistFile = NULL;
+        playlistFileInited = 0;
+        playlistFileValid = 0;
     }
 }
 
@@ -209,17 +236,19 @@ void playlist_task(void* arg) {
 
         // Update if necessary
         if (pl_last_update == 0 || now - pl_last_update >= pollInterval * 1000000) {
-            if (wifi_gotIP) {
-                playlist_send_request();
-                pl_last_update = now;
+            if (pollUrlValid && pollTokenValid && wifi_gotIP) {
+                playlist_update_from_http();
+            } else if(playlistFileValid) {
+                playlist_update_from_file();
             }
+            pl_last_update = now;
         }
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
 
-void playlist_send_request() {
+void playlist_update_from_http() {
     esp_http_client_config_t config = {
         .event_handler = playlist_http_event_handler,
         .disable_auto_redirect = false,
@@ -253,7 +282,43 @@ void playlist_send_request() {
     esp_http_client_cleanup(client);
 }
 
-esp_err_t playlist_process_response(cJSON* json) {
+void playlist_update_from_file() {
+    char file_path[21]; // "/spiffs/" + 8.3 filename + null
+    snprintf(file_path, 21, "/spiffs/%s", playlistFile);
+    ESP_LOGI(LOG_TAG, "Reading file: %s", file_path);
+    FILE* file = fopen(file_path, "r");
+    if (file == NULL) {
+        ESP_LOGE(LOG_TAG, "Failed to open file");
+        return;
+    }
+
+    struct stat st;
+    if (stat(file_path, &st) != 0) {
+        ESP_LOGE(LOG_TAG, "Failed to stat file");
+        return;
+    }
+    
+    off_t file_size = st.st_size;
+    char* json_str = heap_caps_malloc(file_size, MALLOC_CAP_SPIRAM);
+    if (json_str == NULL) {
+        ESP_LOGE(LOG_TAG, "Failed to allocate memory for JSON buffer");
+        return;
+    }
+    fread(json_str, 1, file_size, file);
+    cJSON* json = cJSON_Parse(json_str);
+    free(json_str);
+    fclose(file);
+
+    esp_err_t ret = playlist_process_json(json);
+    if (ret != ESP_OK) {
+        //memset(output_buffer, 0x00, output_buffer_size);
+        ESP_LOGE(LOG_TAG, "Error");
+        cJSON_Delete(json);
+    }
+    cJSON_Delete(json);
+}
+
+esp_err_t playlist_process_json(cJSON* json) {
     /*
     Expected JSON schema (only non-null buffers will be updated):
     {
@@ -406,6 +471,22 @@ esp_err_t playlist_process_response(cJSON* json) {
                 }
             }
         }
+    }
+
+    // Save JSON to SPIFFS file if desired and possible
+    if (pl_save_to_file && playlistFileValid) {
+        char file_path[21]; // "/spiffs/" + 8.3 filename + null
+        snprintf(file_path, 21, "/spiffs/%s", playlistFile);
+        ESP_LOGI(LOG_TAG, "Writing file: %s", file_path);
+        FILE* file = fopen(file_path, "w");
+        if (file == NULL) {
+            ESP_LOGE(LOG_TAG, "Failed to open file");
+            return ESP_FAIL;
+        }
+        char *json_str = cJSON_Print(json);
+        fprintf(file, json_str);
+        fclose(file);
+        cJSON_free(json_str);
     }
 
     return ESP_OK;

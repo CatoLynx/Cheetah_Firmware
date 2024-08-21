@@ -48,6 +48,8 @@ config_entry_t config_entries[] = {
     {.key = "pl_poll_url",     .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "pl_poll_token",   .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "pl_poll_intvl",   .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "playlist_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT},
+    {.key = "pl_save_to_file", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
     {.key = "canvas_use_auth", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
     {.key = "deflt_bright",    .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
 };
