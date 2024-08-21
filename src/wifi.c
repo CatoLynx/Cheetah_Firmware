@@ -4,6 +4,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_netif.h"
+#include "esp_timer.h"
 #include "esp_wifi.h"
 #include "esp_eap_client.h"
 
@@ -29,6 +30,9 @@ static char sta_ident[65];
 static char sta_pass[65];
 static char ap_ssid[33];
 static char ap_pass[65];
+static uint16_t ap_timeout = 0;
+static int64_t ap_start_time = 0;
+static uint8_t ap_client_connected = 0;
 uint8_t wifi_gotIP = 0;
 esp_netif_t* netif_wifi_sta = NULL;
 esp_netif_t* netif_wifi_ap = NULL;
@@ -72,6 +76,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 
             case WIFI_EVENT_AP_STACONNECTED: {
                 wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
+                ap_client_connected = 1;
                 ESP_LOGI(LOG_TAG, "Device "MACSTR" connected, AID %d",
                         MAC2STR(event->mac), event->aid);
                 break;
@@ -132,6 +137,8 @@ void wifi_init_ap(void) {
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
+    ap_start_time = esp_timer_get_time();
+
     ESP_LOGI(LOG_TAG, "AP started. SSID: %s, password: %s", ap_ssid, ap_pass);
     #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
     STRCPY_TEXTBUF((char*)display_text_buffer, "AP MODE", DISPLAY_TEXT_BUF_SIZE);
@@ -149,6 +156,14 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     memset(sta_pass, 0x00, sta_pass_len);
     memset(ap_ssid, 0x00, ap_ssid_len);
     memset(ap_pass, 0x00, ap_pass_len);
+    ret = nvs_get_u16(*nvsHandle, "ap_timeout", &ap_timeout);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        ap_timeout = 0;
+    } else {
+        ESP_ERROR_CHECK(ret);
+        // If not 0, force at least 10 seconds timeout to be safe
+        if (ap_timeout != 0 && ap_timeout < 10) ap_timeout = 10;
+    }
     ret = nvs_get_str(*nvsHandle, "sta_ssid", sta_ssid, &sta_ssid_len);
     if (ret == ESP_ERR_NVS_NOT_FOUND) {
         sta_credentials_valid = 0;
@@ -306,4 +321,33 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
     STRCPY_TEXTBUF((char*)display_text_buffer, "CONNECTING", DISPLAY_TEXT_BUF_SIZE);
     #endif
+}
+
+void wifi_stop(void) {
+    wifi_mode_t mode;
+    ESP_ERROR_CHECK(esp_wifi_get_mode(&mode));
+    if (mode == WIFI_MODE_AP) {
+        ap_start_time = 0;
+        ap_client_connected = 0;
+    }
+    ESP_ERROR_CHECK(esp_wifi_stop());
+}
+
+void wifi_timeout_task(void* arg) {
+    while (1) {
+        if (   !ap_client_connected /* If a client was connected at any point, timeout is disabled */
+            && ap_timeout != 0      /* 0 = Timeout disabled */
+            && ap_start_time != 0   /* If AP hasn't been started, continue */) {
+            int64_t now = esp_timer_get_time();
+            if (now - ap_start_time >= ap_timeout * 1000000LL) {
+                ESP_LOGI(LOG_TAG, "AP timed out, disabling");
+                wifi_stop();
+                #if defined(CONFIG_DISPLAY_SHOW_MESSAGES)
+                STRCPY_TEXTBUF((char*)display_text_buffer, "AP TIMEOUT", DISPLAY_TEXT_BUF_SIZE);
+                #endif
+            }
+        }
+        
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
 }

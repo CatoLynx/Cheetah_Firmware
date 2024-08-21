@@ -444,6 +444,8 @@ void app_main(void) {
         ESP_LOGI(LOG_TAG, "Registering bitmap generators");
         browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator);
         #endif
+        
+        xTaskCreatePinnedToCore(wifi_timeout_task, "wifi_timeout", 4096, NULL, 2, NULL, 0);
 
         xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
 

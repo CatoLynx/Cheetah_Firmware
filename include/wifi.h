@@ -21,3 +21,5 @@ enum {
 
 void wifi_init_ap(void);
 void wifi_init(nvs_handle_t* nvsHandle);
+void wifi_stop(void);
+void wifi_timeout_task(void* arg);
