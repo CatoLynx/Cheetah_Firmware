@@ -160,43 +160,44 @@ uint8_t effect_glitches(uint8_t* charBuf, size_t charBufSize, uint16_t probabili
 }
 
 uint8_t effect_fromJSON(uint8_t* charBuf, size_t charBufSize, cJSON* effectData) {
-    if (effectData == NULL) return 0;
+    // TODO: Returning 1 instead of 0 is only a workaround. This whole thing is not quite right
+    if (effectData == NULL) return 1;
 
     cJSON* effect_id_field = cJSON_GetObjectItem(effectData, "effect");
-    if (!cJSON_IsNumber(effect_id_field)) return 0;
+    if (!cJSON_IsNumber(effect_id_field)) return 1;
     enum effect_func effectId = (enum effect_func)cJSON_GetNumberValue(effect_id_field);
 
     cJSON* params = cJSON_GetObjectItem(effectData, "params");
-    if (!cJSON_IsObject(params)) return 0;
+    if (!cJSON_IsObject(params)) return 1;
 
     switch (effectId) {
         case NONE: {
-            return 0;
+            return 1;
         }
         
         case GLITCHES: {
             cJSON* probability_field = cJSON_GetObjectItem(params, "probability");
-            if (!cJSON_IsNumber(probability_field)) return 0;
+            if (!cJSON_IsNumber(probability_field)) return 1;
             uint16_t probability = (uint16_t)cJSON_GetNumberValue(probability_field);
 
             cJSON* duration_avg_ms_field = cJSON_GetObjectItem(params, "duration_avg_ms");
-            if (!cJSON_IsNumber(duration_avg_ms_field)) return 0;
+            if (!cJSON_IsNumber(duration_avg_ms_field)) return 1;
             uint16_t duration_avg_ms = (uint16_t)cJSON_GetNumberValue(duration_avg_ms_field);
 
             cJSON* duration_spread_ms_field = cJSON_GetObjectItem(params, "duration_spread_ms");
-            if (!cJSON_IsNumber(duration_spread_ms_field)) return 0;
+            if (!cJSON_IsNumber(duration_spread_ms_field)) return 1;
             uint16_t duration_spread_ms = (uint16_t)cJSON_GetNumberValue(duration_spread_ms_field);
 
             cJSON* interval_avg_ms_field = cJSON_GetObjectItem(params, "interval_avg_ms");
-            if (!cJSON_IsNumber(interval_avg_ms_field)) return 0;
+            if (!cJSON_IsNumber(interval_avg_ms_field)) return 1;
             uint16_t interval_avg_ms = (uint16_t)cJSON_GetNumberValue(interval_avg_ms_field);
 
             cJSON* interval_spread_ms_field = cJSON_GetObjectItem(params, "interval_spread_ms");
-            if (!cJSON_IsNumber(interval_spread_ms_field)) return 0;
+            if (!cJSON_IsNumber(interval_spread_ms_field)) return 1;
             uint16_t interval_spread_ms = (uint16_t)cJSON_GetNumberValue(interval_spread_ms_field);
             
             cJSON* non_blank_only_field = cJSON_GetObjectItem(params, "non_blank_only");
-            if (!cJSON_IsBool(non_blank_only_field)) return 0;
+            if (!cJSON_IsBool(non_blank_only_field)) return 1;
             uint8_t non_blank_only = (uint8_t)cJSON_IsTrue(non_blank_only_field);
 
             ESP_LOGV(LOG_TAG, "effect=%p effectId=%u", effectData, effectId);
@@ -204,7 +205,7 @@ uint8_t effect_fromJSON(uint8_t* charBuf, size_t charBufSize, cJSON* effectData)
         }
     }
 
-    return 0;
+    return 1;
 }
 
 #endif
