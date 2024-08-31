@@ -128,21 +128,29 @@ uint8_t display_output_buffer[DISPLAY_OUT_BUF_SIZE] = {0};
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
     cJSON* display_prevShader = NULL;
     cJSON* display_shader = NULL;
+    uint8_t display_shaderDataDeletable = 0;
+    uint8_t display_prevShaderDataDeletable = 0;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
     cJSON* display_prevTransition = NULL;
     cJSON* display_transition = NULL;
+    uint8_t display_transitionDataDeletable = 0;
+    uint8_t display_prevTransitionDataDeletable = 0;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
     cJSON* display_prevEffect = NULL;
     cJSON* display_effect = NULL;
+    uint8_t display_effectDataDeletable = 0;
+    uint8_t display_prevEffectDataDeletable = 0;
 #endif
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
     cJSON* display_prevBitmapGenerator = NULL;
     cJSON* display_bitmapGenerator = NULL;
+    uint8_t display_bitmapGeneratorDataDeletable = 0;
+    uint8_t display_prevBitmapGeneratorDataDeletable = 0;
 #endif
 
 size_t hostname_length = 64;
@@ -241,10 +249,11 @@ static void display_refresh_task(void* arg) {
             display_set_shader(display_shader);
             
             // Delete previous shader data if necessary
-            if (display_prevShader != NULL) {
+            if (display_prevShader != NULL && display_prevShaderDataDeletable) {
                 cJSON_Delete(display_prevShader);
             }
             display_prevShader = display_shader;
+            display_prevShaderDataDeletable = display_shaderDataDeletable;
         }
         #endif
 
@@ -253,10 +262,11 @@ static void display_refresh_task(void* arg) {
             display_set_transition(display_transition);
             
             // Delete previous transition data if necessary
-            if (display_prevTransition != NULL) {
+            if (display_prevTransition != NULL && display_prevTransitionDataDeletable) {
                 cJSON_Delete(display_prevTransition);
             }
             display_prevTransition = display_transition;
+            display_prevTransitionDataDeletable = display_transitionDataDeletable;
         }
         #endif
 
@@ -265,23 +275,24 @@ static void display_refresh_task(void* arg) {
             display_set_effect(display_effect);
             
             // Delete previous effect data if necessary
-            if (display_prevEffect != NULL) {
+            if (display_prevEffect != NULL && display_prevEffectDataDeletable) {
                 cJSON_Delete(display_prevEffect);
             }
             display_prevEffect = display_effect;
+            display_prevEffectDataDeletable = display_effectDataDeletable;
         }
         #endif
 
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
         if (display_bitmapGenerator != display_prevBitmapGenerator) {
-
             bitmap_generator_select(display_bitmapGenerator);
             
             // Delete previous bitmap generator data if necessary
-            if (display_prevBitmapGenerator != NULL) {
+            if (display_prevBitmapGenerator != NULL && display_prevBitmapGeneratorDataDeletable) {
                 cJSON_Delete(display_prevBitmapGenerator);
             }
             display_prevBitmapGenerator = display_bitmapGenerator;
+            display_prevBitmapGeneratorDataDeletable = display_bitmapGeneratorDataDeletable;
         }
         #endif
 
@@ -427,22 +438,22 @@ void app_main(void) {
 
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
         ESP_LOGI(LOG_TAG, "Registering shaders");
-        browser_canvas_register_shaders(&server, &display_shader);
+        browser_canvas_register_shaders(&server, &display_shader, &display_shaderDataDeletable);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
         ESP_LOGI(LOG_TAG, "Registering transitions");
-        browser_canvas_register_transitions(&server, &display_transition);
+        browser_canvas_register_transitions(&server, &display_transition, &display_transitionDataDeletable);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
         ESP_LOGI(LOG_TAG, "Registering effects");
-        browser_canvas_register_effects(&server, &display_effect);
+        browser_canvas_register_effects(&server, &display_effect, &display_effectDataDeletable);
         #endif
 
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
         ESP_LOGI(LOG_TAG, "Registering bitmap generators");
-        browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator);
+        browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
         #endif
         
         xTaskCreatePinnedToCore(wifi_timeout_task, "wifi_timeout", 4096, NULL, 2, NULL, 0);

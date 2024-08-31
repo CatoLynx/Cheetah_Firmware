@@ -48,18 +48,22 @@ static uint8_t* canvas_brightness;
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
 static cJSON** shader_data;
+static uint8_t* shader_data_deletable;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
 static cJSON** transition_data;
+static uint8_t* transition_data_deletable;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
 static cJSON** effect_data;
+static uint8_t* effect_data_deletable;
 #endif
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
 static cJSON** bitmap_generator_data;
+static uint8_t* bitmap_generator_data_deletable;
 #endif
 
 static cJSON* canvas_presets = NULL;
@@ -397,6 +401,10 @@ static esp_err_t canvas_shader_post_handler(httpd_req_t *req) {
 
     *shader_data = json;
 
+    // Tell the main loop that the currently set data
+    // can be deleted once it's not in use anymore
+    *shader_data_deletable = 1;
+
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
     return ESP_OK;
@@ -458,6 +466,10 @@ static esp_err_t canvas_transition_post_handler(httpd_req_t *req) {
     }
 
     *transition_data = json;
+    
+    // Tell the main loop that the currently set data
+    // can be deleted once it's not in use anymore
+    *transition_data_deletable = 1;
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
@@ -520,6 +532,10 @@ static esp_err_t canvas_effect_post_handler(httpd_req_t *req) {
     }
 
     *effect_data = json;
+    
+    // Tell the main loop that the currently set data
+    // can be deleted once it's not in use anymore
+    *effect_data_deletable = 1;
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
@@ -582,6 +598,10 @@ static esp_err_t canvas_bitmap_generator_post_handler(httpd_req_t *req) {
     }
 
     *bitmap_generator_data = json;
+    
+    // Tell the main loop that the currently set data
+    // can be deleted once it's not in use anymore
+    *bitmap_generator_data_deletable = 1;
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
@@ -897,32 +917,36 @@ void browser_canvas_register_brightness(httpd_handle_t* server, uint8_t* brightn
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData) {
+void browser_canvas_register_shaders(httpd_handle_t* server, cJSON** shaderData, uint8_t* shaderDataDeletable) {
     shader_data = shaderData;
+    shader_data_deletable = shaderDataDeletable;
     httpd_register_uri_handler(*server, &canvas_shader_get);
     httpd_register_uri_handler(*server, &canvas_shader_post);
 }
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
-void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transitionData) {
+void browser_canvas_register_transitions(httpd_handle_t* server, cJSON** transitionData, uint8_t* transitionDataDeletable) {
     transition_data = transitionData;
+    transition_data_deletable = transitionDataDeletable;
     httpd_register_uri_handler(*server, &canvas_transition_get);
     httpd_register_uri_handler(*server, &canvas_transition_post);
 }
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
-void browser_canvas_register_effects(httpd_handle_t* server, cJSON** effectData) {
+void browser_canvas_register_effects(httpd_handle_t* server, cJSON** effectData, uint8_t* effectDataDeletable) {
     effect_data = effectData;
+    effect_data_deletable = effectDataDeletable;
     httpd_register_uri_handler(*server, &canvas_effect_get);
     httpd_register_uri_handler(*server, &canvas_effect_post);
 }
 #endif
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-void browser_canvas_register_bitmap_generators(httpd_handle_t* server, cJSON** bitmapGeneratorData) {
+void browser_canvas_register_bitmap_generators(httpd_handle_t* server, cJSON** bitmapGeneratorData, uint8_t* bitmapGeneratorDataDeletable) {
     bitmap_generator_data = bitmapGeneratorData;
+    bitmap_generator_data_deletable = bitmapGeneratorDataDeletable;
     httpd_register_uri_handler(*server, &canvas_bitmap_generator_get);
     httpd_register_uri_handler(*server, &canvas_bitmap_generator_post);
 }
