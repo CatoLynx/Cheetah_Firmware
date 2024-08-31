@@ -86,6 +86,13 @@ config ETHERNET_SPI_CLK_FREQ
     help
         Frequency for SPI clock (in Hz)
 
+config ETHERNET_POLLING_MS
+    depends on ETHERNET_ENABLED
+    int "Polling interval (ms) if interrupt pin is not used"
+    default 0
+    help
+        Polling interval (ms) if interrupt pin is not used
+
 choice ETHERNET_SPI_HOST
     depends on ETHERNET_ENABLED
     bool "SPI Host"
