@@ -109,8 +109,6 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
 }
 
 void wifi_init_ap(void) {
-    ESP_ERROR_CHECK(esp_netif_init());
-
     netif_wifi_ap = esp_netif_create_default_wifi_ap();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
