@@ -419,7 +419,7 @@ esp_err_t playlist_process_json(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                pl_buffers[i].pixelBuffer = heap_caps_malloc(pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
                 result = mbedtls_base64_decode(pl_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
@@ -441,7 +441,7 @@ esp_err_t playlist_process_json(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                pl_buffers[i].textBuffer = malloc(text_buffer_size);
+                pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
                 result = mbedtls_base64_decode(pl_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
@@ -463,7 +463,7 @@ esp_err_t playlist_process_json(cJSON* json) {
                 return ESP_FAIL;
             } else {
                 b64_len = 0;
-                pl_buffers[i].unitBuffer = malloc(unit_buffer_size);
+                pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
                 result = mbedtls_base64_decode(pl_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
                 if (result != 0) {
                     ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
