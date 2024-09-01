@@ -18,6 +18,8 @@ static bool wg_started = false;
 static bool wg_connected_wifi = false;
 static bool wg_connected_eth = false;
 
+extern uint8_t wifi_gotIP, eth_gotIP;
+
 
 esp_err_t wg_init(nvs_handle_t* nvsHandle) {
     esp_err_t ret = ESP_OK;
@@ -133,33 +135,35 @@ esp_err_t wg_stop(void) {
     return ret;
 }
 
-esp_err_t wg_start_wifi(void) {
-    // Start WireGuard on the WiFi STA interface
-    if (wg_connected_eth) {
-        ESP_LOGI(LOG_TAG, "Not connecting via WiFi, already connected via Ethernet");
-        return ESP_OK;
+esp_err_t wg_update_interfaces(void) {
+    esp_err_t ret = ESP_OK;
+    if (!wifi_gotIP && !eth_gotIP) {
+        if (!wg_connected_wifi && !wg_connected_eth) return ESP_OK;
+        ESP_LOGI(LOG_TAG, "No interface available");
+        if (wg_started) {
+            return wg_stop();
+        }
+    } else if (eth_gotIP) {
+        if (wg_connected_eth) return ESP_OK;
+        ESP_LOGI(LOG_TAG, "Using Ethernet");
+        if (wg_started) {
+            ret = wg_stop();
+            if (ret != ESP_OK) return ret;
+        }
+        ret = wg_start(esp_netif_get_handle_from_ifkey("ETH_DEF"));
+        if (ret == ESP_OK) wg_connected_eth = true;
+        return ret;
+    } else if (wifi_gotIP) {
+        if (wg_connected_wifi) return ESP_OK;
+        ESP_LOGI(LOG_TAG, "Using WiFi");
+        if (wg_started) {
+            ret = wg_stop();
+            if (ret != ESP_OK) return ret;
+        }
+        ret = wg_start(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"));
+        if (ret == ESP_OK) wg_connected_wifi = true;
+        return ret;
     }
-    esp_err_t ret;
-    if (wg_started) {
-        ret = wg_stop();
-        if (ret != ESP_OK) return ret;
-    }
-    ret = wg_start(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"));
-    wg_connected_wifi = true;
-    return ret;
-}
-
-esp_err_t wg_start_eth(void) {
-    // Start WireGuard on the Ethernet interface.
-    // If it is already connected via WiFi, disconnect this first,
-    // since Ethernet takes priority.
-    esp_err_t ret;
-    if (wg_started) {
-        ret = wg_stop();
-        if (ret != ESP_OK) return ret;
-    }
-    ret = wg_start(esp_netif_get_handle_from_ifkey("ETH_DEF"));
-    wg_connected_eth = true;
     return ret;
 }
 

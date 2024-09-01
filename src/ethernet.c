@@ -13,8 +13,10 @@
 
 #include "ethernet.h"
 #include "ntp.h"
+#include "wg.h"
 
 esp_netif_t* netif_eth = NULL;
+uint8_t eth_gotIP = 0;
 
 #if defined(CONFIG_ETHERNET_ENABLED)
 
@@ -37,6 +39,8 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base,
 
         case ETHERNET_EVENT_DISCONNECTED: {
             ESP_LOGI(LOG_TAG, "Link down");
+            eth_gotIP = 0;
+            wg_update_interfaces();
             break;
         }
 
@@ -61,11 +65,14 @@ static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
     const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
+    eth_gotIP = 1;
+
     ESP_LOGI(LOG_TAG, "Got IP");
     ESP_LOGI(LOG_TAG, "IP:      " IPSTR, IP2STR(&ip_info->ip));
     ESP_LOGI(LOG_TAG, "Mask:    " IPSTR, IP2STR(&ip_info->netmask));
     ESP_LOGI(LOG_TAG, "Gateway: " IPSTR, IP2STR(&ip_info->gw));
 
+    wg_update_interfaces();
     if (!ntp_is_synced()) ntp_sync_time();
 }
 

@@ -367,7 +367,7 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    wg_init(&nvs_handle); // Init WireGuard before WiFi to ensure it's ready when WiFI gets an IP
+    wg_init(&nvs_handle); // Init WireGuard before WiFi and Ethernet to ensure it's ready when WiFi / Ethernet gets an IP
     wifi_init(&nvs_handle);
 
     #if defined(CONFIG_TCP_LOG_ENABLED)

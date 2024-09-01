@@ -65,6 +65,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 wifi_gotIP = 0;
                 wifi_event_sta_disconnected_t* event = (wifi_event_sta_disconnected_t*) event_data;
                 ESP_LOGI(LOG_TAG, "Disconnected from %s", event->ssid);
+                wg_update_interfaces();
                 if (s_retry_num < sta_retries) {
                     esp_wifi_connect();
                     s_retry_num++;
@@ -100,13 +101,14 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
                 ESP_LOGI(LOG_TAG, "IP:      " IPSTR, IP2STR(&event->ip_info.ip));
                 ESP_LOGI(LOG_TAG, "Mask:    " IPSTR, IP2STR(&event->ip_info.netmask));
                 ESP_LOGI(LOG_TAG, "Gateway: " IPSTR, IP2STR(&event->ip_info.gw));
-                
+
                 #if defined(DISPLAY_HAS_TEXT_BUFFER) && defined(CONFIG_DISPLAY_SHOW_MESSAGES)
                 char temp[19];
                 sprintf(temp, IPSTR, IP2STR(&event->ip_info.ip));
                 STRCPY_TEXTBUF((char*)display_text_buffer, temp, DISPLAY_TEXT_BUF_SIZE);
                 #endif
                 s_retry_num = 0;
+                wg_update_interfaces();
                 if (!ntp_is_synced()) ntp_sync_time();
                 break;
             }
