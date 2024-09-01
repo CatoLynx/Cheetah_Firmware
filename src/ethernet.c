@@ -12,6 +12,7 @@
 #include "driver/spi_master.h"
 
 #include "ethernet.h"
+#include "ntp.h"
 
 esp_netif_t* netif_eth = NULL;
 
@@ -28,24 +29,24 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base,
     switch (event_id) {
         case ETHERNET_EVENT_CONNECTED: {
             esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-            ESP_LOGI(LOG_TAG, "Ethernet Link Up");
-            ESP_LOGI(LOG_TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
+            ESP_LOGI(LOG_TAG, "Link up");
+            ESP_LOGI(LOG_TAG, "MAC: %02x:%02x:%02x:%02x:%02x:%02x",
                     mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
             break;
         }
 
         case ETHERNET_EVENT_DISCONNECTED: {
-            ESP_LOGI(LOG_TAG, "Ethernet Link Down");
+            ESP_LOGI(LOG_TAG, "Link down");
             break;
         }
 
         case ETHERNET_EVENT_START: {
-            ESP_LOGI(LOG_TAG, "Ethernet Started");
+            ESP_LOGI(LOG_TAG, "Started");
             break;
         }
 
         case ETHERNET_EVENT_STOP: {
-            ESP_LOGI(LOG_TAG, "Ethernet Stopped");
+            ESP_LOGI(LOG_TAG, "Stopped");
             break;
         }
 
@@ -60,10 +61,12 @@ static void got_ip_event_handler(void *arg, esp_event_base_t event_base,
     ip_event_got_ip_t *event = (ip_event_got_ip_t *) event_data;
     const esp_netif_ip_info_t *ip_info = &event->ip_info;
 
-    ESP_LOGI(LOG_TAG, "Ethernet Got IP Address");
-    ESP_LOGI(LOG_TAG, "ETHIP:  " IPSTR, IP2STR(&ip_info->ip));
-    ESP_LOGI(LOG_TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
-    ESP_LOGI(LOG_TAG, "ETHGW:  " IPSTR, IP2STR(&ip_info->gw));
+    ESP_LOGI(LOG_TAG, "Got IP");
+    ESP_LOGI(LOG_TAG, "IP:      " IPSTR, IP2STR(&ip_info->ip));
+    ESP_LOGI(LOG_TAG, "Mask:    " IPSTR, IP2STR(&ip_info->netmask));
+    ESP_LOGI(LOG_TAG, "Gateway: " IPSTR, IP2STR(&ip_info->gw));
+
+    if (!ntp_is_synced()) ntp_sync_time();
 }
 
 void ethernet_init(void) {

@@ -10,6 +10,7 @@
 
 #include "wifi.h"
 #include "ntp.h"
+#include "wg.h"
 
 #define LOG_TAG "WiFi"
 
@@ -94,14 +95,19 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
             case IP_EVENT_STA_GOT_IP: {
                 wifi_gotIP = 1;
                 ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
-                ESP_LOGI(LOG_TAG, "Got IP: " IPSTR, IP2STR(&event->ip_info.ip));
+
+                ESP_LOGI(LOG_TAG, "Got IP");
+                ESP_LOGI(LOG_TAG, "IP:      " IPSTR, IP2STR(&event->ip_info.ip));
+                ESP_LOGI(LOG_TAG, "Mask:    " IPSTR, IP2STR(&event->ip_info.netmask));
+                ESP_LOGI(LOG_TAG, "Gateway: " IPSTR, IP2STR(&event->ip_info.gw));
+                
                 #if defined(DISPLAY_HAS_TEXT_BUFFER) && defined(CONFIG_DISPLAY_SHOW_MESSAGES)
                 char temp[19];
                 sprintf(temp, IPSTR, IP2STR(&event->ip_info.ip));
                 STRCPY_TEXTBUF((char*)display_text_buffer, temp, DISPLAY_TEXT_BUF_SIZE);
                 #endif
                 s_retry_num = 0;
-                ntp_sync_time();
+                if (!ntp_is_synced()) ntp_sync_time();
                 break;
             }
         }

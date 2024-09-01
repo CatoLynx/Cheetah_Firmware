@@ -37,6 +37,9 @@ extern "C" {
 
 #include <stdint.h>
 #include <esp_err.h>
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+#include <esp_netif.h>
+#endif
 #include <lwip/netif.h>
 
 #define ESP_WIREGUARD_CONFIG_DEFAULT() { \
@@ -107,11 +110,16 @@ esp_err_t esp_wireguard_init(wireguard_config_t *config, wireguard_ctx_t *ctx);
  * Do not call this function multiple times.
  *
  * @param       ctx Context of WireGuard.
+ * @param       base_if Interface to base the connection on.
  * @return
  *      - ESP_OK on success.
  *      - ESP_FAIL on failure.
  */
-esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx);
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx, esp_netif_t *base_if);
+#else
+esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx):
+#endif
 
 /**
  * @brief Set the default gateway to the peer.

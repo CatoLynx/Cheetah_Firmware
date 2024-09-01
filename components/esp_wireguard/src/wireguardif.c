@@ -59,6 +59,11 @@
 
 #define TAG "wireguardif"
 
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+extern esp_netif_t* base_netif;
+#endif
+
+
 static void update_peer_addr(struct wireguard_peer *peer, const ip_addr_t *addr, u16_t port) {
 	peer->ip = *addr;
 	peer->port = port;
@@ -197,6 +202,8 @@ static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, con
 // This is used as the output function for the Wireguard netif
 // The ipaddr here is the one inside the VPN which we use to lookup the correct peer/endpoint
 static err_t wireguardif_output(struct netif *netif, struct pbuf *q, const ip4_addr_t *ip4addr) {
+	// Bail if device was externally set to NULL
+	if (netif->state == NULL) return ERR_RTE;
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
 	// Send to peer that matches dest IP
 	ip_addr_t ipaddr;
@@ -905,15 +912,23 @@ err_t wireguardif_init(struct netif *netif) {
 	struct netif* underlying_netif = NULL;
 	char lwip_netif_name[8] = {0,};
 
-	err = esp_netif_get_netif_impl_name(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"), lwip_netif_name);
+	if (base_netif == NULL) {
+		ESP_LOGE(TAG, "No interface available");
+		result = ERR_IF;
+		goto fail;
+	}
+
+	err = esp_netif_get_netif_impl_name(base_netif, lwip_netif_name);
 	if (err != ESP_OK) {
 		ESP_LOGE(TAG, "esp_netif_get_netif_impl_name: %s", esp_err_to_name(err));
 		result = ERR_IF;
 		goto fail;
+	} else {
+		ESP_LOGI(TAG, "Using interface %s", lwip_netif_name);
 	}
 	underlying_netif = netif_find(lwip_netif_name);
 	if (underlying_netif == NULL) {
-		ESP_LOGE(TAG, "netif_find: cannot find WIFI_STA_DEF");
+		ESP_LOGE(TAG, "netif_find: cannot find %s", lwip_netif_name);
 		result = ERR_IF;
 		goto fail;
 	}

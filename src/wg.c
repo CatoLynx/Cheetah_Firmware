@@ -13,8 +13,10 @@ extern uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE];
 
 wireguard_config_t wg_config = ESP_WIREGUARD_CONFIG_DEFAULT();
 wireguard_ctx_t wg_ctx = {0};
-bool wg_initialized = false;
-bool wg_started = false;
+static bool wg_initialized = false;
+static bool wg_started = false;
+static bool wg_connected_wifi = false;
+static bool wg_connected_eth = false;
 
 
 esp_err_t wg_init(nvs_handle_t* nvsHandle) {
@@ -85,9 +87,8 @@ esp_err_t wg_init(nvs_handle_t* nvsHandle) {
     return ret;
 }
 
-esp_err_t wg_start() {
+esp_err_t wg_start(esp_netif_t* base_if) {
     if (!wg_initialized) return ESP_FAIL;
-    ESP_LOGI(LOG_TAG, "Connecting");
     if (wg_started) {
         #if defined(DISPLAY_HAS_TEXT_BUFFER)
         //display_text_buffer[0] = 'W';
@@ -95,7 +96,9 @@ esp_err_t wg_start() {
         ESP_LOGI(LOG_TAG, "Already connected!");
         return ESP_OK;
     }
-    esp_err_t ret = esp_wireguard_connect(&wg_ctx);
+    ESP_LOGI(LOG_TAG, "Connecting");
+
+    esp_err_t ret = esp_wireguard_connect(&wg_ctx, base_if);
     if (ret == ESP_OK) {
         #if defined(DISPLAY_HAS_TEXT_BUFFER)
         //display_text_buffer[0] = 'W';
@@ -103,6 +106,60 @@ esp_err_t wg_start() {
         ESP_LOGI(LOG_TAG, "Connected");
         wg_started = true;
     }
+    return ret;
+}
+
+esp_err_t wg_stop(void) {
+    if (!wg_initialized) return ESP_FAIL;
+    if (!wg_started) {
+        #if defined(DISPLAY_HAS_TEXT_BUFFER)
+        //display_text_buffer[0] = 'W';
+        #endif
+        ESP_LOGI(LOG_TAG, "Wasn't connected!");
+        return ESP_OK;
+    }
+    ESP_LOGI(LOG_TAG, "Disconnecting");
+
+    esp_err_t ret = esp_wireguard_disconnect(&wg_ctx);
+    if (ret == ESP_OK) {
+        #if defined(DISPLAY_HAS_TEXT_BUFFER)
+        //display_text_buffer[0] = ' ';
+        #endif
+        ESP_LOGI(LOG_TAG, "Disconnected");
+        wg_started = false;
+        wg_connected_wifi = false;
+        wg_connected_eth = false;
+    }
+    return ret;
+}
+
+esp_err_t wg_start_wifi(void) {
+    // Start WireGuard on the WiFi STA interface
+    if (wg_connected_eth) {
+        ESP_LOGI(LOG_TAG, "Not connecting via WiFi, already connected via Ethernet");
+        return ESP_OK;
+    }
+    esp_err_t ret;
+    if (wg_started) {
+        ret = wg_stop();
+        if (ret != ESP_OK) return ret;
+    }
+    ret = wg_start(esp_netif_get_handle_from_ifkey("WIFI_STA_DEF"));
+    wg_connected_wifi = true;
+    return ret;
+}
+
+esp_err_t wg_start_eth(void) {
+    // Start WireGuard on the Ethernet interface.
+    // If it is already connected via WiFi, disconnect this first,
+    // since Ethernet takes priority.
+    esp_err_t ret;
+    if (wg_started) {
+        ret = wg_stop();
+        if (ret != ESP_OK) return ret;
+    }
+    ret = wg_start(esp_netif_get_handle_from_ifkey("ETH_DEF"));
+    wg_connected_eth = true;
     return ret;
 }
 

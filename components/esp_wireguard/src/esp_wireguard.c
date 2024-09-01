@@ -63,6 +63,11 @@ static struct wireguardif_peer peer = {0};
 static uint8_t wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
 static uint8_t preshared_key_decoded[WG_KEY_LEN];
 
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+// Used to tell Wireguard which netif the Wireguard interface should be based on
+esp_netif_t* base_netif = NULL;
+#endif
+
 static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struct wireguardif_peer *peer)
 {
     esp_err_t err;
@@ -244,10 +249,19 @@ fail:
     return err;
 }
 
+
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx, esp_netif_t *base_if)
+#else
 esp_err_t esp_wireguard_connect(wireguard_ctx_t *ctx)
+#endif
 {
     esp_err_t err = ESP_FAIL;
     err_t lwip_err = -1;
+
+#if defined(CONFIG_WIREGUARD_ESP_NETIF)
+    base_netif = base_if;
+#endif
 
     if (!ctx) {
         err = ESP_ERR_INVALID_ARG;
