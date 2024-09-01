@@ -55,8 +55,6 @@
 #define WG_ADDRSTRLEN  INET_ADDRSTRLEN
 #endif
 
-#define AI_NUMERICHOST  0x04
-
 static struct netif wg_netif_struct = {0};
 static struct netif *wg_netif = NULL;
 static struct wireguardif_peer peer = {0};
@@ -77,7 +75,6 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_UNSPEC;
-    hints.ai_flags  = AI_NUMERICHOST; // This tells getaddrinfo to expect an IP, not a hostname
 
     if (!config || !peer) {
         err = ESP_ERR_INVALID_ARG;
@@ -127,25 +124,20 @@ static esp_err_t esp_wireguard_peer_init(const wireguard_config_t *config, struc
         memset(&endpoint_ip, 0, sizeof(endpoint_ip));
 
         /* XXX lwip_getaddrinfo returns only the first address of a host at the moment */
-        int result = getaddrinfo(config->endpoint, NULL, &hints, &res) != 0;
-        if (result) {
+        if (getaddrinfo(config->endpoint, NULL, &hints, &res) != 0) {
             err = ESP_FAIL;
 
             /* XXX gai_strerror() is not implemented */
-            ESP_LOGE(TAG, "getaddrinfo: unable to resolve `%s` (%d)", config->endpoint, result);
+            ESP_LOGE(TAG, "getaddrinfo: unable to resolve `%s`", config->endpoint);
             goto fail;
-        } else {
-            ESP_LOGI(TAG, "getaddrinfo: succeeded");
         }
 
         if (res->ai_family == AF_INET) {
             struct in_addr addr4 = ((struct sockaddr_in *) (res->ai_addr))->sin_addr;
-            ESP_LOGI(TAG, "inet_addr_to_ip4addr");
             inet_addr_to_ip4addr(ip_2_ip4(&endpoint_ip), &addr4);
         } else {
 #if defined(CONFIG_LWIP_IPV6)
             struct in6_addr addr6 = ((struct sockaddr_in6 *) (res->ai_addr))->sin6_addr;
-            ESP_LOGI(TAG, "inet6_addr_to_ip6addr");
             inet6_addr_to_ip6addr(ip_2_ip6(&endpoint_ip), &addr6);
 #endif
         }
@@ -334,6 +326,10 @@ fail:
 
 esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
 {
+    // TODO: This can crash if there's an ongoing connection while closing.
+    // The purported fix (https://github.com/trombik/esp_wireguard/pull/45)
+    // doesn't seem to work.
+    
     esp_err_t err;
     err_t lwip_err;
 
@@ -341,6 +337,10 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
         err = ESP_ERR_INVALID_ARG;
         goto fail;
     }
+
+    // Clear the IP address to gracefully disconnect any clients while the
+    // peers are still valid
+    netif_set_ipaddr(ctx->netif, IP4_ADDR_ANY4);
 
     lwip_err = wireguardif_disconnect(ctx->netif, wireguard_peer_index);
     if (lwip_err != ERR_OK) {
@@ -355,6 +355,7 @@ esp_err_t esp_wireguard_disconnect(wireguard_ctx_t *ctx)
     wireguard_peer_index = WIREGUARDIF_INVALID_INDEX;
     wireguardif_shutdown(ctx->netif);
     netif_remove(ctx->netif);
+    wireguardif_fini(ctx->netif);
     netif_set_default(ctx->netif_default);
     ctx->netif = NULL;
 

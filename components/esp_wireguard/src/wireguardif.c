@@ -202,11 +202,15 @@ static err_t wireguardif_output_to_peer(struct netif *netif, struct pbuf *q, con
 // This is used as the output function for the Wireguard netif
 // The ipaddr here is the one inside the VPN which we use to lookup the correct peer/endpoint
 static err_t wireguardif_output(struct netif *netif, struct pbuf *q, const ip4_addr_t *ip4addr) {
-	// Bail if device was externally set to NULL
-	if (netif->state == NULL) return ERR_RTE;
 	struct wireguard_device *device = (struct wireguard_device *)netif->state;
-	// Send to peer that matches dest IP
 	ip_addr_t ipaddr;
+
+	if (!device) {
+		ESP_LOGE(TAG, "wireguardif_output NULL device");
+		return ERR_RTE;
+	}
+
+	// Send to peer that matches dest IP
 	ip_addr_copy_from_ip4(ipaddr, *ip4addr);
 	struct wireguard_peer *peer = peer_lookup_by_allowed_ip(device, &ipaddr);
 	if (peer) {
@@ -1052,6 +1056,14 @@ void wireguardif_shutdown(struct netif *netif) {
 		udp_remove(device->udp_pcb);
 		device->udp_pcb = NULL;
 	}
+}
+
+void wireguardif_fini(struct netif *netif) {
+	LWIP_ASSERT("netif != NULL", (netif != NULL));
+	LWIP_ASSERT("state != NULL", (netif->state != NULL));
+
+	struct wireguard_device *device = (struct wireguard_device *)netif->state;
+
 	// remove device context.
 	free(device);
 	netif->state = NULL;
