@@ -11,7 +11,7 @@ except FileNotFoundError:
 
 print("Writing git describe output to file")
 try:
-    version = subprocess.check_output("git describe --always --dirty=-d").strip().decode('utf-8').upper()
+    version = subprocess.check_output("git describe --always --dirty=-d", shell=True).strip().decode('utf-8').upper()
     print("Version:", version)
     with open("include/git_version.h", 'w') as f:
         f.write("#pragma once\n\n#define GIT_VERSION \"{}\"\n".format(version))
