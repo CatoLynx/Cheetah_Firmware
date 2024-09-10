@@ -459,7 +459,7 @@ void app_main(void) {
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
         ESP_LOGI(LOG_TAG, "Registering bitmap generators");
         browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
-        playlist_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
+        playlist_register_bitmap_generators(&display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
         #endif
         
         xTaskCreatePinnedToCore(wifi_timeout_task, "wifi_timeout", 4096, NULL, 2, NULL, 0);
