@@ -25,7 +25,7 @@ static char* err_desc = NULL;
 static uint8_t* output_buffer;
 static size_t output_buffer_size = 0;
 
-extern uint8_t wifi_gotIP;
+extern uint8_t wifi_gotIP, eth_gotIP;
 
 
 esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
@@ -152,7 +152,7 @@ void telegram_bot_deinit() {
 
 void telegram_bot_task(void* arg) {
     while (1) {
-        if (wifi_gotIP) telegram_bot_send_request(TG_GET_UPDATES);
+        if (wifi_gotIP || eth_gotIP) telegram_bot_send_request(TG_GET_UPDATES);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);

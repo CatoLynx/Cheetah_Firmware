@@ -48,7 +48,7 @@ static size_t text_buffer_size = 0;
 static uint8_t* unit_buffer;
 static size_t unit_buffer_size = 0;
 
-extern uint8_t wifi_gotIP;
+extern uint8_t wifi_gotIP, eth_gotIP;
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static uint8_t* pl_brightness = NULL;
@@ -345,7 +345,7 @@ void playlist_task(void* arg) {
 
         // Update if necessary
         if (pl_last_update == 0 || now - pl_last_update >= pollInterval * 1000000) {
-            if (pollUrlValid && pollTokenValid && wifi_gotIP) {
+            if (pollUrlValid && pollTokenValid && (wifi_gotIP || eth_gotIP)) {
                 playlist_update_from_http();
             } else if(playlistFileValid) {
                 playlist_update_from_file();
