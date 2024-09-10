@@ -3,7 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_adc/adc_continuous.h"
+#include "esp_adc/adc_oneshot.h"
 #include "util_generic.h"
 
 
@@ -22,17 +22,28 @@ static uint16_t brightness_readIndex = 0;
 static int32_t brightness_total = 0;
 static int16_t brightness_average = 0;
 
+static adc_oneshot_unit_handle_t adc1_handle;
+
 esp_err_t brightness_sensor_init(uint8_t* brightnessValue, uint8_t* baseBrightnessValue) {
     esp_err_t ret = ESP_OK;
 
     brightness = brightnessValue;
     baseBrightness = baseBrightnessValue;
 
-    ret = adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL, ADC_ATTEN_11db);
+    adc_oneshot_unit_init_cfg_t init_config1 = {
+        .unit_id = ADC_UNIT_1,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
+    
+    adc_oneshot_chan_cfg_t config = {
+        .bitwidth = ADC_BITWIDTH_12,
+        .atten = ADC_ATTEN_DB_12,
+    };
+    ESP_ERROR_CHECK(adc_oneshot_config_channel(adc1_handle, CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL, &config));
 
     // Initialize the rolling average array with the first sensor reading
-    int16_t initialReading = adc1_get_raw(CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL);
+    int initialReading;
+    adc_oneshot_read(adc1_handle, CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL, &initialReading);
 
     for (int i = 0; i < NUM_READINGS; i++) {
         brightness_readings[i] = initialReading;
@@ -46,7 +57,8 @@ void brightness_adjust_task(void* arg) {
     // Gradually adjust the brightness based on the sensor value
 
     while (1) {
-        int16_t adcValue = adc1_get_raw(CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL);
+        int adcValue;
+        adc_oneshot_read(adc1_handle, CONFIG_DISPLAY_BRIGHTNESS_SENSOR_ADC_CHANNEL, &adcValue);
 
         brightness_total -= brightness_readings[brightness_readIndex];
         brightness_readings[brightness_readIndex] = adcValue;
@@ -59,7 +71,7 @@ void brightness_adjust_task(void* arg) {
         outputBrightness += *baseBrightness - 127;
         if (outputBrightness < CONFIG_DISPLAY_BRIGHTNESS_SENSOR_MIN_OUT_VAL) outputBrightness = CONFIG_DISPLAY_BRIGHTNESS_SENSOR_MIN_OUT_VAL;
         if (outputBrightness > CONFIG_DISPLAY_BRIGHTNESS_SENSOR_MAX_OUT_VAL) outputBrightness = CONFIG_DISPLAY_BRIGHTNESS_SENSOR_MAX_OUT_VAL;
-        ESP_LOGV(LOG_TAG, "ADC value: %d, average voltage: %d mV, output brightness: %d", adcValue, adcAverage, outputBrightness);
+        ESP_LOGV(LOG_TAG, "ADC value: %d, average voltage: %ld mV, output brightness: %ld", adcValue, adcAverage, outputBrightness);
         *brightness = (uint8_t)outputBrightness;
 
         vTaskDelay(20 / portTICK_PERIOD_MS);
