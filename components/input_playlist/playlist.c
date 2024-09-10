@@ -327,8 +327,8 @@ esp_err_t playlist_process_json(cJSON* json) {
             {
                 "duration": <duration in seconds>,
                 "buffer": {
-                    "pixel": <base64-encoded buffer>,
-                    "text": <base64-encoded buffer>,
+                    "pixel_b64": <base64-encoded buffer>,
+                    "text": <plaintext buffer>,
                     "unit": null
                 }
             },
@@ -336,7 +336,7 @@ esp_err_t playlist_process_json(cJSON* json) {
                 "duration": <duration in seconds>,
                 "buffer": {
                     "pixel": null,
-                    "text": <base64-encoded buffer>,
+                    "text_b64": <base64-encoded buffer>,
                     "unit": null
                 }
             }
@@ -407,68 +407,98 @@ esp_err_t playlist_process_json(cJSON* json) {
         cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
 
         cJSON* pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel");
+        uint8_t pixbuf_b64 = 0;
+        if (pixbuf_field == NULL || cJSON_IsNull(pixbuf_field)) {
+            pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel_b64");
+            pixbuf_b64 = 1;
+        }
         if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
             char* buffer_str = cJSON_GetStringValue(pixbuf_field);
             size_t buffer_str_len = strlen(buffer_str);
-            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                // because this will always be returned when checking size
-                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
-                return ESP_FAIL;
-            } else {
-                b64_len = 0;
-                pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                result = mbedtls_base64_decode(pl_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) {
-                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
+            if (pixbuf_b64) {
+                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                    // because this will always be returned when checking size
+                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
                     return ESP_FAIL;
+                } else {
+                    b64_len = 0;
+                    pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                    result = mbedtls_base64_decode(pl_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result != 0) {
+                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
+                        return ESP_FAIL;
+                    }
                 }
+            } else {
+                pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                memcpy(pl_buffers[i].pixelBuffer, buffer_str, MIN(buffer_str_len, pixel_buffer_size));
             }
         }
         
         cJSON* textbuf_field = cJSON_GetObjectItem(buffer_field, "text");
+        uint8_t textbuf_b64 = 0;
+        if (textbuf_field == NULL || cJSON_IsNull(textbuf_field)) {
+            textbuf_field = cJSON_GetObjectItem(buffer_field, "text_b64");
+            textbuf_b64 = 1;
+        }
         if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
             char* buffer_str = cJSON_GetStringValue(textbuf_field);
             size_t buffer_str_len = strlen(buffer_str);
-            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                // because this will always be returned when checking size
-                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
-                return ESP_FAIL;
-            } else {
-                b64_len = 0;
-                pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
-                result = mbedtls_base64_decode(pl_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) {
-                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
+            if (textbuf_b64) {
+                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                    // because this will always be returned when checking size
+                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
                     return ESP_FAIL;
+                } else {
+                    b64_len = 0;
+                    pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
+                    result = mbedtls_base64_decode(pl_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result != 0) {
+                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
+                        return ESP_FAIL;
+                    }
                 }
+            } else {
+                pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
+                memcpy(pl_buffers[i].textBuffer, buffer_str, MIN(buffer_str_len, text_buffer_size));
             }
         }
         
         cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");
+        uint8_t unitbuf_b64 = 0;
+        if (unitbuf_field == NULL || cJSON_IsNull(unitbuf_field)) {
+            unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit_b64");
+            unitbuf_b64 = 1;
+        }
         if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
             char* buffer_str = cJSON_GetStringValue(unitbuf_field);
             size_t buffer_str_len = strlen(buffer_str);
-            unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-            int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-            if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                // because this will always be returned when checking size
-                ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
-                return ESP_FAIL;
-            } else {
-                b64_len = 0;
-                pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
-                result = mbedtls_base64_decode(pl_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result != 0) {
-                    ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
+            if (unitbuf_b64) {
+                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                    // because this will always be returned when checking size
+                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
                     return ESP_FAIL;
+                } else {
+                    b64_len = 0;
+                    pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
+                    result = mbedtls_base64_decode(pl_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result != 0) {
+                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
+                        return ESP_FAIL;
+                    }
                 }
+            } else {
+                pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
+                memcpy(pl_buffers[i].unitBuffer, buffer_str, MIN(buffer_str_len, unit_buffer_size));
             }
         }
     }
