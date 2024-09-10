@@ -444,7 +444,8 @@ esp_err_t playlist_process_json(cJSON* json) {
                         "duration_spread_ms": 50,
                         "interval_avg_ms": 1000,
                         "interval_spread_ms": 1000,
-                        "non_blank_only": true,
+                        "glitch_non_blank": true,
+                        "glitch_blank": false,
                         "probability": 2500
                     }
                 }

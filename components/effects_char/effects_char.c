@@ -82,11 +82,17 @@ cJSON* effect_get_available() {
         cJSON_AddNumberToObject(param, "value", 1000);
         cJSON_AddItemToObject(params, "interval_spread_ms", param);
 
-        // Parameter: Non-blank only
+        // Parameter: Glitch non-blank characters
         param = cJSON_CreateObject();
         cJSON_AddStringToObject(param, "type", "checkbox");
         cJSON_AddBoolToObject(param, "checked", 0);
-        cJSON_AddItemToObject(params, "non_blank_only", param);
+        cJSON_AddItemToObject(params, "glitch_non_blank", param);
+
+        // Parameter: Glitch blank characters
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "checkbox");
+        cJSON_AddBoolToObject(param, "checked", 0);
+        cJSON_AddItemToObject(params, "glitch_blank", param);
     
     cJSON_AddItemToObject(effect_entry, "params", params);
     cJSON_AddItemToArray(effects_arr, effect_entry);
@@ -105,7 +111,7 @@ typedef struct {
 } glitch_mod_t;
 static int64_t effect_glitches_last_run_us = 0;
 static glitch_mod_t* effect_glitches_mods = NULL;
-uint8_t effect_glitches(uint8_t* charBuf, size_t charBufSize, uint16_t probability, uint16_t duration_avg_ms, uint16_t duration_spread_ms, uint16_t interval_avg_ms, uint16_t interval_spread_ms, uint8_t non_blank_only) {
+uint8_t effect_glitches(uint8_t* charBuf, size_t charBufSize, uint16_t probability, uint16_t duration_avg_ms, uint16_t duration_spread_ms, uint16_t interval_avg_ms, uint16_t interval_spread_ms, uint8_t glitch_non_blank, uint8_t glitch_blank) {
     uint8_t modified = 0;
     // On first call, init buffer for modifications
     // This will never get freed
@@ -136,7 +142,7 @@ uint8_t effect_glitches(uint8_t* charBuf, size_t charBufSize, uint16_t probabili
         // instantly re-enabled in that case
         if (!effect_glitches_mods[i].active) {
             // Check if non-blank, if applicable
-            if (!non_blank_only || (non_blank_only && charBuf[i] != ' ')) {
+            if ((glitch_non_blank && charBuf[i] != ' ') || (glitch_blank && charBuf[i] == ' ')) {
                 // Check if mod is ready to be processed again
                 if (now_us >= effect_glitches_mods[i].next_processing_time_us) {
                     // Update next processing time
@@ -196,12 +202,16 @@ uint8_t effect_fromJSON(uint8_t* charBuf, size_t charBufSize, cJSON* effectData)
             if (!cJSON_IsNumber(interval_spread_ms_field)) return 1;
             uint16_t interval_spread_ms = (uint16_t)cJSON_GetNumberValue(interval_spread_ms_field);
             
-            cJSON* non_blank_only_field = cJSON_GetObjectItem(params, "non_blank_only");
-            if (!cJSON_IsBool(non_blank_only_field)) return 1;
-            uint8_t non_blank_only = (uint8_t)cJSON_IsTrue(non_blank_only_field);
+            cJSON* glitch_non_blank_field = cJSON_GetObjectItem(params, "glitch_non_blank");
+            if (!cJSON_IsBool(glitch_non_blank_field)) return 1;
+            uint8_t glitch_non_blank = (uint8_t)cJSON_IsTrue(glitch_non_blank_field);
+            
+            cJSON* glitch_blank_field = cJSON_GetObjectItem(params, "glitch_blank");
+            if (!cJSON_IsBool(glitch_blank_field)) return 1;
+            uint8_t glitch_blank = (uint8_t)cJSON_IsTrue(glitch_blank_field);
 
             ESP_LOGV(LOG_TAG, "effect=%p effectId=%u", effectData, effectId);
-            return effect_glitches(charBuf, charBufSize, probability, duration_avg_ms, duration_spread_ms, interval_avg_ms, interval_spread_ms, non_blank_only);
+            return effect_glitches(charBuf, charBufSize, probability, duration_avg_ms, duration_spread_ms, interval_avg_ms, interval_spread_ms, glitch_non_blank, glitch_blank);
         }
     }
 
