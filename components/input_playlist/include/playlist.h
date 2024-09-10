@@ -15,9 +15,13 @@ typedef struct {
     uint16_t duration;
     int16_t brightness;
     cJSON* shader;
+    uint8_t updateShader;
     cJSON* transition;
+    uint8_t updateTransition;
     cJSON* effect;
+    uint8_t updateEffect;
     cJSON* bitmapGenerator;
+    uint8_t updateBitmapGenerator;
 } pl_buffer_list_entry_t;
 
 typedef enum {

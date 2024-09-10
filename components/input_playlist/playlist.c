@@ -313,28 +313,28 @@ void playlist_task(void* arg) {
                     #endif
 
                     #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-                    if (shader_data != NULL) {
+                    if (shader_data != NULL && pl_buffers[pl_cur_buffer].updateShader) {
                         *shader_data = pl_buffers[pl_cur_buffer].shader;
                         *shader_data_deletable = 0; // This is taken care of during playlist update
                     }
                     #endif
 
                     #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
-                    if (transition_data != NULL) {
+                    if (transition_data != NULL && pl_buffers[pl_cur_buffer].updateTransition) {
                         *transition_data = pl_buffers[pl_cur_buffer].transition;
                         *transition_data_deletable = 0; // This is taken care of during playlist update
                     }
                     #endif
 
                     #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
-                    if (effect_data != NULL) {
+                    if (effect_data != NULL && pl_buffers[pl_cur_buffer].updateEffect) {
                         *effect_data = pl_buffers[pl_cur_buffer].effect;
                         *effect_data_deletable = 0; // This is taken care of during playlist update
                     }
                     #endif
 
                     #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-                    if (bitmap_generator_data != NULL) {
+                    if (bitmap_generator_data != NULL && pl_buffers[pl_cur_buffer].updateBitmapGenerator) {
                         *bitmap_generator_data = pl_buffers[pl_cur_buffer].bitmapGenerator;
                         *bitmap_generator_data_deletable = 0; // This is taken care of during playlist update
                     }
@@ -546,20 +546,29 @@ esp_err_t playlist_process_json(cJSON* json) {
             pl_buffers[i].brightness = -1;
         }
 
+        // For shader, transition, effect and bitmap generator fields,
+        // the rule is that an explicit null entry in the JSON
+        // clears the respective configuration while an omitted entry
+        // keeps the previous configuration.
+
         cJSON* shader_field = cJSON_GetObjectItem(item, "shader");
         if (pl_buffers[i].shader != NULL) cJSON_Delete(pl_buffers[i].shader);
+        pl_buffers[i].updateShader = (shader_field != NULL);
         pl_buffers[i].shader = cJSON_Duplicate(shader_field, true);
 
         cJSON* transition_field = cJSON_GetObjectItem(item, "transition");
         if (pl_buffers[i].transition != NULL) cJSON_Delete(pl_buffers[i].transition);
+        pl_buffers[i].updateTransition = (transition_field != NULL);
         pl_buffers[i].transition = cJSON_Duplicate(transition_field, true);
 
         cJSON* effect_field = cJSON_GetObjectItem(item, "effect");
         if (pl_buffers[i].effect != NULL) cJSON_Delete(pl_buffers[i].effect);
+        pl_buffers[i].updateEffect = (effect_field != NULL);
         pl_buffers[i].effect = cJSON_Duplicate(effect_field, true);
 
         cJSON* bitmap_generator_field = cJSON_GetObjectItem(item, "bitmap_generator");
         if (pl_buffers[i].bitmapGenerator != NULL) cJSON_Delete(pl_buffers[i].bitmapGenerator);
+        pl_buffers[i].updateBitmapGenerator = (bitmap_generator_field != NULL);
         pl_buffers[i].bitmapGenerator = cJSON_Duplicate(bitmap_generator_field, true);
 
         cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
