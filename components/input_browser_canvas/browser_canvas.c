@@ -43,27 +43,27 @@ static uint8_t* canvas_unit_buffer = NULL;
 static size_t canvas_unit_buffer_size = 0;
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-static uint8_t* canvas_brightness;
+static uint8_t* canvas_brightness = NULL;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-static cJSON** shader_data;
-static uint8_t* shader_data_deletable;
+static cJSON** shader_data = NULL;
+static uint8_t* shader_data_deletable = NULL;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
-static cJSON** transition_data;
-static uint8_t* transition_data_deletable;
+static cJSON** transition_data = NULL;
+static uint8_t* transition_data_deletable = NULL;
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
-static cJSON** effect_data;
-static uint8_t* effect_data_deletable;
+static cJSON** effect_data = NULL;
+static uint8_t* effect_data_deletable = NULL;
 #endif
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-static cJSON** bitmap_generator_data;
-static uint8_t* bitmap_generator_data_deletable;
+static cJSON** bitmap_generator_data = NULL;
+static uint8_t* bitmap_generator_data_deletable = NULL;
 #endif
 
 static cJSON* canvas_presets = NULL;

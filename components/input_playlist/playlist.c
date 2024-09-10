@@ -35,6 +35,7 @@ static pl_buffer_list_entry_t* pl_buffers = NULL;
 static uint16_t pl_num_buffers = 0;
 static uint16_t pl_cur_buffer = 0;
 static bool pl_restart_cycle = false;
+static pl_mode_t pl_mode = PL_SEQUENTIAL;
 
 // Last switch / update times
 static uint64_t pl_last_switch = 0;
@@ -48,6 +49,30 @@ static uint8_t* unit_buffer;
 static size_t unit_buffer_size = 0;
 
 extern uint8_t wifi_gotIP;
+
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+static uint8_t* pl_brightness = NULL;
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+static cJSON** shader_data = NULL;
+static uint8_t* shader_data_deletable = NULL;
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+static cJSON** transition_data = NULL;
+static uint8_t* transition_data_deletable = NULL;
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+static cJSON** effect_data = NULL;
+static uint8_t* effect_data_deletable = NULL;
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+static cJSON** bitmap_generator_data = NULL;
+static uint8_t* bitmap_generator_data_deletable = NULL;
+#endif
 
 
 esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
@@ -203,22 +228,72 @@ void playlist_deinit() {
     }
 }
 
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+void playlist_register_brightness(uint8_t* brightness) {
+    pl_brightness = brightness;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+void playlist_register_shaders(cJSON** shaderData, uint8_t* shaderDataDeletable) {
+    shader_data = shaderData;
+    shader_data_deletable = shaderDataDeletable;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+void playlist_register_transitions(cJSON** transitionData, uint8_t* transitionDataDeletable) {
+    transition_data = transitionData;
+    transition_data_deletable = transitionDataDeletable;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+void playlist_register_effects(cJSON** effectData, uint8_t* effectDataDeletable) {
+    effect_data = effectData;
+    effect_data_deletable = effectDataDeletable;
+}
+#endif
+
+#if defined(DISPLAY_HAS_PIXEL_BUFFER)
+void playlist_register_bitmap_generators(cJSON** bitmapGeneratorData, uint8_t* bitmapGeneratorDataDeletable) {
+    bitmap_generator_data = bitmapGeneratorData;
+    bitmap_generator_data_deletable = bitmapGeneratorDataDeletable;
+}
+#endif
+
+void playlist_next_buffer() {
+    if (pl_mode == PL_SEQUENTIAL) {
+        pl_cur_buffer++;
+        if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0;
+    } else if (pl_mode == PL_RANDOM) {
+        pl_cur_buffer = rand() % pl_num_buffers;
+    }
+}
+
+void playlist_first_buffer() {
+    if (pl_mode == PL_SEQUENTIAL) {
+        pl_cur_buffer = 0;
+    } else if (pl_mode == PL_RANDOM) {
+        pl_cur_buffer = rand() % pl_num_buffers;
+    }
+}
+
 void playlist_task(void* arg) {
     while (1) {
         uint64_t now = esp_timer_get_time(); // Microseconds!
 
         // Switch buffer if necessary
         if (pl_num_buffers > 0) {
-            if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0; // In case pl_num_buffers got smaller
+            if (pl_cur_buffer >= pl_num_buffers) playlist_first_buffer(); // In case pl_num_buffers got smaller
             if (pl_restart_cycle == true) {
                 ESP_LOGI(LOG_TAG, "Restarting cycle");
-                pl_cur_buffer = 0;
+                playlist_first_buffer();
             }
             if (pl_restart_cycle == true || pl_last_switch == 0 || now - pl_last_switch >= pl_buffers[pl_cur_buffer].duration * 1000000) {
-                if (!(pl_restart_cycle == true || pl_last_switch == 0)) pl_cur_buffer++;
+                if (!(pl_restart_cycle == true || pl_last_switch == 0)) playlist_next_buffer();
                 pl_last_switch = now;
                 pl_restart_cycle = false;
-                if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0;
 
                 // If the playlist input is disabled in NVS with this flag,
                 // It'll keep running in the background, but not outputting anything
@@ -230,6 +305,40 @@ void playlist_task(void* arg) {
                     if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
                     if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
                     if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
+
+                    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+                    if (pl_brightness != NULL && pl_buffers[pl_cur_buffer].brightness != -1) {
+                        *pl_brightness = pl_buffers[pl_cur_buffer].brightness;
+                    }
+                    #endif
+
+                    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+                    if (shader_data != NULL) {
+                        *shader_data = pl_buffers[pl_cur_buffer].shader;
+                        *shader_data_deletable = 0; // This is taken care of during playlist update
+                    }
+                    #endif
+
+                    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+                    if (transition_data != NULL) {
+                        *transition_data = pl_buffers[pl_cur_buffer].transition;
+                        *transition_data_deletable = 0; // This is taken care of during playlist update
+                    }
+                    #endif
+
+                    #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+                    if (effect_data != NULL) {
+                        *effect_data = pl_buffers[pl_cur_buffer].effect;
+                        *effect_data_deletable = 0; // This is taken care of during playlist update
+                    }
+                    #endif
+
+                    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+                    if (bitmap_generator_data != NULL) {
+                        *bitmap_generator_data = pl_buffers[pl_cur_buffer].bitmapGenerator;
+                        *bitmap_generator_data_deletable = 0; // This is taken care of during playlist update
+                    }
+                    #endif
                 }
             }
         }
@@ -322,25 +431,42 @@ esp_err_t playlist_process_json(cJSON* json) {
     /*
     Expected JSON schema (only non-null buffers will be updated):
     {
-        "restartCycle": false,
-        "buffers": [
-            {
-                "duration": <duration in seconds>,
+        "buffers":  [{
                 "buffer": {
-                    "pixel_b64": <base64-encoded buffer>,
-                    "text": <plaintext buffer>,
-                    "unit": null
+                    "text": "Plaintext here"
+                },
+                "duration": 1,
+                "brightness": 10,
+                "effect": {
+                    "effect": 1,
+                    "params": {
+                        "duration_avg_ms": 50,
+                        "duration_spread_ms": 50,
+                        "interval_avg_ms": 1000,
+                        "interval_spread_ms": 1000,
+                        "non_blank_only": true,
+                        "probability": 2500
+                    }
                 }
             },
             {
-                "duration": <duration in seconds>,
                 "buffer": {
-                    "pixel": null,
-                    "text_b64": <base64-encoded buffer>,
-                    "unit": null
-                }
-            }
-        ]
+                    "text": "Another text"
+                },
+                "duration": 1,
+                "brightness": 255,
+                "effect": null
+            },
+            {
+                "buffer": {
+                    "text_b64": "<Base64 encoded buffer>"
+                },
+                "duration": 1,
+                "brightness": 255,
+                "effect": null
+            }],
+        "playlistMode": "<random|sequential>",
+        "restartCycle": false
     }
 
     On error:
@@ -358,8 +484,17 @@ esp_err_t playlist_process_json(cJSON* json) {
     cJSON* field_error = cJSON_GetObjectItem(json, "error");
     if (field_error != NULL) {
         char* error_str = cJSON_GetStringValue(field_error);
-        ESP_LOGE(LOG_TAG, "Poll API Error: %s", error_str);
+        ESP_LOGE(LOG_TAG, "JSON error: %s", error_str);
         return ESP_FAIL;
+    }
+
+    cJSON* field_mode = cJSON_GetObjectItem(json, "playlistMode");
+    if (field_mode != NULL) {
+        char* mode_str = cJSON_GetStringValue(field_mode);
+        if (strcmp(mode_str, "sequential") == 0) pl_mode = PL_SEQUENTIAL;
+        else if (strcmp(mode_str, "random") == 0) pl_mode = PL_RANDOM;
+    } else {
+        pl_mode = PL_SEQUENTIAL;
     }
 
     // If this is true, the next cycle will immediately begin and restart at buffer 0
@@ -403,6 +538,29 @@ esp_err_t playlist_process_json(cJSON* json) {
 
         cJSON* duration_field = cJSON_GetObjectItem(item, "duration");
         pl_buffers[i].duration = cJSON_GetNumberValue(duration_field);
+
+        cJSON* brightness_field = cJSON_GetObjectItem(item, "brightness");
+        if (brightness_field != NULL && !cJSON_IsNull(brightness_field)) {
+            pl_buffers[i].brightness = cJSON_GetNumberValue(brightness_field);
+        } else  {
+            pl_buffers[i].brightness = -1;
+        }
+
+        cJSON* shader_field = cJSON_GetObjectItem(item, "shader");
+        if (pl_buffers[i].shader != NULL) cJSON_Delete(pl_buffers[i].shader);
+        pl_buffers[i].shader = cJSON_Duplicate(shader_field, true);
+
+        cJSON* transition_field = cJSON_GetObjectItem(item, "transition");
+        if (pl_buffers[i].transition != NULL) cJSON_Delete(pl_buffers[i].transition);
+        pl_buffers[i].transition = cJSON_Duplicate(transition_field, true);
+
+        cJSON* effect_field = cJSON_GetObjectItem(item, "effect");
+        if (pl_buffers[i].effect != NULL) cJSON_Delete(pl_buffers[i].effect);
+        pl_buffers[i].effect = cJSON_Duplicate(effect_field, true);
+
+        cJSON* bitmap_generator_field = cJSON_GetObjectItem(item, "bitmap_generator");
+        if (pl_buffers[i].bitmapGenerator != NULL) cJSON_Delete(pl_buffers[i].bitmapGenerator);
+        pl_buffers[i].bitmapGenerator = cJSON_Duplicate(bitmap_generator_field, true);
 
         cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
 

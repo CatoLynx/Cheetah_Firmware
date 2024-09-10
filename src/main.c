@@ -428,8 +428,10 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
             #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
             browser_canvas_register_brightness(&server, &display_baseBrightness);
+            playlist_register_brightness(&display_baseBrightness);
             #else
             browser_canvas_register_brightness(&server, &display_brightness);
+            playlist_register_brightness(&display_brightness);
             #endif
             #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
             xTaskCreatePinnedToCore(brightness_adjust_task, "brightness_adjust", 4096, NULL, 3, NULL, 0);
@@ -439,21 +441,25 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_HAS_SHADERS)
         ESP_LOGI(LOG_TAG, "Registering shaders");
         browser_canvas_register_shaders(&server, &display_shader, &display_shaderDataDeletable);
+        playlist_register_shaders(&display_shader, &display_shaderDataDeletable);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
         ESP_LOGI(LOG_TAG, "Registering transitions");
         browser_canvas_register_transitions(&server, &display_transition, &display_transitionDataDeletable);
+        playlist_register_transitions(&display_transition, &display_transitionDataDeletable);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
         ESP_LOGI(LOG_TAG, "Registering effects");
         browser_canvas_register_effects(&server, &display_effect, &display_effectDataDeletable);
+        playlist_register_effects(&display_effect, &display_effectDataDeletable);
         #endif
 
         #if defined(DISPLAY_HAS_PIXEL_BUFFER)
         ESP_LOGI(LOG_TAG, "Registering bitmap generators");
         browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
+        playlist_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
         #endif
         
         xTaskCreatePinnedToCore(wifi_timeout_task, "wifi_timeout", 4096, NULL, 2, NULL, 0);
