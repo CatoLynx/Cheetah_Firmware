@@ -149,3 +149,11 @@ color_hsv_fx20_12_t rgb_u8_to_hsv_fx20_12(color_rgb_u8_t rgb) {
 
     return hsv_fx;
 }
+
+int32_t interpolate_fx20_12_i32(fx20_12_t val, int32_t start, int32_t end) {
+    // val: 0 ... 1; 0 = start, 1 = end
+    int32_t range = end - start;
+    fx20_12_t scaled_range_fx = val * range;
+    int32_t result = start + UNFX20_12_ROUND(scaled_range_fx);
+    return result;
+}
