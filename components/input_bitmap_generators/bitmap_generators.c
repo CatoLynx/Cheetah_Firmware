@@ -39,7 +39,8 @@ enum generator_func {
     RAINBOW_GRADIENT,
     HARD_GRADIENT_3,
     ON_OFF_100_FRAMES,
-    MATRIX
+    MATRIX,
+    PLASMA
 };
 
 
@@ -221,6 +222,46 @@ cJSON* bitmap_generators_get_available() {
         param = cJSON_CreateObject();
         cJSON_AddStringToObject(param, "type", "color");
         cJSON_AddItemToObject(params, "lead_color", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
+    // Generator: Plasma
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "plasma");
+    params = cJSON_CreateObject();
+
+        // Parameter: Speed
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Scale
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 1000);
+        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddItemToObject(params, "scale", param);
+
+        // Parameter: Saturation
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 255);
+        cJSON_AddNumberToObject(param, "value", 255);
+        cJSON_AddItemToObject(params, "saturation", param);
+
+        // Parameter: Value
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 255);
+        cJSON_AddNumberToObject(param, "value", 255);
+        cJSON_AddItemToObject(params, "value", param);
 
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
@@ -446,6 +487,49 @@ void bitmap_generator_matrix(int64_t t, uint16_t speed, color_rgb_u8_t base_colo
     #endif
 }
 
+void bitmap_generator_plasma(int64_t t, uint16_t speed, uint16_t scale, uint8_t s, uint8_t v) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    fx20_12_t normalized_s_fx = FX20_12(s) / 255;
+    fx20_12_t normalized_v_fx = FX20_12(v) / 255;
+
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        uint16_t x = pixBufIndex / (frame_height * 3);
+        uint16_t y = pixBufIndex % (frame_height * 3) / 3;
+        
+        int32_t x_units = (x * 0x4000) / frame_width - 0x2000;
+        int32_t y_units = (y * 0x4000) / frame_height - 0x2000;
+        
+        x_units = x_units * scale / 10;
+        y_units = y_units * scale / 10;
+        
+        fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
+        fx52_12_t t_speed_fx = t_sec_fx * 1000 * speed;
+        
+        fx20_12_t sin_x_fx = sin_i16_to_fx20_12(x_units + UNFX52_12(t_speed_fx * 5 / 10));
+        fx20_12_t sin_2x_fx = sin_i16_to_fx20_12(x_units * 2 + UNFX52_12(t_speed_fx * 6 / 10));
+        fx20_12_t sin_y_fx = sin_i16_to_fx20_12(y_units + UNFX52_12(t_speed_fx * 7 / 10));
+        fx20_12_t sin_2y_fx = sin_i16_to_fx20_12(y_units * 2 + UNFX52_12(t_speed_fx * 8 / 10));
+        fx20_12_t sin_circ_fx = sin_i16_to_fx20_12(UNFX20_12_ROUND(sqrt_i32_to_fx20_12(x_units*x_units + y_units*y_units)) * 2 + UNFX52_12(t_speed_fx * 9 / 10));
+        
+        fx20_12_t sin_combined_fx = (sin_x_fx + sin_2x_fx + sin_y_fx + sin_2y_fx + sin_circ_fx) / 5;
+        
+        fx20_12_t hue_fx = (sin_combined_fx + FX20_12(1)) * 180;
+        
+        color_hsv_fx20_12_t hsv_fx;
+        hsv_fx.h = hue_fx % FX20_12(360);
+        hsv_fx.s = normalized_s_fx;
+        hsv_fx.v = normalized_v_fx;
+
+        // Get the color for the current segment
+        color_rgb_u8_t rgb_u8 = hsv_fx20_12_to_rgb_u8(hsv_fx);
+        pixel_buffer[pixBufIndex] = rgb_u8.r;
+        pixel_buffer[pixBufIndex + 1] = rgb_u8.g;
+        pixel_buffer[pixBufIndex + 2] = rgb_u8.b;
+    }
+    #endif
+}
+
 static color_rgb_u8_t _color_rgb_u8_from_json(cJSON* json, color_rgb_u8_t fallback) {
     color_rgb_u8_t color;
     cJSON* r_field = cJSON_GetObjectItem(json, "r");
@@ -552,6 +636,23 @@ void bitmap_generator_current(int64_t t) {
             if (!cJSON_IsObject(lead_color_obj)) return;
             color_rgb_u8_t lead_color = _color_rgb_u8_from_json(lead_color_obj, white);
             bitmap_generator_matrix(t, speed, base_color, lead_color);
+            return;
+        }
+
+        case PLASMA: {
+            cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
+            if (!cJSON_IsNumber(speed_field)) return;
+            uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
+            cJSON* scale_field = cJSON_GetObjectItem(params, "scale");
+            if (!cJSON_IsNumber(scale_field)) return;
+            uint16_t scale = (uint16_t)cJSON_GetNumberValue(scale_field);
+            cJSON* saturation_field = cJSON_GetObjectItem(params, "saturation");
+            if (!cJSON_IsNumber(saturation_field)) return;
+            uint8_t saturation = (uint8_t)cJSON_GetNumberValue(saturation_field);
+            cJSON* value_field = cJSON_GetObjectItem(params, "value");
+            if (!cJSON_IsNumber(value_field)) return;
+            uint8_t value = (uint8_t)cJSON_GetNumberValue(value_field);
+            bitmap_generator_plasma(t, speed, scale, saturation, value);
             return;
         }
     }
