@@ -38,6 +38,7 @@ enum generator_func {
     RAINBOW_T,
     RAINBOW_GRADIENT,
     HARD_GRADIENT_3,
+    SOFT_GRADIENT_3,
     ON_OFF_100_FRAMES,
     MATRIX,
     PLASMA,
@@ -150,6 +151,53 @@ cJSON* bitmap_generators_get_available() {
     // Generator: Hard gradient with 3 colors
     generator_entry = cJSON_CreateObject();
     cJSON_AddStringToObject(generator_entry, "name", "hard_gradient_3");
+    params = cJSON_CreateObject();
+
+        // Parameter: Speed
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Angle
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 359);
+        cJSON_AddNumberToObject(param, "value", 0);
+        cJSON_AddItemToObject(params, "angle", param);
+
+        // Parameter: Scale
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 1000);
+        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddItemToObject(params, "scale", param);
+
+        // Parameter: Color 1
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color1", param);
+
+        // Parameter: Color 2
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color2", param);
+
+        // Parameter: Color 3
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color3", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
+    // Generator: Soft gradient with 3 colors
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "soft_gradient_3");
     params = cJSON_CreateObject();
 
         // Parameter: Speed
@@ -430,6 +478,61 @@ void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle,
     #endif
 }
 
+void bitmap_generator_soft_gradient(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, uint16_t numColors, color_rgb_u8_t* colors) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    int32_t angle_units = (angle * 0x8000) / 360;
+    fx20_12_t sin_angle_fx = sin_i16_to_fx20_12(angle_units);
+    fx20_12_t cos_angle_fx = cos_i16_to_fx20_12(angle_units);
+    fx20_12_t normalized_scale_fx = FX20_12(scale) / 100;
+
+    // Calculate the diagonal length of the frame
+    fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
+    
+    for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
+        uint32_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
+        uint16_t x = pixBufIndex / (frame_height * 3);
+        uint16_t y = pixBufIndex % (frame_height * 3) / 3;
+        
+        // Calculate the distance along the gradient direction
+        fx20_12_t distance_along_gradient_fx = x * cos_angle_fx + y * sin_angle_fx;
+
+        // Normalize the distance by the diagonal length to get a value between 0 and 1
+        fx20_12_t normalized_distance_fx = FX20_12((int64_t)distance_along_gradient_fx) / diagonal_length_fx;
+
+        // Add 1 to ensure we are positive
+        fx20_12_t offset_fx = normalized_distance_fx + FX20_12(1);
+        
+        // Apply manual scaling
+        offset_fx = UNFX20_12((int64_t)offset_fx * normalized_scale_fx);
+        
+        fx20_12_t normalized_speed_fx = (speed * normalized_scale_fx) / 100;
+        fx52_12_t t_sec_fx = FX52_12(t) / 1000000; // It's a UNIX timestamp, so it needs more bits
+        fx52_12_t temp_fx = UNFX52_12((int64_t)normalized_speed_fx * t_sec_fx) + offset_fx;
+        temp_fx %= FX20_12(1);
+
+        // Determine the segment index
+        fx20_12_t segment_index_fx = temp_fx * numColors;
+        uint16_t segment_index_base = (uint16_t)UNFX20_12(segment_index_fx) % numColors;
+        uint16_t next_segment_index = (segment_index_base + 1) % numColors;
+        fx20_12_t segment_fraction_fx = segment_index_fx % FX20_12(1);
+
+        // Get the color for the current segment
+        color_rgb_u8_t color1 = colors[segment_index_base];
+        color_rgb_u8_t color2 = colors[next_segment_index];
+        pixel_buffer[pixBufIndex] = interpolate_fx20_12_i32(segment_fraction_fx, color1.r, color2.r);
+        pixel_buffer[pixBufIndex + 1] = interpolate_fx20_12_i32(segment_fraction_fx, color1.g, color2.g);
+        pixel_buffer[pixBufIndex + 2] = interpolate_fx20_12_i32(segment_fraction_fx, color1.b, color2.b);
+    }
+    #endif
+}
+
+void bitmap_generator_soft_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2, color_rgb_u8_t color3) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    color_rgb_u8_t colors[3] = {color1, color2, color3};
+    bitmap_generator_soft_gradient(t, speed, angle, scale, 3, colors);
+    #endif
+}
+
 void bitmap_generator_on_off_100_frames(int64_t t) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     static uint8_t on_off_100_frames_n = 0;
@@ -687,6 +790,29 @@ void bitmap_generator_current(int64_t t) {
             if (!cJSON_IsObject(color3_obj)) return;
             color_rgb_u8_t color3 = _color_rgb_u8_from_json(color3_obj, white);
             bitmap_generator_hard_gradient_3(t, speed, angle, scale, color1, color2, color3);
+            return;
+        }
+
+        case SOFT_GRADIENT_3: {
+            cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
+            if (!cJSON_IsNumber(speed_field)) return;
+            uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
+            cJSON* angle_field = cJSON_GetObjectItem(params, "angle");
+            if (!cJSON_IsNumber(angle_field)) return;
+            uint16_t angle = (uint16_t)cJSON_GetNumberValue(angle_field);
+            cJSON* scale_field = cJSON_GetObjectItem(params, "scale");
+            if (!cJSON_IsNumber(scale_field)) return;
+            uint16_t scale = (uint16_t)cJSON_GetNumberValue(scale_field);
+            cJSON* color1_obj = cJSON_GetObjectItem(params, "color1");
+            if (!cJSON_IsObject(color1_obj)) return;
+            color_rgb_u8_t color1 = _color_rgb_u8_from_json(color1_obj, white);
+            cJSON* color2_obj = cJSON_GetObjectItem(params, "color2");
+            if (!cJSON_IsObject(color2_obj)) return;
+            color_rgb_u8_t color2 = _color_rgb_u8_from_json(color2_obj, white);
+            cJSON* color3_obj = cJSON_GetObjectItem(params, "color3");
+            if (!cJSON_IsObject(color3_obj)) return;
+            color_rgb_u8_t color3 = _color_rgb_u8_from_json(color3_obj, white);
+            bitmap_generator_soft_gradient_3(t, speed, angle, scale, color1, color2, color3);
             return;
         }
 
