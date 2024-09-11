@@ -200,7 +200,7 @@ void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, 
         if (strlen(playlistFile) != 0) playlistFileValid = 1;
     }
 
-    if ((pollInterval != 0 && pollUrlValid && pollTokenValid) || playlistFileValid) {
+    if (pollInterval != 0 && ((pollUrlValid && pollTokenValid) || playlistFileValid)) {
         ESP_LOGI(LOG_TAG, "Starting playlist task");
         xTaskCreatePinnedToCore(playlist_task, "playlist", 4096, NULL, 5, &pl_task_handle, 0);
     }
