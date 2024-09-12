@@ -37,7 +37,9 @@ enum generator_func {
     SOLID_SINGLE,
     RAINBOW_T,
     RAINBOW_GRADIENT,
+    HARD_GRADIENT_2,
     HARD_GRADIENT_3,
+    SOFT_GRADIENT_2,
     SOFT_GRADIENT_3,
     ON_OFF_100_FRAMES,
     MATRIX,
@@ -148,6 +150,48 @@ cJSON* bitmap_generators_get_available() {
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
 
+    // Generator: Hard gradient with 2 colors
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "hard_gradient_2");
+    params = cJSON_CreateObject();
+
+        // Parameter: Speed
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Angle
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 359);
+        cJSON_AddNumberToObject(param, "value", 0);
+        cJSON_AddItemToObject(params, "angle", param);
+
+        // Parameter: Scale
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 1000);
+        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddItemToObject(params, "scale", param);
+
+        // Parameter: Color 1
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color1", param);
+
+        // Parameter: Color 2
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color2", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
     // Generator: Hard gradient with 3 colors
     generator_entry = cJSON_CreateObject();
     cJSON_AddStringToObject(generator_entry, "name", "hard_gradient_3");
@@ -191,6 +235,48 @@ cJSON* bitmap_generators_get_available() {
         param = cJSON_CreateObject();
         cJSON_AddStringToObject(param, "type", "color");
         cJSON_AddItemToObject(params, "color3", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
+    // Generator: Soft gradient with 2 colors
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "soft_gradient_2");
+    params = cJSON_CreateObject();
+
+        // Parameter: Speed
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "speed", param);
+
+        // Parameter: Angle
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 359);
+        cJSON_AddNumberToObject(param, "value", 0);
+        cJSON_AddItemToObject(params, "angle", param);
+
+        // Parameter: Scale
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 1000);
+        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddItemToObject(params, "scale", param);
+
+        // Parameter: Color 1
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color1", param);
+
+        // Parameter: Color 2
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "color");
+        cJSON_AddItemToObject(params, "color2", param);
 
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
@@ -471,6 +557,13 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
     #endif
 }
 
+void bitmap_generator_hard_gradient_2(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    color_rgb_u8_t colors[2] = {color1, color2};
+    bitmap_generator_hard_gradient(t, speed, angle, scale, 2, colors);
+    #endif
+}
+
 void bitmap_generator_hard_gradient_3(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2, color_rgb_u8_t color3) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
     color_rgb_u8_t colors[3] = {color1, color2, color3};
@@ -523,6 +616,13 @@ void bitmap_generator_soft_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         pixel_buffer[pixBufIndex + 1] = interpolate_fx20_12_i32(segment_fraction_fx, color1.g, color2.g);
         pixel_buffer[pixBufIndex + 2] = interpolate_fx20_12_i32(segment_fraction_fx, color1.b, color2.b);
     }
+    #endif
+}
+
+void bitmap_generator_soft_gradient_2(int64_t t, uint16_t speed, uint16_t angle, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    color_rgb_u8_t colors[2] = {color1, color2};
+    bitmap_generator_soft_gradient(t, speed, angle, scale, 2, colors);
     #endif
 }
 
@@ -770,6 +870,26 @@ void bitmap_generator_current(int64_t t) {
             return;
         }
 
+        case HARD_GRADIENT_2: {
+            cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
+            if (!cJSON_IsNumber(speed_field)) return;
+            uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
+            cJSON* angle_field = cJSON_GetObjectItem(params, "angle");
+            if (!cJSON_IsNumber(angle_field)) return;
+            uint16_t angle = (uint16_t)cJSON_GetNumberValue(angle_field);
+            cJSON* scale_field = cJSON_GetObjectItem(params, "scale");
+            if (!cJSON_IsNumber(scale_field)) return;
+            uint16_t scale = (uint16_t)cJSON_GetNumberValue(scale_field);
+            cJSON* color1_obj = cJSON_GetObjectItem(params, "color1");
+            if (!cJSON_IsObject(color1_obj)) return;
+            color_rgb_u8_t color1 = _color_rgb_u8_from_json(color1_obj, white);
+            cJSON* color2_obj = cJSON_GetObjectItem(params, "color2");
+            if (!cJSON_IsObject(color2_obj)) return;
+            color_rgb_u8_t color2 = _color_rgb_u8_from_json(color2_obj, white);
+            bitmap_generator_hard_gradient_2(t, speed, angle, scale, color1, color2);
+            return;
+        }
+
         case HARD_GRADIENT_3: {
             cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
             if (!cJSON_IsNumber(speed_field)) return;
@@ -790,6 +910,26 @@ void bitmap_generator_current(int64_t t) {
             if (!cJSON_IsObject(color3_obj)) return;
             color_rgb_u8_t color3 = _color_rgb_u8_from_json(color3_obj, white);
             bitmap_generator_hard_gradient_3(t, speed, angle, scale, color1, color2, color3);
+            return;
+        }
+
+        case SOFT_GRADIENT_2: {
+            cJSON* speed_field = cJSON_GetObjectItem(params, "speed");
+            if (!cJSON_IsNumber(speed_field)) return;
+            uint16_t speed = (uint16_t)cJSON_GetNumberValue(speed_field);
+            cJSON* angle_field = cJSON_GetObjectItem(params, "angle");
+            if (!cJSON_IsNumber(angle_field)) return;
+            uint16_t angle = (uint16_t)cJSON_GetNumberValue(angle_field);
+            cJSON* scale_field = cJSON_GetObjectItem(params, "scale");
+            if (!cJSON_IsNumber(scale_field)) return;
+            uint16_t scale = (uint16_t)cJSON_GetNumberValue(scale_field);
+            cJSON* color1_obj = cJSON_GetObjectItem(params, "color1");
+            if (!cJSON_IsObject(color1_obj)) return;
+            color_rgb_u8_t color1 = _color_rgb_u8_from_json(color1_obj, white);
+            cJSON* color2_obj = cJSON_GetObjectItem(params, "color2");
+            if (!cJSON_IsObject(color2_obj)) return;
+            color_rgb_u8_t color2 = _color_rgb_u8_from_json(color2_obj, white);
+            bitmap_generator_soft_gradient_2(t, speed, angle, scale, color1, color2);
             return;
         }
 
