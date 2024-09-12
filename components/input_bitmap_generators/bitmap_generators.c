@@ -293,7 +293,7 @@ cJSON* bitmap_generators_get_available() {
         cJSON_AddStringToObject(param, "type", "range");
         cJSON_AddNumberToObject(param, "min", 1);
         cJSON_AddNumberToObject(param, "max", 1000);
-        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
         cJSON_AddItemToObject(params, "scale", param);
 
         // Parameter: Saturation
@@ -333,7 +333,7 @@ cJSON* bitmap_generators_get_available() {
         cJSON_AddStringToObject(param, "type", "range");
         cJSON_AddNumberToObject(param, "min", 1);
         cJSON_AddNumberToObject(param, "max", 1000);
-        cJSON_AddNumberToObject(param, "value", 100);
+        cJSON_AddNumberToObject(param, "value", 10);
         cJSON_AddItemToObject(params, "scale", param);
 
         // Parameter: Color 1
