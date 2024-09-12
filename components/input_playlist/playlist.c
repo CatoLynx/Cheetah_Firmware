@@ -30,7 +30,10 @@ static uint8_t pollUrlValid = 0;
 static uint8_t pollTokenValid = 0;
 static uint8_t playlistFileValid = 0;
 
-// Dynamic array holding the current list of buffers
+// Dynamic array holding the current list of groups and buffers
+static pl_buffer_group_t* pl_groups = NULL;
+static uint16_t pl_num_groups = 0;
+static uint16_t pl_cur_group = 0;
 static pl_buffer_list_entry_t* pl_buffers = NULL;
 static uint16_t pl_num_buffers = 0;
 static uint16_t pl_cur_buffer = 0;
@@ -262,20 +265,41 @@ void playlist_register_bitmap_generators(cJSON** bitmapGeneratorData, uint8_t* b
 }
 #endif
 
-void playlist_next_buffer() {
-    if (pl_mode == PL_SEQUENTIAL) {
-        pl_cur_buffer++;
-        if (pl_cur_buffer >= pl_num_buffers) pl_cur_buffer = 0;
-    } else if (pl_mode == PL_RANDOM) {
-        pl_cur_buffer = rand() % pl_num_buffers;
-    }
+void playlist_update_buffers() {
+    pl_buffers = pl_groups[pl_cur_group].entries;
+    pl_num_buffers = pl_groups[pl_cur_group].numEntries;
 }
 
 void playlist_first_buffer() {
+    pl_cur_buffer = 0;
+}
+
+void playlist_first_group() {
     if (pl_mode == PL_SEQUENTIAL) {
-        pl_cur_buffer = 0;
+        pl_cur_group = 0;
     } else if (pl_mode == PL_RANDOM) {
-        pl_cur_buffer = rand() % pl_num_buffers;
+        pl_cur_group = rand() % pl_num_groups;
+    }
+    playlist_update_buffers();
+    playlist_first_buffer();
+}
+
+void playlist_next_group() {
+    if (pl_mode == PL_SEQUENTIAL) {
+        pl_cur_group++;
+        if (pl_cur_group >= pl_num_groups) pl_cur_group = 0;
+    } else if (pl_mode == PL_RANDOM) {
+        pl_cur_group = rand() % pl_num_groups;
+    }
+    playlist_update_buffers();
+    playlist_first_buffer();
+}
+
+void playlist_next_buffer() {
+    pl_cur_buffer++;
+    if (pl_cur_buffer >= pl_num_buffers) {
+        pl_cur_buffer = 0;
+        playlist_next_group();
     }
 }
 
@@ -284,61 +308,62 @@ void playlist_task(void* arg) {
         uint64_t now = esp_timer_get_time(); // Microseconds!
 
         // Switch buffer if necessary
-        if (pl_num_buffers > 0) {
-            if (pl_cur_buffer >= pl_num_buffers) playlist_first_buffer(); // In case pl_num_buffers got smaller
-            if (pl_restart_cycle == true) {
-                ESP_LOGI(LOG_TAG, "Restarting cycle");
-                playlist_first_buffer();
-            }
+        if (pl_num_groups > 0) {
             if (pl_restart_cycle == true || pl_last_switch == 0 || now - pl_last_switch >= pl_buffers[pl_cur_buffer].duration * 1000000) {
                 if (!(pl_restart_cycle == true || pl_last_switch == 0)) playlist_next_buffer();
+                if (pl_restart_cycle == true) {
+                    ESP_LOGI(LOG_TAG, "Restarting cycle");
+                    playlist_first_group();
+                }
                 pl_last_switch = now;
                 pl_restart_cycle = false;
 
-                // If the playlist input is disabled in NVS with this flag,
-                // It'll keep running in the background, but not outputting anything
-                // This gets checked every loop cycle so that it takes immediate effect
-                uint8_t active = 0;
-                nvs_get_u8(pl_nvs_handle, "playlist_active", &active);
-                if (active) {
-                    ESP_LOGD(LOG_TAG, "Switching to buffer %d", pl_cur_buffer);
-                    if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
-                    if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
-                    if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
+                if (pl_cur_buffer < pl_num_buffers) {
+                    // If the playlist input is disabled in NVS with this flag,
+                    // It'll keep running in the background, but not outputting anything
+                    // This gets checked every loop cycle so that it takes immediate effect
+                    uint8_t active = 0;
+                    nvs_get_u8(pl_nvs_handle, "playlist_active", &active);
+                    if (active) {
+                        ESP_LOGD(LOG_TAG, "Switching to buffer %d", pl_cur_buffer);
+                        if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
+                        if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
+                        if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
 
-                    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
-                    if (pl_brightness != NULL && pl_buffers[pl_cur_buffer].brightness != -1) {
-                        *pl_brightness = pl_buffers[pl_cur_buffer].brightness;
-                    }
-                    #endif
+                        #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+                        if (pl_brightness != NULL && pl_buffers[pl_cur_buffer].brightness != -1) {
+                            *pl_brightness = pl_buffers[pl_cur_buffer].brightness;
+                        }
+                        #endif
 
-                    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
-                    if (shader_data != NULL && pl_buffers[pl_cur_buffer].updateShader) {
-                        *shader_data = pl_buffers[pl_cur_buffer].shader;
-                        *shader_data_deletable = 0; // This is taken care of during playlist update
-                    }
-                    #endif
+                        #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+                        if (shader_data != NULL && pl_buffers[pl_cur_buffer].updateShader) {
+                            *shader_data = pl_buffers[pl_cur_buffer].shader;
+                            *shader_data_deletable = 0; // This is taken care of during playlist update
+                        }
+                        #endif
 
-                    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
-                    if (transition_data != NULL && pl_buffers[pl_cur_buffer].updateTransition) {
-                        *transition_data = pl_buffers[pl_cur_buffer].transition;
-                        *transition_data_deletable = 0; // This is taken care of during playlist update
-                    }
-                    #endif
+                        #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+                        if (transition_data != NULL && pl_buffers[pl_cur_buffer].updateTransition) {
+                            *transition_data = pl_buffers[pl_cur_buffer].transition;
+                            *transition_data_deletable = 0; // This is taken care of during playlist update
+                        }
+                        #endif
 
-                    #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
-                    if (effect_data != NULL && pl_buffers[pl_cur_buffer].updateEffect) {
-                        *effect_data = pl_buffers[pl_cur_buffer].effect;
-                        *effect_data_deletable = 0; // This is taken care of during playlist update
-                    }
-                    #endif
+                        #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+                        if (effect_data != NULL && pl_buffers[pl_cur_buffer].updateEffect) {
+                            *effect_data = pl_buffers[pl_cur_buffer].effect;
+                            *effect_data_deletable = 0; // This is taken care of during playlist update
+                        }
+                        #endif
 
-                    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
-                    if (bitmap_generator_data != NULL && pl_buffers[pl_cur_buffer].updateBitmapGenerator) {
-                        *bitmap_generator_data = pl_buffers[pl_cur_buffer].bitmapGenerator;
-                        *bitmap_generator_data_deletable = 0; // This is taken care of during playlist update
+                        #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+                        if (bitmap_generator_data != NULL && pl_buffers[pl_cur_buffer].updateBitmapGenerator) {
+                            *bitmap_generator_data = pl_buffers[pl_cur_buffer].bitmapGenerator;
+                            *bitmap_generator_data_deletable = 0; // This is taken care of during playlist update
+                        }
+                        #endif
                     }
-                    #endif
                 }
             }
         }
@@ -420,9 +445,7 @@ void playlist_update_from_file() {
 
     esp_err_t ret = playlist_process_json(json);
     if (ret != ESP_OK) {
-        //memset(output_buffer, 0x00, output_buffer_size);
         ESP_LOGE(LOG_TAG, "Error");
-        cJSON_Delete(json);
     }
     cJSON_Delete(json);
 }
@@ -431,41 +454,46 @@ esp_err_t playlist_process_json(cJSON* json) {
     /*
     Expected JSON schema (only non-null buffers will be updated):
     {
-        "buffers":  [{
-                "buffer": {
-                    "text": "Plaintext here"
-                },
-                "duration": 1,
-                "brightness": 10,
-                "effect": {
-                    "effect": 1,
-                    "params": {
-                        "duration_avg_ms": 50,
-                        "duration_spread_ms": 50,
-                        "interval_avg_ms": 1000,
-                        "interval_spread_ms": 1000,
-                        "glitch_non_blank": true,
-                        "glitch_blank": false,
-                        "probability": 2500
+        "buffers":  [
+            [
+                {
+                    "buffer": {
+                        "text": "Plaintext here"
+                    },
+                    "duration": 1,
+                    "brightness": 10,
+                    "effect": {
+                        "effect": 1,
+                        "params": {
+                            "duration_avg_ms": 50,
+                            "duration_spread_ms": 50,
+                            "interval_avg_ms": 1000,
+                            "interval_spread_ms": 1000,
+                            "glitch_non_blank": true,
+                            "glitch_blank": false,
+                            "probability": 2500
+                        }
                     }
+                },
+                {
+                    "buffer": {
+                        "text": "Another text"
+                    },
+                    "duration": 1,
+                    "brightness": 255,
+                    "effect": null
                 }
-            },
-            {
-                "buffer": {
-                    "text": "Another text"
-                },
-                "duration": 1,
-                "brightness": 255,
-                "effect": null
-            },
-            {
-                "buffer": {
-                    "text_b64": "<Base64 encoded buffer>"
-                },
-                "duration": 1,
-                "brightness": 255,
-                "effect": null
-            }],
+            ],
+            [
+                {
+                    "buffer": {
+                        "text_b64": "<Base64 encoded buffer>"
+                    },
+                    "duration": 1,
+                    "brightness": 255,
+                    "effect": null
+                }
+            ]],
         "playlistMode": "<random|sequential>",
         "restartCycle": false
     }
@@ -476,7 +504,7 @@ esp_err_t playlist_process_json(cJSON* json) {
     }
     */
 
-    ESP_LOGD(LOG_TAG, "Processing response");
+    ESP_LOGD(LOG_TAG, "Processing JSON");
     if (!cJSON_IsObject(json)) {
         ESP_LOGE(LOG_TAG, "Did not receive a valid JSON object");
         return ESP_FAIL;
@@ -512,161 +540,173 @@ esp_err_t playlist_process_json(cJSON* json) {
         ESP_LOGE(LOG_TAG, "'buffers' is not an array'");
         return ESP_FAIL;
     }
-    uint16_t numBuffers = cJSON_GetArraySize(buffers_arr);
-    if (numBuffers > MAX_NUM_BUFFERS) {
-        ESP_LOGE(LOG_TAG, "Got more than %d buffers, aborting", MAX_NUM_BUFFERS);
-        return ESP_FAIL;
+    uint16_t numGroups = cJSON_GetArraySize(buffers_arr);
+
+    // Free individual buffers, buffer array and the group array
+    for (uint16_t j = 0; j < pl_num_groups; j++) {
+        for (uint16_t i = 0; i < pl_groups[j].numEntries; i++) {
+            free(pl_groups[j].entries[i].pixelBuffer);
+            free(pl_groups[j].entries[i].textBuffer);
+            free(pl_groups[j].entries[i].unitBuffer);
+        }
+        free(pl_groups[j].entries);
     }
+    free(pl_groups);
 
-    // Free individual buffer arrays and the overall array
-    for (uint16_t i = 0; i < pl_num_buffers; i++) {
-        free(pl_buffers[i].pixelBuffer);
-        free(pl_buffers[i].textBuffer);
-        free(pl_buffers[i].unitBuffer);
-    }
-    free(pl_buffers);
+    // Allocate new groups
+    ESP_LOGD(LOG_TAG, "Allocating %d groups", numGroups);
+    pl_num_groups = numGroups;
+    pl_groups = calloc(pl_num_groups, sizeof(pl_buffer_group_t));
 
-    // Allocate new buffers
-    ESP_LOGD(LOG_TAG, "Allocating %d buffers", numBuffers);
-    pl_num_buffers = numBuffers;
-    pl_buffers = malloc(pl_num_buffers * sizeof(pl_buffer_list_entry_t));
-    memset(pl_buffers, 0x00, pl_num_buffers * sizeof(pl_buffer_list_entry_t));
-
-    // Populate new buffers
-    for (uint16_t i = 0; i < pl_num_buffers; i++) {
-        size_t b64_len = 0;
-        cJSON* item = cJSON_GetArrayItem(buffers_arr, i);
-
-        cJSON* duration_field = cJSON_GetObjectItem(item, "duration");
-        pl_buffers[i].duration = cJSON_GetNumberValue(duration_field);
-
-        cJSON* brightness_field = cJSON_GetObjectItem(item, "brightness");
-        if (brightness_field != NULL && !cJSON_IsNull(brightness_field)) {
-            pl_buffers[i].brightness = cJSON_GetNumberValue(brightness_field);
-        } else  {
-            pl_buffers[i].brightness = -1;
+    for (uint16_t j = 0; j < numGroups; j++) {
+        cJSON* sub_arr = cJSON_GetArrayItem(buffers_arr, j);
+        if (!cJSON_IsArray(sub_arr)) {
+            ESP_LOGE(LOG_TAG, "'buffers[%u]' is not an array'", j);
+            return ESP_FAIL;
         }
+        uint16_t numBuffers = cJSON_GetArraySize(sub_arr);
 
-        // For shader, transition, effect and bitmap generator fields,
-        // the rule is that an explicit null entry in the JSON
-        // clears the respective configuration while an omitted entry
-        // keeps the previous configuration.
+        // Allocate new buffers
+        ESP_LOGD(LOG_TAG, "Allocating %d buffers", numBuffers);
+        pl_groups[j].entries = calloc(numBuffers, sizeof(pl_buffer_list_entry_t));
+        pl_groups[j].numEntries = numBuffers;
 
-        cJSON* shader_field = cJSON_GetObjectItem(item, "shader");
-        if (pl_buffers[i].shader != NULL) cJSON_Delete(pl_buffers[i].shader);
-        pl_buffers[i].updateShader = (shader_field != NULL);
-        pl_buffers[i].shader = cJSON_Duplicate(shader_field, true);
+        // Populate new buffers
+        for (uint16_t i = 0; i < numBuffers; i++) {
+            size_t b64_len = 0;
+            cJSON* item = cJSON_GetArrayItem(sub_arr, i);
 
-        cJSON* transition_field = cJSON_GetObjectItem(item, "transition");
-        if (pl_buffers[i].transition != NULL) cJSON_Delete(pl_buffers[i].transition);
-        pl_buffers[i].updateTransition = (transition_field != NULL);
-        pl_buffers[i].transition = cJSON_Duplicate(transition_field, true);
+            cJSON* duration_field = cJSON_GetObjectItem(item, "duration");
+            pl_groups[j].entries[i].duration = cJSON_GetNumberValue(duration_field);
 
-        cJSON* effect_field = cJSON_GetObjectItem(item, "effect");
-        if (pl_buffers[i].effect != NULL) cJSON_Delete(pl_buffers[i].effect);
-        pl_buffers[i].updateEffect = (effect_field != NULL);
-        pl_buffers[i].effect = cJSON_Duplicate(effect_field, true);
-
-        cJSON* bitmap_generator_field = cJSON_GetObjectItem(item, "bitmap_generator");
-        if (pl_buffers[i].bitmapGenerator != NULL) cJSON_Delete(pl_buffers[i].bitmapGenerator);
-        pl_buffers[i].updateBitmapGenerator = (bitmap_generator_field != NULL);
-        pl_buffers[i].bitmapGenerator = cJSON_Duplicate(bitmap_generator_field, true);
-
-        cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
-
-        cJSON* pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel");
-        uint8_t pixbuf_b64 = 0;
-        if (pixbuf_field == NULL || cJSON_IsNull(pixbuf_field)) {
-            pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel_b64");
-            pixbuf_b64 = 1;
-        }
-        if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
-            char* buffer_str = cJSON_GetStringValue(pixbuf_field);
-            size_t buffer_str_len = strlen(buffer_str);
-            if (pixbuf_b64) {
-                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                    // because this will always be returned when checking size
-                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
-                    return ESP_FAIL;
-                } else {
-                    b64_len = 0;
-                    pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                    result = mbedtls_base64_decode(pl_buffers[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result != 0) {
-                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
-                        return ESP_FAIL;
-                    }
-                }
-            } else {
-                pl_buffers[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                memcpy(pl_buffers[i].pixelBuffer, buffer_str, MIN(buffer_str_len, pixel_buffer_size));
+            cJSON* brightness_field = cJSON_GetObjectItem(item, "brightness");
+            if (brightness_field != NULL && !cJSON_IsNull(brightness_field)) {
+                pl_groups[j].entries[i].brightness = cJSON_GetNumberValue(brightness_field);
+            } else  {
+                pl_groups[j].entries[i].brightness = -1;
             }
-        }
-        
-        cJSON* textbuf_field = cJSON_GetObjectItem(buffer_field, "text");
-        uint8_t textbuf_b64 = 0;
-        if (textbuf_field == NULL || cJSON_IsNull(textbuf_field)) {
-            textbuf_field = cJSON_GetObjectItem(buffer_field, "text_b64");
-            textbuf_b64 = 1;
-        }
-        if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
-            char* buffer_str = cJSON_GetStringValue(textbuf_field);
-            size_t buffer_str_len = strlen(buffer_str);
-            if (textbuf_b64) {
-                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                    // because this will always be returned when checking size
-                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
-                    return ESP_FAIL;
-                } else {
-                    b64_len = 0;
-                    pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
-                    result = mbedtls_base64_decode(pl_buffers[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result != 0) {
-                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
-                        return ESP_FAIL;
-                    }
-                }
-            } else {
-                pl_buffers[i].textBuffer = calloc(1, text_buffer_size);
-                memcpy(pl_buffers[i].textBuffer, buffer_str, MIN(buffer_str_len, text_buffer_size));
+
+            // For shader, transition, effect and bitmap generator fields,
+            // the rule is that an explicit null entry in the JSON
+            // clears the respective configuration while an omitted entry
+            // keeps the previous configuration.
+
+            cJSON* shader_field = cJSON_GetObjectItem(item, "shader");
+            if (pl_groups[j].entries[i].shader != NULL) cJSON_Delete(pl_groups[j].entries[i].shader);
+            pl_groups[j].entries[i].updateShader = (shader_field != NULL);
+            pl_groups[j].entries[i].shader = cJSON_Duplicate(shader_field, true);
+
+            cJSON* transition_field = cJSON_GetObjectItem(item, "transition");
+            if (pl_groups[j].entries[i].transition != NULL) cJSON_Delete(pl_groups[j].entries[i].transition);
+            pl_groups[j].entries[i].updateTransition = (transition_field != NULL);
+            pl_groups[j].entries[i].transition = cJSON_Duplicate(transition_field, true);
+
+            cJSON* effect_field = cJSON_GetObjectItem(item, "effect");
+            if (pl_groups[j].entries[i].effect != NULL) cJSON_Delete(pl_groups[j].entries[i].effect);
+            pl_groups[j].entries[i].updateEffect = (effect_field != NULL);
+            pl_groups[j].entries[i].effect = cJSON_Duplicate(effect_field, true);
+
+            cJSON* bitmap_generator_field = cJSON_GetObjectItem(item, "bitmap_generator");
+            if (pl_groups[j].entries[i].bitmapGenerator != NULL) cJSON_Delete(pl_groups[j].entries[i].bitmapGenerator);
+            pl_groups[j].entries[i].updateBitmapGenerator = (bitmap_generator_field != NULL);
+            pl_groups[j].entries[i].bitmapGenerator = cJSON_Duplicate(bitmap_generator_field, true);
+
+            cJSON* buffer_field = cJSON_GetObjectItem(item, "buffer");
+
+            cJSON* pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel");
+            uint8_t pixbuf_b64 = 0;
+            if (pixbuf_field == NULL || cJSON_IsNull(pixbuf_field)) {
+                pixbuf_field = cJSON_GetObjectItem(buffer_field, "pixel_b64");
+                pixbuf_b64 = 1;
             }
-        }
-        
-        cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");
-        uint8_t unitbuf_b64 = 0;
-        if (unitbuf_field == NULL || cJSON_IsNull(unitbuf_field)) {
-            unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit_b64");
-            unitbuf_b64 = 1;
-        }
-        if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
-            char* buffer_str = cJSON_GetStringValue(unitbuf_field);
-            size_t buffer_str_len = strlen(buffer_str);
-            if (unitbuf_b64) {
-                unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                    // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                    // because this will always be returned when checking size
-                    ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
-                    return ESP_FAIL;
-                } else {
-                    b64_len = 0;
-                    pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
-                    result = mbedtls_base64_decode(pl_buffers[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result != 0) {
-                        ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
+            if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
+                char* buffer_str = cJSON_GetStringValue(pixbuf_field);
+                size_t buffer_str_len = strlen(buffer_str);
+                if (pixbuf_b64) {
+                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                        // because this will always be returned when checking size
+                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
                         return ESP_FAIL;
+                    } else {
+                        b64_len = 0;
+                        pl_groups[j].entries[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                        result = mbedtls_base64_decode(pl_groups[j].entries[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                        if (result != 0) {
+                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
+                            return ESP_FAIL;
+                        }
                     }
+                } else {
+                    pl_groups[j].entries[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                    memcpy(pl_groups[j].entries[i].pixelBuffer, buffer_str, MIN(buffer_str_len, pixel_buffer_size));
                 }
-            } else {
-                pl_buffers[i].unitBuffer = calloc(1, unit_buffer_size);
-                memcpy(pl_buffers[i].unitBuffer, buffer_str, MIN(buffer_str_len, unit_buffer_size));
+            }
+            
+            cJSON* textbuf_field = cJSON_GetObjectItem(buffer_field, "text");
+            uint8_t textbuf_b64 = 0;
+            if (textbuf_field == NULL || cJSON_IsNull(textbuf_field)) {
+                textbuf_field = cJSON_GetObjectItem(buffer_field, "text_b64");
+                textbuf_b64 = 1;
+            }
+            if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
+                char* buffer_str = cJSON_GetStringValue(textbuf_field);
+                size_t buffer_str_len = strlen(buffer_str);
+                if (textbuf_b64) {
+                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                        // because this will always be returned when checking size
+                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
+                        return ESP_FAIL;
+                    } else {
+                        b64_len = 0;
+                        pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
+                        result = mbedtls_base64_decode(pl_groups[j].entries[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                        if (result != 0) {
+                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
+                            return ESP_FAIL;
+                        }
+                    }
+                } else {
+                    pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
+                    memcpy(pl_groups[j].entries[i].textBuffer, buffer_str, MIN(buffer_str_len, text_buffer_size));
+                }
+            }
+            
+            cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");
+            uint8_t unitbuf_b64 = 0;
+            if (unitbuf_field == NULL || cJSON_IsNull(unitbuf_field)) {
+                unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit_b64");
+                unitbuf_b64 = 1;
+            }
+            if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
+                char* buffer_str = cJSON_GetStringValue(unitbuf_field);
+                size_t buffer_str_len = strlen(buffer_str);
+                if (unitbuf_b64) {
+                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
+                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+                        // because this will always be returned when checking size
+                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
+                        return ESP_FAIL;
+                    } else {
+                        b64_len = 0;
+                        pl_groups[j].entries[i].unitBuffer = calloc(1, unit_buffer_size);
+                        result = mbedtls_base64_decode(pl_groups[j].entries[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+                        if (result != 0) {
+                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
+                            return ESP_FAIL;
+                        }
+                    }
+                } else {
+                    pl_groups[j].entries[i].unitBuffer = calloc(1, unit_buffer_size);
+                    memcpy(pl_groups[j].entries[i].unitBuffer, buffer_str, MIN(buffer_str_len, unit_buffer_size));
+                }
             }
         }
     }
@@ -687,5 +727,7 @@ esp_err_t playlist_process_json(cJSON* json) {
         cJSON_free(json_str);
     }
 
+    if (pl_cur_group >= pl_num_groups) playlist_first_group(); // In case pl_num_groups got smaller
+    playlist_update_buffers();
     return ESP_OK;
 }

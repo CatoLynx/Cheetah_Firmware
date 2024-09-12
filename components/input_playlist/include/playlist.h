@@ -5,9 +5,6 @@
 #include "cJSON.h"
 
 
-#define MAX_NUM_BUFFERS 2048
-
-
 typedef struct {
     uint8_t* pixelBuffer;
     uint8_t* textBuffer;
@@ -23,6 +20,11 @@ typedef struct {
     cJSON* bitmapGenerator;
     uint8_t updateBitmapGenerator;
 } pl_buffer_list_entry_t;
+
+typedef struct {
+    pl_buffer_list_entry_t* entries;
+    uint16_t numEntries;
+} pl_buffer_group_t;
 
 typedef enum {
     PL_SEQUENTIAL,
