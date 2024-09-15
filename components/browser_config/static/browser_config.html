@@ -103,12 +103,14 @@
       function onGetFileListSuccess(data, textStatus, jqXHR) {
         console.log("Successfully got file list");
         spiffs_files = data['files'];
+        getFields();
       }
       
       function onGetFileListError(jqXHR, textStatus, errorThrown) {
         console.log("Error getting file list!");
         console.log(textStatus);
         console.log(errorThrown);
+        getFields();
       }
 
       function postUpdate() {
@@ -239,7 +241,6 @@
       function onReady() {
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getFileList();
-        getFields();
         $("#btn-save").click(onSave);
         $("#btn-restart").click(restartSystem);
       }
