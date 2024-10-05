@@ -179,7 +179,8 @@
 
           var td_name = $("<td>" + field["name"] + "</td>");
           var td_field = $("<td>").append(field_element).append(type_element);
-          var tr = $("<tr>").append(td_name).append(td_field);
+          var td_comment = $("<td>" + (field["comment"] ? field["comment"] : "") + "</td>");
+          var tr = $("<tr>").append(td_name).append(td_field).append(td_comment);
           $("#config-fields").find("tbody").append(tr);
         }
       }

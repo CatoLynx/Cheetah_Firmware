@@ -26,16 +26,18 @@ config_entry_t config_entries[] = {
     {.key = "sta_anon_ident",  .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "sta_ident",       .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "sta_pass",        .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
-    {.key = "sta_phase2",      .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
-    {.key = "sta_phase2_ttls", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "sta_phase2",      .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE, .comment = "0=TLS, 1=PEAP, 2=TTLS"},
+    {.key = "sta_phase2_ttls", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE, .comment = "0=None, 1=MSCHAPv2, 2=MSCHAP, 3=PAP, 4=CHAP"},
     {.key = "sta_retries",     .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "sta_fallb_ssid",  .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "sta_fallb_pass",  .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "ap_ssid",         .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "ap_pass",         .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "ap_timeout",      .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "tg_bot_token",    .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "disp_led_gamma",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
-    {.key = "sel_conf_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT},
-    {.key = "cnv_preset_file", .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT},
+    {.key = "sel_conf_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Configuration for selection display"},
+    {.key = "cnv_preset_file", .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Presets for canvas"},
     {.key = "wg_private_key",  .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "wg_public_key",   .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "wg_allowed_ip",   .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
@@ -43,13 +45,13 @@ config_entry_t config_entries[] = {
     {.key = "wg_listen_port",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "wg_endpoint",     .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "wg_endpnt_port",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
-    {.key = "wg_keepalive",    .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "wg_keepalive",    .dataType = U16, .flags = BC_FIELD_FLAGS_NONE, .comment = "In seconds"},
     {.key = "playlist_active", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
     {.key = "pl_poll_url",     .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "pl_poll_token",   .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "pl_poll_intvl",   .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "playlist_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT},
-    {.key = "pl_save_to_file", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
+    {.key = "pl_save_to_file", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE, .comment = "Save playlist to file after HTTP update"},
     {.key = "canvas_use_auth", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
     {.key = "deflt_bright",    .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE},
 };
@@ -86,6 +88,7 @@ static esp_err_t config_get_fields_handler(httpd_req_t *req) {
         cJSON_AddStringToObject(entry, "name", config_entries[i].key);
         cJSON_AddNumberToObject(entry, "type", config_entries[i].dataType);
         cJSON_AddNumberToObject(entry, "flags", (uint32_t)config_entries[i].flags);
+        cJSON_AddStringToObject(entry, "comment", config_entries[i].comment);
 
         if (config_entries[i].dataType == BLOB) {
             // Not yet implemented

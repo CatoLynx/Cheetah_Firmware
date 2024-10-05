@@ -27,6 +27,7 @@ typedef struct config_entry {
     char* key;
     config_data_type_t dataType;
     config_field_flags_t flags;
+    char* comment;
 } config_entry_t;
 
 

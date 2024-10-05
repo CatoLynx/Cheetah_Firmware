@@ -23,12 +23,16 @@ static size_t sta_ssid_len = 33;
 static size_t sta_anon_ident_len = 65;
 static size_t sta_ident_len = 65;
 static size_t sta_pass_len = 65;
+static size_t sta_fallb_ssid_len = 33;
+static size_t sta_fallb_pass_len = 65;
 static size_t ap_ssid_len = 33;
 static size_t ap_pass_len = 65;
 static char sta_ssid[33];
 static char sta_anon_ident[65];
 static char sta_ident[65];
 static char sta_pass[65];
+static char sta_fallb_ssid[33];
+static char sta_fallb_pass[65];
 static char ap_ssid[33];
 static char ap_pass[65];
 static uint16_t ap_timeout = 0;
@@ -156,10 +160,13 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     esp_err_t ret;
     uint8_t sta_enterprise = 1;
     uint8_t sta_credentials_valid = 1;
+    uint8_t sta_fallback_credentials_valid = 1;
     memset(sta_ssid, 0x00, sta_ssid_len);
     memset(sta_anon_ident, 0x00, sta_anon_ident_len);
     memset(sta_ident, 0x00, sta_ident_len);
     memset(sta_pass, 0x00, sta_pass_len);
+    memset(sta_fallb_ssid, 0x00, sta_fallb_ssid_len);
+    memset(sta_fallb_pass, 0x00, sta_fallb_pass_len);
     memset(ap_ssid, 0x00, ap_ssid_len);
     memset(ap_pass, 0x00, ap_pass_len);
     ret = nvs_get_u16(*nvsHandle, "ap_timeout", &ap_timeout);
@@ -217,8 +224,19 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     } else {
         ESP_ERROR_CHECK(ret);
     }
+    ret = nvs_get_str(*nvsHandle, "sta_fallb_ssid", sta_fallb_ssid, &sta_fallb_ssid_len);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        sta_fallback_credentials_valid = 0;
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
+    ret = nvs_get_str(*nvsHandle, "sta_fallb_pass", sta_fallb_pass, &sta_fallb_pass_len);
+    if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        sta_fallback_credentials_valid = 0;
+    } else {
+        ESP_ERROR_CHECK(ret);
+    }
 
-    ESP_LOGI(LOG_TAG, "Getting AP SSID from NVS");
     ret = nvs_get_str(*nvsHandle, "ap_ssid", ap_ssid, &ap_ssid_len);
     ap_ssid_len = 33; // Reset after nvs_get_str modified it
     if (ret == ESP_ERR_NVS_NOT_FOUND) {
@@ -247,7 +265,8 @@ void wifi_init(nvs_handle_t* nvsHandle) {
         ESP_ERROR_CHECK(ret);
     }
 
-    // Init WiFi in STA mode, AP will be automatically used as fallback
+    // Init WiFi in STA mode, STA fallback will be automatically used,
+    // AP as last resort
     netif_wifi_sta = esp_netif_create_default_wifi_sta();
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -256,71 +275,113 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
 
-    // If no valid credentials are stored, go straight to AP mode
+    // If no valid credentials are stored, use fallback STA
     if (!sta_credentials_valid) {
-        wifi_init_ap();
+        // If no valid fallback credentials are stored either, go straight to AP mode
+        if (!sta_fallback_credentials_valid) {
+            wifi_init_ap();
+        }
         return;
     }
 
     wifi_config_t wifi_config;
-    if (strlen(sta_pass) != 0) {
-        wifi_config = (wifi_config_t){
-            .sta = {
-                /* Setting a password implies station will connect to all security modes including WEP/WPA.
-                * However these modes are deprecated and not advisable to be used. In case your access point
-                * doesn't support WPA2, these mode can be enabled by commenting below line */
-                .threshold.authmode = sta_enterprise ? WIFI_AUTH_WPA2_ENTERPRISE : WIFI_AUTH_WPA2_PSK,
+    // Check if we're using main or fallback STA
+    if (sta_credentials_valid) {
+        // Main STA
+        ESP_LOGI(LOG_TAG, "Using main STA WiFi");
+        if (strlen(sta_pass) != 0) {
+            wifi_config = (wifi_config_t){
+                .sta = {
+                    /* Setting a password implies station will connect to all security modes including WEP/WPA.
+                    * However these modes are deprecated and not advisable to be used. In case your access point
+                    * doesn't support WPA2, these mode can be enabled by commenting below line */
+                    .threshold.authmode = sta_enterprise ? WIFI_AUTH_WPA2_ENTERPRISE : WIFI_AUTH_WPA2_PSK,
 
-                .pmf_cfg = {
-                    .capable = false,
-                    .required = false
+                    .pmf_cfg = {
+                        .capable = false,
+                        .required = false
+                    },
                 },
-            },
-        };
-        sta_ssid[sta_ssid_len - 1] = 0x00;
-        sta_pass[sta_pass_len - 1] = 0x00;
-        strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
-        if (!sta_enterprise) strncpy((char*)wifi_config.sta.password, sta_pass, sta_pass_len - 1);
+            };
+            sta_ssid[sta_ssid_len - 1] = 0x00;
+            sta_pass[sta_pass_len - 1] = 0x00;
+            strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
+            if (!sta_enterprise) strncpy((char*)wifi_config.sta.password, sta_pass, sta_pass_len - 1);
 
-        // If the parameters for WPA2 Enterprise are set, set corresponsding parameters
-        if (sta_enterprise) {
-            esp_eap_client_set_identity((uint8_t*)sta_anon_ident, strlen(sta_anon_ident));
+            // If the parameters for WPA2 Enterprise are set, set corresponsding parameters
+            if (sta_enterprise) {
+                esp_eap_client_set_identity((uint8_t*)sta_anon_ident, strlen(sta_anon_ident));
 
-            switch (sta_phase2) {
-                case WPA2E_PH2_TLS: {
-                    ESP_LOGE(LOG_TAG, "TLS as EAP phase 2 method is not supported yet!");
-                    return;
-                }
+                switch (sta_phase2) {
+                    case WPA2E_PH2_TLS: {
+                        ESP_LOGE(LOG_TAG, "TLS as EAP phase 2 method is not supported yet!");
+                        return;
+                    }
 
-                case WPA2E_PH2_PEAP: {
-                    ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
-                    ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
-                    break;
-                }
+                    case WPA2E_PH2_PEAP: {
+                        ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
+                        ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
+                        break;
+                    }
 
-                case WPA2E_PH2_TTLS: {
-                    ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
-                    ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
-                    ESP_ERROR_CHECK(esp_eap_client_set_ttls_phase2_method((esp_eap_ttls_phase2_types)sta_phase2_ttls));
-                    break;
+                    case WPA2E_PH2_TTLS: {
+                        ESP_ERROR_CHECK(esp_eap_client_set_username((uint8_t*)sta_ident, strlen(sta_ident)));
+                        ESP_ERROR_CHECK(esp_eap_client_set_password((uint8_t*)sta_pass, strlen(sta_pass)));
+                        ESP_ERROR_CHECK(esp_eap_client_set_ttls_phase2_method((esp_eap_ttls_phase2_types)sta_phase2_ttls));
+                        break;
+                    }
                 }
             }
+        } else {
+            wifi_config = (wifi_config_t){
+                .sta = {
+                    .pmf_cfg = {
+                        .capable = false,
+                        .required = false
+                    },
+                },
+            };
+            sta_ssid[sta_ssid_len - 1] = 0x00;
+            strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
         }
     } else {
-        wifi_config = (wifi_config_t){
-            .sta = {
-                .pmf_cfg = {
-                    .capable = false,
-                    .required = false
+        // Fallback STA
+        ESP_LOGI(LOG_TAG, "Using fallback STA WiFi");
+        if (strlen(sta_fallb_pass) != 0) {
+            wifi_config = (wifi_config_t){
+                .sta = {
+                    /* Setting a password implies station will connect to all security modes including WEP/WPA.
+                    * However these modes are deprecated and not advisable to be used. In case your access point
+                    * doesn't support WPA2, these mode can be enabled by commenting below line */
+                    .threshold.authmode = WIFI_AUTH_WPA2_PSK,
+
+                    .pmf_cfg = {
+                        .capable = false,
+                        .required = false
+                    },
                 },
-            },
-        };
-        sta_ssid[sta_ssid_len - 1] = 0x00;
-        strncpy((char*)wifi_config.sta.ssid, sta_ssid, sta_ssid_len - 1);
+            };
+            sta_fallb_ssid[sta_fallb_ssid_len - 1] = 0x00;
+            sta_fallb_pass[sta_fallb_pass_len - 1] = 0x00;
+            strncpy((char*)wifi_config.sta.ssid, sta_fallb_ssid, sta_fallb_ssid_len - 1);
+            strncpy((char*)wifi_config.sta.password, sta_fallb_pass, sta_fallb_pass_len - 1);
+        } else {
+            wifi_config = (wifi_config_t){
+                .sta = {
+                    .pmf_cfg = {
+                        .capable = false,
+                        .required = false
+                    },
+                },
+            };
+            sta_fallb_ssid[sta_fallb_ssid_len - 1] = 0x00;
+            strncpy((char*)wifi_config.sta.ssid, sta_fallb_ssid, sta_fallb_ssid_len - 1);
+        }
     }
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
-    if (sta_enterprise) ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
+    if (sta_enterprise && sta_credentials_valid) ESP_ERROR_CHECK(esp_wifi_sta_enterprise_enable());
     ESP_ERROR_CHECK(esp_wifi_start());
     if (netif_wifi_sta != NULL) ESP_ERROR_CHECK(esp_netif_set_hostname(netif_wifi_sta, hostname));
 
