@@ -238,12 +238,14 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
     free(buf);
 
     if (!cJSON_IsObject(json)) {
+        ESP_LOGE(LOG_TAG, "Not a valid JSON object");
         cJSON_Delete(json);
         return abortRequest(req, HTTPD_500);
     }
 
     cJSON* fields_arr = cJSON_GetObjectItem(json, "fields");
     if (!cJSON_IsArray(fields_arr)) {
+        ESP_LOGE(LOG_TAG, "No valid 'fields' array in JSON");
         cJSON_Delete(json);
         return abortRequest(req, HTTPD_500);
     }
@@ -251,12 +253,14 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
     cJSON* entry = NULL;
     cJSON_ArrayForEach(entry, fields_arr) {
         if (!cJSON_IsObject(entry)) {
+            ESP_LOGE(LOG_TAG, "Invalid object in 'fields' array");
             cJSON_Delete(json);
             return abortRequest(req, HTTPD_500);
         }
 
         cJSON* field_name = cJSON_GetObjectItem(entry, "name");
         if (!cJSON_IsString(field_name)) {
+            ESP_LOGE(LOG_TAG, "'name' field is not a valid string");
             cJSON_Delete(json);
             return abortRequest(req, HTTPD_500);
         }
@@ -264,6 +268,7 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
 
         cJSON* field_type = cJSON_GetObjectItem(entry, "type");
         if (!cJSON_IsNumber(field_type)) {
+            ESP_LOGE(LOG_TAG, "'type' field is not a valid number");
             cJSON_Delete(json);
             return abortRequest(req, HTTPD_500);
         }
@@ -280,6 +285,7 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
             case I64:
             case U64: {
                 if (!cJSON_IsNumber(field_value)) {
+                    ESP_LOGE(LOG_TAG, "'%s' value is not a valid number", fieldName);
                     cJSON_Delete(json);
                     return abortRequest(req, HTTPD_500);
                 }
@@ -287,12 +293,14 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
             }
             case STR: {
                 if (!cJSON_IsString(field_value)) {
+                    ESP_LOGE(LOG_TAG, "'%s' value is not a valid string", fieldName);
                     cJSON_Delete(json);
                     return abortRequest(req, HTTPD_500);
                 }
                 break;
             }
             default: {
+                ESP_LOGE(LOG_TAG, "'%s' has unknown field type %d", fieldName, fieldType);
                 cJSON_Delete(json);
                 return abortRequest(req, HTTPD_500);
             }
@@ -346,6 +354,7 @@ static esp_err_t config_post_update_handler(httpd_req_t *req) {
                 break;
             }
             default: {
+                ESP_LOGE(LOG_TAG, "'%s' has unknown field type %d", fieldName, fieldType);
                 cJSON_Delete(json);
                 return abortRequest(req, HTTPD_500);
             }
