@@ -15,8 +15,13 @@
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
-#include "shaders_char.h"
+#if defined(CONFIG_DISPLAY_HAS_SHADERS)
+#include CONFIG_DISPLAY_SHADERS_INCLUDE
+#endif
 #include "math.h"
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+#include CONFIG_DISPLAY_EFFECTS_INCLUDE
+#endif
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_WS281X)
 
@@ -27,6 +32,9 @@ spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 uint8_t display_currentBrightness = 255;
 void* display_currentShader = NULL;
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+void* display_currentEffect = NULL;
+#endif
 static const color_t OFF = { 0, 0, 0 };
 
 static const uint8_t ws281x_bit_patterns[4] = {
@@ -108,6 +116,17 @@ esp_err_t display_set_shader(void* shaderData) {
 }
 #else
 esp_err_t display_set_shader(void* shaderData) {
+    return ESP_OK;
+}
+#endif
+
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+esp_err_t display_set_effect(void* effectData) {
+    display_currentEffect = effectData;
+    return ESP_OK;
+}
+#else
+esp_err_t display_set_effect(void* effectData) {
     return ESP_OK;
 }
 #endif
@@ -237,11 +256,11 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     color_t color;
     color_rgb_t calcColor_rgb;
 
-    memset(frameBuf, 0x88, frameBufSize);
+    memset(outBuf, 0x88, charBufSize);
 
     for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
         calcColor_rgb = shader_fromJSON(charBufIndex, charBufSize, charBuf[charBufIndex], display_currentShader);
@@ -251,15 +270,15 @@ void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8
         color.blue = calcColor_rgb.b * 255;
 
         if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(frameBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
+            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
         }
         if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(frameBuf, charBufIndex, 1, color);
+            display_setDecimalPointAt(outBuf, charBufIndex, 1, color);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+void display_render_frame(uint8_t* frame, uint16_t frameBufSize) {
     if (display_transferOngoing) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame:");
@@ -270,6 +289,40 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
     };
     ESP_ERROR_CHECK(spi_device_transmit(spi, &spi_trans));
     ets_delay_us(350); // Ensure reset pulse
+}
+
+static uint8_t charBufModified_prev = 0;
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    #if !defined(CONFIG_DISPLAY_HAS_EFFECTS)
+    // Nothing to do if buffer hasn't changed
+    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
+    #endif
+
+    buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+
+    #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+    // Process effect and check if update is needed
+    uint8_t charBufModified = effect_fromJSON(charBuf, charBufSize, display_currentEffect);
+    // Only evaluate charBufModified when the text buf hasn't changed
+    // Otherwise, an update is required anyway
+    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) {
+        // TODO: This isn't quite right yet. It checks if the effect modified the buffer,
+        // and if it did, triggers an update. If it didn't, the update is skipped,
+        // but only if the buffer wasn't modified in the previous run either.
+        // This is to ensure that if an effect goes from "modified" to "not modified",
+        // the display gets updated. However, this does not represent the actual logic needed.
+        // e.g. if the effect modifies the buffer in the exact same way in two subsequent
+        // iterations, the buffer would be updated in both iterations.
+        if (!charBufModified && !charBufModified_prev) {
+            charBufModified_prev = charBufModified;
+            return;
+        }
+    }
+    charBufModified_prev = charBufModified;
+    #endif
+
+    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
+    display_render_frame(outBuf, outBufSize);
 }
 
 #endif

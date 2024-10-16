@@ -15,7 +15,9 @@
 #include "util_generic.h"
 #include "util_gpio.h"
 #include "char_16seg_font.h"
-#include "effects_char.h"
+#if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+#include CONFIG_DISPLAY_EFFECTS_INCLUDE
+#endif
 
 #if defined(CONFIG_DISPLAY_DRIVER_CHAR_16SEG_LED_SPI)
 
