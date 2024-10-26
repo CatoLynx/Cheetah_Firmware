@@ -384,58 +384,61 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 }
 
                 char* text_utf8 = cJSON_GetStringValue(field_text);
-                
 
-                char* filteredText_utf8 = malloc(strlen(text_utf8) + 1);
-                memset(filteredText_utf8, 0x00, strlen(text_utf8) + 1);
+                if (strcmp(text_utf8, "/start") == 0) {
+                    telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Hi! Just send me a text and I'll display it :3");
+                } else {                
+                    char* filteredText_utf8 = malloc(strlen(text_utf8) + 1);
+                    memset(filteredText_utf8, 0x00, strlen(text_utf8) + 1);
 
-                ESP_LOGD(LOG_TAG, "Filtering message text");
+                    ESP_LOGD(LOG_TAG, "Filtering message text");
 
-                #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
-                str_toUpper(text_utf8); // TODO: Handle UTF-8 correctly
-                #endif
+                    #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
+                    str_toUpper(text_utf8); // TODO: Handle UTF-8 correctly
+                    #endif
 
-                #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
-                str_filterAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
-                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
-                str_filterDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
-                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
-                str_filterRangeAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX, true);
-                #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE)
-                str_filterRangeDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
-                #endif
+                    #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)
+                    str_filterAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_STR, true);
+                    #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_STR)
+                    str_filterDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_STR, true);
+                    #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_RANGE)
+                    str_filterRangeAllowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_ALLOWED_CHARACTERS_RANGE_MAX, true);
+                    #elif defined(CONFIG_TG_BOT_CHARSET_METHOD_DISALLOWED_CHARS_RANGE)
+                    str_filterRangeDisallowed(filteredText_utf8, text_utf8, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MIN, CONFIG_TG_BOT_DISALLOWED_CHARACTERS_RANGE_MAX, true);
+                    #endif
 
-                char* filteredText_iso88591 = malloc(strlen(filteredText_utf8) + 1); // Text can only be same length or less in ISO-8859-1
-                memset(filteredText_iso88591, 0x00, strlen(filteredText_utf8) + 1);
-                ESP_LOGD(LOG_TAG, "Converting message text from UTF-8 to ISO-8859-1");
-                buffer_utf8_to_iso88591(filteredText_iso88591, filteredText_utf8);
-                ESP_LOGD(LOG_TAG, "Result: %s", filteredText_iso88591);
+                    char* filteredText_iso88591 = malloc(strlen(filteredText_utf8) + 1); // Text can only be same length or less in ISO-8859-1
+                    memset(filteredText_iso88591, 0x00, strlen(filteredText_utf8) + 1);
+                    ESP_LOGD(LOG_TAG, "Converting message text from UTF-8 to ISO-8859-1");
+                    buffer_utf8_to_iso88591(filteredText_iso88591, filteredText_utf8);
+                    ESP_LOGD(LOG_TAG, "Result: %s", filteredText_iso88591);
 
-                uint64_t now = esp_timer_get_time();
+                    uint64_t now = esp_timer_get_time();
 
-                if (now - lastMessageTime < (deadtime * 1000000UL)) {
-                    ESP_LOGD(LOG_TAG, "Waiting for deadtime");
-                    while (true) {
-                        now = esp_timer_get_time();
-                        if (now - lastMessageTime >= (deadtime * 1000000UL)) break;
-                        vTaskDelay(1);
+                    if (now - lastMessageTime < (deadtime * 1000000UL)) {
+                        ESP_LOGD(LOG_TAG, "Waiting for deadtime");
+                        while (true) {
+                            now = esp_timer_get_time();
+                            if (now - lastMessageTime >= (deadtime * 1000000UL)) break;
+                            vTaskDelay(1);
+                        }
                     }
-                }
 
-                ESP_LOGD(LOG_TAG, "Converting message for display");
-                memset(output_buffer, 0x00, output_buffer_size);
-                strncpy((char*)output_buffer, filteredText_iso88591, output_buffer_size);
-                free(filteredText_utf8);
-                free(filteredText_iso88591);
+                    ESP_LOGD(LOG_TAG, "Converting message for display");
+                    memset(output_buffer, 0x00, output_buffer_size);
+                    strncpy((char*)output_buffer, filteredText_iso88591, output_buffer_size);
+                    free(filteredText_utf8);
+                    free(filteredText_iso88591);
 
-                lastMessageTime = now;
+                    lastMessageTime = now;
 
-                ESP_LOGD(LOG_TAG, "Sending reply");
-                telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
+                    ESP_LOGD(LOG_TAG, "Sending reply");
+                    telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
 
-                if (logChannelIdInited && strlen(logChannelId) != 0) {
-                    ESP_LOGD(LOG_TAG, "Sending log channel message");
-                    telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer);
+                    if (logChannelIdInited && strlen(logChannelId) != 0) {
+                        ESP_LOGD(LOG_TAG, "Sending log channel message");
+                        telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer);
+                    }
                 }
 
                 ESP_LOGD(LOG_TAG, "Message processing finished");
