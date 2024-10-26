@@ -35,6 +35,7 @@ config_entry_t config_entries[] = {
     {.key = "ap_pass",         .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "ap_timeout",      .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "tg_bot_token",    .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
+    {.key = "tg_log_chnl_id",  .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "disp_led_gamma",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "sel_conf_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Configuration for selection display"},
     {.key = "cnv_preset_file", .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Presets for canvas"},

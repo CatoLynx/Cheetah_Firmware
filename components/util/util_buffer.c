@@ -144,4 +144,33 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
         }
     }
 }
+
+char* buffer_escape_string(char* input, char* charsToEscape, char escapePrefix, uint16_t numEscapeChars) {
+    // First pass: Count characters to escape
+    size_t escapeCharCount = 0;
+    size_t inputLen = strlen(input);
+    for (size_t i = 0; i < inputLen; i++) {
+        for (uint16_t j = 0; j < numEscapeChars; j++) {
+            if (input[i] == charsToEscape[j]) {
+                escapeCharCount++;
+                break;
+            }
+        }
+    }
+
+    // Second pass: Allocate buffer for output
+    size_t outputLen = inputLen + escapeCharCount;
+    char* output = calloc(outputLen + 1, 1);
+    size_t k = 0;
+    for (size_t i = 0; i < inputLen; i++) {
+        for (uint16_t j = 0; j < numEscapeChars; j++) {
+            if (input[i] == charsToEscape[j]) {
+                output[k++] = escapePrefix;
+                break;
+            }
+        }
+        output[k++] = input[i];
+    }
+    return output;
+}
 #endif

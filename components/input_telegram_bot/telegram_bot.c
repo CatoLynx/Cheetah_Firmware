@@ -17,7 +17,10 @@
 static TaskHandle_t telegram_bot_task_handle;
 static nvs_handle_t tg_bot_nvs_handle;
 static char* apiToken = NULL;
+static char* logChannelId = NULL;
+static int64_t logChannelIdInt = 0;
 static uint8_t apiTokenInited = 0;
+static uint8_t logChannelIdInited = 0;
 static uint32_t last_update_id = 0;
 static uint8_t err_status = 0;
 static char* err_desc = NULL;
@@ -133,6 +136,17 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
     telegram_bot_deinit();
 
     apiToken = get_string_from_nvs(nvsHandle, "tg_bot_token");
+    logChannelId = get_string_from_nvs(nvsHandle, "tg_log_chnl_id");
+
+    if (logChannelId != NULL) {
+        logChannelIdInited = 1;
+    }
+    if (logChannelIdInited && strlen(logChannelId) != 0) {
+        logChannelIdInt = strtoll(logChannelId, NULL, 10);
+        ESP_LOGI(LOG_TAG, "Using log channel: %lld", logChannelIdInt);
+        logChannelIdInt = strtoll(logChannelId, NULL, 10);
+    }
+
     if (apiToken != NULL) {
         apiTokenInited = 1;
         if (strlen(apiToken) != 0) {
@@ -147,6 +161,13 @@ void telegram_bot_deinit() {
         free(apiToken);
         apiToken = NULL;
         apiTokenInited = 0;
+    }
+
+    if (logChannelIdInited) {
+        free(logChannelId);
+        logChannelId = NULL;
+        logChannelIdInt = 0;
+        logChannelIdInited = 0;
     }
 }
 
@@ -168,6 +189,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
     };
     cJSON* json;
     char* post_data;
+    char* escapedText = NULL;
 
     switch(endpoint) {
         case TG_GET_ME: {
@@ -199,9 +221,12 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
             int64_t chat_id = va_arg(valist, int64_t);
             char* text = va_arg(valist, char*);
 
+            char charsToEscape[19] = {'_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!', '\\'};
+            escapedText = buffer_escape_string(text, charsToEscape, '\\', 19);
+
             json = cJSON_CreateObject();
             cJSON_AddNumberToObject(json, "chat_id", chat_id);
-            cJSON_AddStringToObject(json, "text", text);
+            cJSON_AddStringToObject(json, "text", escapedText);
             cJSON_AddStringToObject(json, "parse_mode", "MarkdownV2");
             post_data = cJSON_Print(json);
             ESP_LOGV(LOG_TAG, "POST Data: %s", post_data);
@@ -235,6 +260,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
         // sprintf((char*)output_buffer, "GET FAILED %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
+    free(escapedText);
 }
 
 esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON* json) {
@@ -389,6 +415,12 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
 
                 ESP_LOGD(LOG_TAG, "Sending reply");
                 telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
+
+                if (logChannelIdInited && strlen(logChannelId) != 0) {
+                    ESP_LOGD(LOG_TAG, "Sending log channel message");
+                    telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer);
+                }
+
                 ESP_LOGD(LOG_TAG, "Message processing finished");
             }
             break;
