@@ -3,6 +3,7 @@
 #include <string.h>
 #include "sys/param.h"
 #include "esp_http_client.h"
+#include "esp_timer.h"
 
 #include "telegram_bot.h"
 #include "util_buffer.h"
@@ -19,8 +20,10 @@ static nvs_handle_t tg_bot_nvs_handle;
 static char* apiToken = NULL;
 static char* logChannelId = NULL;
 static int64_t logChannelIdInt = 0;
+static uint8_t deadtime = 0;
 static uint8_t apiTokenInited = 0;
 static uint8_t logChannelIdInited = 0;
+static uint64_t lastMessageTime = 0;
 static uint32_t last_update_id = 0;
 static uint8_t err_status = 0;
 static char* err_desc = NULL;
@@ -137,6 +140,7 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
 
     apiToken = get_string_from_nvs(nvsHandle, "tg_bot_token");
     logChannelId = get_string_from_nvs(nvsHandle, "tg_log_chnl_id");
+    nvs_get_u8(*nvsHandle, "tg_deadtime", &deadtime);
 
     if (logChannelId != NULL) {
         logChannelIdInited = 1;
@@ -407,11 +411,24 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                 buffer_utf8_to_iso88591(filteredText_iso88591, filteredText_utf8);
                 ESP_LOGD(LOG_TAG, "Result: %s", filteredText_iso88591);
 
+                uint64_t now = esp_timer_get_time();
+
+                if (now - lastMessageTime < (deadtime * 1000000UL)) {
+                    ESP_LOGD(LOG_TAG, "Waiting for deadtime");
+                    while (true) {
+                        now = esp_timer_get_time();
+                        if (now - lastMessageTime >= (deadtime * 1000000UL)) break;
+                        vTaskDelay(1);
+                    }
+                }
+
                 ESP_LOGD(LOG_TAG, "Converting message for display");
                 memset(output_buffer, 0x00, output_buffer_size);
                 strncpy((char*)output_buffer, filteredText_iso88591, output_buffer_size);
                 free(filteredText_utf8);
                 free(filteredText_iso88591);
+
+                lastMessageTime = now;
 
                 ESP_LOGD(LOG_TAG, "Sending reply");
                 telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
