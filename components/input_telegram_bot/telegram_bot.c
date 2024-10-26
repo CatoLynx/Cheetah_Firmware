@@ -102,7 +102,7 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
 
             esp_err_t ret = telegram_bot_process_response((telegram_api_endpoint_t)(evt->user_data), json);
             if (ret != ESP_OK) {
-                memset(output_buffer, 0x00, output_buffer_size);
+                //memset(output_buffer, 0x00, output_buffer_size);
                 if (err_desc == NULL) {
                     ESP_LOGE(LOG_TAG,  "Error status %u", err_status);
                     // sprintf((char*)output_buffer, "TELEGRAM API FAIL %u", err_status);
