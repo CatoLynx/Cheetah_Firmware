@@ -9,6 +9,7 @@
 #include "driver/uart.h"
 
 #include "macros.h"
+#include "util_buffer.h"
 #include "util_gpio.h"
 #include "char_k9000.h"
 
@@ -58,15 +59,12 @@ void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     outBuf[2] = code & 0x7F;
 }
 
-void display_charbuf_to_framebuf(uint8_t* charBuf, uint16_t* quirkFlagBuf, uint8_t* frameBuf, uint16_t charBufSize, uint16_t frameBufSize) {
+void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     // No conversion needed, display takes straight text data
-    memcpy(frameBuf, charBuf, frameBufSize < charBufSize ? frameBufSize : charBufSize);
+    memcpy(outBuf, charBuf, outBufSize < charBufSize ? outBufSize : charBufSize);
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    // Nothing to do if frame hasn't changed
-    if (prevFrame != NULL && memcmp(frame, prevFrame, frameBufSize) == 0) return;
-
+void display_render_frame(uint8_t* frame, uint16_t frameBufSize) {
     esp_err_t ret = uart_wait_tx_done(K9000_UART, 10 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) return; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
 
@@ -81,6 +79,15 @@ void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufS
 
     uart_write_bytes(K9000_UART, buf, bufSize);
     free(buf);
+}
+
+void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    // Nothing to do if buffer hasn't changed
+    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
+
+    buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
+    display_render_frame(outBuf, outBufSize);
 }
 
 #endif
