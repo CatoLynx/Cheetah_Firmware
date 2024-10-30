@@ -20,6 +20,7 @@ static nvs_handle_t tg_bot_nvs_handle;
 static char* apiToken = NULL;
 static char* logChannelId = NULL;
 static int64_t logChannelIdInt = 0;
+static uint8_t logChannelEnabled = 0;
 static uint8_t deadtime = 0;
 static uint8_t apiTokenInited = 0;
 static uint8_t logChannelIdInited = 0;
@@ -140,12 +141,13 @@ void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize)
 
     apiToken = get_string_from_nvs(nvsHandle, "tg_bot_token");
     logChannelId = get_string_from_nvs(nvsHandle, "tg_log_chnl_id");
+    nvs_get_u8(*nvsHandle, "tg_log_chnl_en", &logChannelEnabled);
     nvs_get_u8(*nvsHandle, "tg_deadtime", &deadtime);
 
     if (logChannelId != NULL) {
         logChannelIdInited = 1;
     }
-    if (logChannelIdInited && strlen(logChannelId) != 0) {
+    if (logChannelEnabled && logChannelIdInited && strlen(logChannelId) != 0) {
         logChannelIdInt = strtoll(logChannelId, NULL, 10);
         ESP_LOGI(LOG_TAG, "Using log channel: %lld", logChannelIdInt);
         logChannelIdInt = strtoll(logChannelId, NULL, 10);
@@ -435,7 +437,7 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                     ESP_LOGD(LOG_TAG, "Sending reply");
                     telegram_bot_send_request(TG_SEND_MESSAGE, chat_id, "Message is being displayed");
 
-                    if (logChannelIdInited && strlen(logChannelId) != 0) {
+                    if (logChannelEnabled && logChannelIdInited && strlen(logChannelId) != 0) {
                         ESP_LOGD(LOG_TAG, "Sending log channel message");
                         telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer);
                     }
