@@ -77,6 +77,8 @@
     <div>
       <label for="check-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
       <input type="button" id="btn-update" value="Update" />
+      <input type="button" id="btn-save-startup" value="Save startup data" /><br />
+      <span id="save-startup-status"></span>
     </div>
     <div id="preset-container" style="display: none;">
       <div>Presets</div>
@@ -1897,6 +1899,32 @@
         if (display_info["type"] == "selection") updateUnitBuffer(event);
       }
 
+      function saveStartupData() {
+        $.ajax({
+          type: "POST",
+          dataType: "json",
+          url: "/canvas/saveStartup.json",
+          success: onSaveStartupDataSuccess,
+          error: onSaveStartupDataError
+        });
+      }
+
+      function onSaveStartupDataSuccess(data, textStatus, jqXHR) {
+        if (data["success"] == true) {
+          $("#save-startup-status").text("Startup data saved!");
+        } else {
+          $("#save-startup-status").text("Failed to save startup data!");
+        }
+        setTimeout(function() { $("#save-startup-status").text(""); }, 1000);
+      }
+
+      function onSaveStartupDataError(jqXHR, textStatus, errorThrown) {
+        console.log("Error saving startup data!");
+        console.log(errorThrown);
+        $("#save-startup-status").text("Failed to save startup data!");
+        setTimeout(function() { $("#save-startup-status").text(""); }, 1000);
+      }
+
       function onReady() {
         getDeviceInfo(onGetDeviceInfoSuccess, onGetDeviceInfoError);
         getDisplayInfo();
@@ -1911,6 +1939,7 @@
         liveUpdate = (localStorage.getItem("liveUpdate") == "true") || liveUpdate;
         $("#check-live-update").change(onLiveUpdateChange);
         $("#btn-update").click(updateAllBuffers);
+        $("#btn-save-startup").click(saveStartupData);
         $("#fg-color").val(fgColor);
         $("#bg-color").val(bgColor);
         $("#num-brush-size").val(brushSize);

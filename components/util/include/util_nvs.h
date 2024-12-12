@@ -6,3 +6,4 @@
 
 char* get_string_from_nvs(nvs_handle_t* nvsHandle, const char* key);
 esp_err_t get_json_from_spiffs(const char* spiffsFileName, cJSON** json, const char* log_tag);
+esp_err_t save_json_to_spiffs(const char* spiffsFileName, cJSON* json, const char* log_tag);

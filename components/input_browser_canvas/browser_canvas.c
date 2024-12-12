@@ -6,6 +6,7 @@
 
 #include "macros.h"
 #include "browser_canvas.h"
+#include "util_buffer.h"
 #include "util_httpd.h"
 #include "util_nvs.h"
 #include "settings_secret.h"
@@ -83,16 +84,11 @@ static esp_err_t canvas_get_handler(httpd_req_t *req) {
 
 static esp_err_t canvas_pixel_buffer_get_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
-    
-    unsigned char* b64_buf = NULL;
 
-    if (canvas_pixel_buffer != NULL) {
-        size_t b64_len = 0;
-        mbedtls_base64_encode(NULL, 0, &b64_len, canvas_pixel_buffer, canvas_pixel_buffer_size);
-        size_t b64_bufsize = b64_len;
-        b64_buf = malloc(b64_len);
-        b64_len = 0;
-        mbedtls_base64_encode(b64_buf, b64_bufsize, &b64_len, canvas_pixel_buffer, canvas_pixel_buffer_size);
+    unsigned char* b64_buf = NULL;
+    esp_err_t ret = buffer_to_base64(canvas_pixel_buffer, canvas_pixel_buffer_size, &b64_buf);
+
+    if (ret == ESP_OK) {
         httpd_resp_set_type(req, "text/plain");
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, (char*)b64_buf, strlen((char*)b64_buf));
@@ -107,14 +103,9 @@ static esp_err_t canvas_text_buffer_get_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
     unsigned char* b64_buf = NULL;
+    esp_err_t ret = buffer_to_base64(canvas_text_buffer, canvas_text_buffer_size, &b64_buf);
 
-    if (canvas_text_buffer != NULL) {
-        size_t b64_len = 0;
-        mbedtls_base64_encode(NULL, 0, &b64_len, canvas_text_buffer, canvas_text_buffer_size);
-        size_t b64_bufsize = b64_len;
-        b64_buf = malloc(b64_len);
-        b64_len = 0;
-        mbedtls_base64_encode(b64_buf, b64_bufsize, &b64_len, canvas_text_buffer, canvas_text_buffer_size);
+    if (ret == ESP_OK) {
         httpd_resp_set_type(req, "text/plain");
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, (char*)b64_buf, strlen((char*)b64_buf));
@@ -129,14 +120,9 @@ static esp_err_t canvas_unit_buffer_get_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
     unsigned char* b64_buf = NULL;
+    esp_err_t ret = buffer_to_base64(canvas_unit_buffer, canvas_unit_buffer_size, &b64_buf);
 
-    if (canvas_unit_buffer != NULL) {
-        size_t b64_len = 0;
-        mbedtls_base64_encode(NULL, 0, &b64_len, canvas_unit_buffer, canvas_unit_buffer_size);
-        size_t b64_bufsize = b64_len;
-        b64_buf = malloc(b64_len);
-        b64_len = 0;
-        mbedtls_base64_encode(b64_buf, b64_bufsize, &b64_len, canvas_unit_buffer, canvas_unit_buffer_size);
+    if (ret == ESP_OK) {
         httpd_resp_set_type(req, "text/plain");
         httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
         httpd_resp_send(req, (char*)b64_buf, strlen((char*)b64_buf));
@@ -629,6 +615,99 @@ static esp_err_t canvas_get_presets_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
+static esp_err_t save_startup_post_handler(httpd_req_t *req) {
+    uint8_t success = 1;
+    cJSON* json = cJSON_CreateObject();
+    cJSON* startupData = cJSON_CreateObject();
+
+    #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+    if (shader_data != NULL) {
+        if (cJSON_IsObject(*shader_data)) {
+            cJSON_AddItemToObject(startupData, "shader", cJSON_Duplicate(*shader_data, true));
+        }
+    }
+    #endif
+
+    #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+    if (transition_data != NULL) {
+        if (cJSON_IsObject(*transition_data)) {
+            cJSON_AddItemToObject(startupData, "transition", cJSON_Duplicate(*transition_data, true));
+        }
+    }
+    #endif
+
+    #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+    if (effect_data != NULL) {
+        if (cJSON_IsObject(*effect_data)) {
+            cJSON_AddItemToObject(startupData, "effect", cJSON_Duplicate(*effect_data, true));
+        }
+    }
+    #endif
+
+    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+    if (bitmap_generator_data != NULL) {
+        if (cJSON_IsObject(*bitmap_generator_data)) {
+            cJSON_AddItemToObject(startupData, "bitmap_generator", cJSON_Duplicate(*bitmap_generator_data, true));
+        }
+    }
+    #endif
+
+    cJSON* buffers_field = cJSON_CreateObject();
+
+    if (canvas_pixel_buffer != NULL) {
+        unsigned char* pixel_b64 = NULL;
+        esp_err_t status = buffer_to_base64(canvas_pixel_buffer, canvas_pixel_buffer_size, &pixel_b64);
+        if (status == ESP_OK) {
+            cJSON_AddStringToObject(buffers_field, "pixel_b64", (char*)pixel_b64);
+            free(pixel_b64);
+        }
+    }
+
+    if (canvas_text_buffer != NULL) {
+        unsigned char* text_b64 = NULL;
+        esp_err_t status = buffer_to_base64(canvas_text_buffer, canvas_text_buffer_size, &text_b64);
+        if (status == ESP_OK) {
+            cJSON_AddStringToObject(buffers_field, "text_b64", (char*)text_b64);
+            free(text_b64);
+        }
+    }
+
+    if (canvas_unit_buffer != NULL) {
+        unsigned char* unit_b64 = NULL;
+        esp_err_t status = buffer_to_base64(canvas_unit_buffer, canvas_unit_buffer_size, &unit_b64);
+        if (status == ESP_OK) {
+            cJSON_AddStringToObject(buffers_field, "unit_b64", (char*)unit_b64);
+            free(unit_b64);
+        }
+    }
+
+    cJSON_AddItemToObject(startupData, "buffers", buffers_field);
+
+    char* startupFile = get_string_from_nvs(&canvas_nvs_handle, "startup_file");
+    if (startupFile == NULL) {
+        success = 0;
+        ESP_LOGW(LOG_TAG, "Not using startup file");
+    } else {
+        esp_err_t ret = save_json_to_spiffs(startupFile, startupData, LOG_TAG);
+        ESP_LOGI(LOG_TAG, "Saved");
+        if (ret != ESP_OK) {
+            ESP_LOGE(LOG_TAG, "Failed to save startup file");
+            success = 0;
+        }
+    }
+    cJSON_Delete(startupData);
+
+    cJSON_AddBoolToObject(json, "success", success);
+
+    char *resp = cJSON_Print(json);
+    httpd_resp_set_type(req, "application/json");
+    httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+    httpd_resp_send(req, resp, strlen(resp));
+    cJSON_Delete(json);
+    cJSON_free(resp);
+    return ESP_OK;
+}
+
 static httpd_uri_t canvas_get = {
     .uri       = "/canvas",
     .method    = HTTP_GET,
@@ -771,6 +850,12 @@ static httpd_uri_t canvas_get_presets = {
     .handler   = canvas_get_presets_handler
 };
 
+static const httpd_uri_t canvas_save_startup_post = {
+    .uri       = "/canvas/saveStartup.json",
+    .method    = HTTP_POST,
+    .handler   = save_startup_post_handler
+};
+
 void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
@@ -855,6 +940,7 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     httpd_register_uri_handler(*server, &canvas_get_effects);
     httpd_register_uri_handler(*server, &canvas_get_bitmap_generators);
     httpd_register_uri_handler(*server, &canvas_get_presets);
+    httpd_register_uri_handler(*server, &canvas_save_startup_post);
     canvas_server = server;
 }
 
@@ -878,6 +964,7 @@ void browser_canvas_stop(void) {
     httpd_unregister_uri_handler(*canvas_server, canvas_get_effects.uri, canvas_get_effects.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_bitmap_generators.uri, canvas_get_bitmap_generators.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_presets.uri, canvas_get_presets.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_save_startup_post.uri, canvas_save_startup_post.method);
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
     canvas_brightness = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_brightness_get.uri, canvas_brightness_get.method);

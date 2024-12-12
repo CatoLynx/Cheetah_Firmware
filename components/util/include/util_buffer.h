@@ -20,3 +20,4 @@ void buffer_iso88591_to_utf8(char* dst, char* src);
 void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_char_buffer, uint16_t* display_quirk_flags_buffer, uint16_t textBufSize, uint16_t charBufSize);
 char* buffer_escape_string(char* input, char* charsToEscape, char escapePrefix, uint16_t numEscapeChars);
 esp_err_t buffer_from_string(const char* in_buf_str, uint8_t is_base64, uint8_t* out_buf, size_t out_buf_size, const char* log_tag);
+esp_err_t buffer_to_base64(uint8_t* buf, size_t buf_size, uint8_t** out);

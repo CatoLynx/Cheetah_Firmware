@@ -1,5 +1,6 @@
 #include "util_nvs.h"
 #include "esp_log.h"
+#include <string.h>
 
 
 char* get_string_from_nvs(nvs_handle_t* nvsHandle, const char* key) {
@@ -23,7 +24,7 @@ esp_err_t get_json_from_spiffs(const char* spiffsFileName, cJSON** json, const c
     char file_path[21]; // "/spiffs/" + 8.3 filename + null
     snprintf(file_path, 21, "/spiffs/%s", spiffsFileName);
     
-    ESP_LOGI(log_tag, "Opening file: %s", file_path);
+    ESP_LOGI(log_tag, "Opening file for reading: %s", file_path);
     FILE* file = fopen(file_path, "rb");
     if (file == NULL) {
         ESP_LOGE(log_tag, "Failed to open file");
@@ -57,4 +58,24 @@ esp_err_t get_json_from_spiffs(const char* spiffsFileName, cJSON** json, const c
     free(raw_json);
     fclose(file);
     return ESP_OK;
+}
+
+// Save a JSON object to a file in SPIFFS
+esp_err_t save_json_to_spiffs(const char* spiffsFileName, cJSON* json, const char* log_tag) {
+    char file_path[21]; // "/spiffs/" + 8.3 filename + null
+    snprintf(file_path, 21, "/spiffs/%s", spiffsFileName);
+    
+    ESP_LOGI(log_tag, "Opening file for writing: %s", file_path);
+    FILE* file = fopen(file_path, "wb");
+    if (file == NULL) {
+        ESP_LOGE(log_tag, "Failed to open file");
+        return ESP_FAIL;
+    }
+
+    char *json_str = cJSON_Print(json);
+    // numObjectsWritten should be 1 since we're writing 1 object
+    size_t numObjectsWritten = fwrite(json_str, strlen(json_str), 1, file);
+    fclose(file);
+    cJSON_free(json_str);
+    return numObjectsWritten == 1 ? ESP_OK : ESP_FAIL;
 }

@@ -202,3 +202,17 @@ esp_err_t buffer_from_string(const char* in_buf_str, uint8_t is_base64, uint8_t*
     }
     return ESP_OK;
 }
+
+esp_err_t buffer_to_base64(uint8_t* buf, size_t buf_size, uint8_t** out) {
+    if (buf != NULL) {
+        size_t b64_len = 0;
+        mbedtls_base64_encode(NULL, 0, &b64_len, buf, buf_size);
+        size_t b64_bufsize = b64_len;
+        *out = malloc(b64_len);
+        b64_len = 0;
+        mbedtls_base64_encode(*out, b64_bufsize, &b64_len, buf, buf_size);
+        return ESP_OK;
+    } else {
+        return ESP_FAIL;
+    }
+}
