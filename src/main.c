@@ -461,11 +461,99 @@ void app_main(void) {
         browser_canvas_register_bitmap_generators(&server, &display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
         playlist_register_bitmap_generators(&display_bitmapGenerator, &display_bitmapGeneratorDataDeletable);
         #endif
+
+        // Load startup defaults
+        cJSON* startupData;
+        char* startupFile = get_string_from_nvs(&nvs_handle, "startup_file");
+        if (startupFile == NULL) {
+            ESP_LOGE(LOG_TAG, "Not using startup file");
+        } else {
+            esp_err_t ret = get_json_from_spiffs(startupFile, &startupData, LOG_TAG);
+
+            if (ret != ESP_OK || !cJSON_IsObject(startupData)) {
+                ESP_LOGE(LOG_TAG, "Failed to load startup file");
+            } else {
+                cJSON* buffers_field = cJSON_GetObjectItem(startupData, "buffers");
+                if (cJSON_IsObject(buffers_field)) {
+                    #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+                    cJSON* pixbuf_field = cJSON_GetObjectItem(buffers_field, "pixel");
+                    uint8_t pixbuf_b64 = 0;
+                    if (pixbuf_field == NULL || cJSON_IsNull(pixbuf_field)) {
+                        pixbuf_field = cJSON_GetObjectItem(buffers_field, "pixel_b64");
+                        pixbuf_b64 = 1;
+                    }
+                    if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
+                        char* buffer_str = cJSON_GetStringValue(pixbuf_field);
+                        buffer_from_string(buffer_str, pixbuf_b64, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, LOG_TAG);
+                    }
+                    #endif
+                    
+                    #if defined(DISPLAY_HAS_TEXT_BUFFER)
+                    cJSON* textbuf_field = cJSON_GetObjectItem(buffers_field, "text");
+                    uint8_t textbuf_b64 = 0;
+                    if (textbuf_field == NULL || cJSON_IsNull(textbuf_field)) {
+                        textbuf_field = cJSON_GetObjectItem(buffers_field, "text_b64");
+                        textbuf_b64 = 1;
+                    }
+                    if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
+                        char* buffer_str = cJSON_GetStringValue(textbuf_field);
+                        buffer_from_string(buffer_str, textbuf_b64, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, LOG_TAG);
+                    }
+                    #endif
+                    
+                    #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
+                    cJSON* unitbuf_field = cJSON_GetObjectItem(buffers_field, "unit");
+                    uint8_t unitbuf_b64 = 0;
+                    if (unitbuf_field == NULL || cJSON_IsNull(unitbuf_field)) {
+                        unitbuf_field = cJSON_GetObjectItem(buffers_field, "unit_b64");
+                        unitbuf_b64 = 1;
+                    }
+                    if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
+                        char* buffer_str = cJSON_GetStringValue(unitbuf_field);
+                        buffer_from_string(buffer_str, unitbuf_b64, display_output_buffer, DISPLAY_OUT_BUF_SIZE, LOG_TAG);
+                    }
+                    #endif
+                }
+
+                #if defined(CONFIG_DISPLAY_HAS_SHADERS)
+                cJSON* shader_field = cJSON_GetObjectItem(startupData, "shader");
+                if (cJSON_IsObject(shader_field)) {
+                    display_shader = cJSON_Duplicate(shader_field, true);
+                    display_shaderDataDeletable = 1;
+                }
+                #endif
+
+                #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
+                cJSON* transition_field = cJSON_GetObjectItem(startupData, "transition");
+                if (cJSON_IsObject(transition_field)) {
+                    display_transition = cJSON_Duplicate(transition_field, true);
+                    display_transitionDataDeletable = 1;
+                }
+                #endif
+
+                #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
+                cJSON* effect_field = cJSON_GetObjectItem(startupData, "effect");
+                if (cJSON_IsObject(effect_field)) {
+                    display_effect = cJSON_Duplicate(effect_field, true);
+                    display_effectDataDeletable = 1;
+                }
+                #endif
+
+                #if defined(DISPLAY_HAS_PIXEL_BUFFER)
+                cJSON* bitmap_generator_field = cJSON_GetObjectItem(startupData, "bitmap_generator");
+                if (cJSON_IsObject(bitmap_generator_field)) {
+                    display_bitmapGenerator = cJSON_Duplicate(bitmap_generator_field, true);
+                    display_bitmapGeneratorDataDeletable = 1;
+                }
+                #endif
+            }
+
+            cJSON_Delete(startupData);
+        }
+        free(startupFile);
         
         xTaskCreatePinnedToCore(wifi_timeout_task, "wifi_timeout", 4096, NULL, 2, NULL, 0);
-
         xTaskCreatePinnedToCore(display_refresh_task, "display_refresh", 4096, NULL, 24, NULL, 1);
-
         #if defined(CONFIG_FAN_ENABLED)
         xTaskCreatePinnedToCore(fan_speed_adjust_task, "fan_speed_adjust", 4096, NULL, 3, NULL, 0);
         #endif

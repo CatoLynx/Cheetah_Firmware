@@ -41,6 +41,7 @@ config_entry_t config_entries[] = {
     {.key = "disp_led_gamma",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE},
     {.key = "sel_conf_file",   .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Configuration for selection display"},
     {.key = "cnv_preset_file", .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Presets for canvas"},
+    {.key = "startup_file",    .dataType = STR, .flags = BC_FIELD_FLAGS_SPIFFS_FILE_SELECT, .comment = "Startup default settings"},
     {.key = "wg_private_key",  .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "wg_public_key",   .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY},
     {.key = "wg_allowed_ip",   .dataType = STR, .flags = BC_FIELD_FLAGS_NONE},

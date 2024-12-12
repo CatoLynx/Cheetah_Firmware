@@ -1,6 +1,9 @@
 #include "util_buffer.h"
 #include "util_generic.h"
 #include "macros.h"
+#include "esp_log.h"
+#include "mbedtls/base64.h"
+#include "sys/param.h"
 #include <string.h>
 
 
@@ -174,3 +177,28 @@ char* buffer_escape_string(char* input, char* charsToEscape, char escapePrefix, 
     return output;
 }
 #endif
+
+esp_err_t buffer_from_string(const char* in_buf_str, uint8_t is_base64, uint8_t* out_buf, size_t out_buf_size, const char* log_tag) {
+    size_t b64_len = 0;
+    size_t buffer_str_len = strlen(in_buf_str);
+    if (is_base64) {
+        unsigned char* buffer_str_uchar = (unsigned char*)in_buf_str;
+        int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+        if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+            // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+            // because this will always be returned when checking size
+            ESP_LOGE(log_tag, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in buffer");
+            return ESP_FAIL;
+        } else {
+            b64_len = 0;
+            result = mbedtls_base64_decode(out_buf, out_buf_size, &b64_len, buffer_str_uchar, buffer_str_len);
+            if (result != 0) {
+                ESP_LOGE(log_tag, "mbedtls_base64_decode() failed for buffer");
+                return ESP_FAIL;
+            }
+        }
+    } else {
+        memcpy(out_buf, in_buf_str, MIN(buffer_str_len, out_buf_size));
+    }
+    return ESP_OK;
+}

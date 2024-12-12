@@ -621,28 +621,9 @@ esp_err_t playlist_process_json(cJSON* json) {
             }
             if (pixbuf_field != NULL && !cJSON_IsNull(pixbuf_field)) {
                 char* buffer_str = cJSON_GetStringValue(pixbuf_field);
-                size_t buffer_str_len = strlen(buffer_str);
-                if (pixbuf_b64) {
-                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                        // because this will always be returned when checking size
-                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in pixbuf");
-                        return ESP_FAIL;
-                    } else {
-                        b64_len = 0;
-                        pl_groups[j].entries[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                        result = mbedtls_base64_decode(pl_groups[j].entries[i].pixelBuffer, pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                        if (result != 0) {
-                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for pixbuf");
-                            return ESP_FAIL;
-                        }
-                    }
-                } else {
-                    pl_groups[j].entries[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
-                    memcpy(pl_groups[j].entries[i].pixelBuffer, buffer_str, MIN(buffer_str_len, pixel_buffer_size));
-                }
+                pl_groups[j].entries[i].pixelBuffer = heap_caps_calloc(1, pixel_buffer_size, MALLOC_CAP_SPIRAM);
+                esp_err_t ret = buffer_from_string(buffer_str, pixbuf_b64, pl_groups[j].entries[i].pixelBuffer, pixel_buffer_size, LOG_TAG);
+                if (ret != ESP_OK) free(pl_groups[j].entries[i].pixelBuffer);
             }
             
             cJSON* textbuf_field = cJSON_GetObjectItem(buffer_field, "text");
@@ -653,28 +634,9 @@ esp_err_t playlist_process_json(cJSON* json) {
             }
             if (textbuf_field != NULL && !cJSON_IsNull(textbuf_field)) {
                 char* buffer_str = cJSON_GetStringValue(textbuf_field);
-                size_t buffer_str_len = strlen(buffer_str);
-                if (textbuf_b64) {
-                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                        // because this will always be returned when checking size
-                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in textbuf");
-                        return ESP_FAIL;
-                    } else {
-                        b64_len = 0;
-                        pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
-                        result = mbedtls_base64_decode(pl_groups[j].entries[i].textBuffer, text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                        if (result != 0) {
-                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for textbuf");
-                            return ESP_FAIL;
-                        }
-                    }
-                } else {
-                    pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
-                    memcpy(pl_groups[j].entries[i].textBuffer, buffer_str, MIN(buffer_str_len, text_buffer_size));
-                }
+                pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
+                esp_err_t ret = buffer_from_string(buffer_str, textbuf_b64, pl_groups[j].entries[i].textBuffer, text_buffer_size, LOG_TAG);
+                if (ret != ESP_OK) free(pl_groups[j].entries[i].textBuffer);
             }
             
             cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");
@@ -685,28 +647,9 @@ esp_err_t playlist_process_json(cJSON* json) {
             }
             if (unitbuf_field != NULL && !cJSON_IsNull(unitbuf_field)) {
                 char* buffer_str = cJSON_GetStringValue(unitbuf_field);
-                size_t buffer_str_len = strlen(buffer_str);
-                if (unitbuf_b64) {
-                    unsigned char* buffer_str_uchar = (unsigned char*)buffer_str;
-                    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
-                    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
-                        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
-                        // because this will always be returned when checking size
-                        ESP_LOGE(LOG_TAG, "MBEDTLS_ERR_BASE64_INVALID_CHARACTER in unitbuf");
-                        return ESP_FAIL;
-                    } else {
-                        b64_len = 0;
-                        pl_groups[j].entries[i].unitBuffer = calloc(1, unit_buffer_size);
-                        result = mbedtls_base64_decode(pl_groups[j].entries[i].unitBuffer, unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
-                        if (result != 0) {
-                            ESP_LOGE(LOG_TAG, "mbedtls_base64_decode() failed for unitbuf");
-                            return ESP_FAIL;
-                        }
-                    }
-                } else {
-                    pl_groups[j].entries[i].unitBuffer = calloc(1, unit_buffer_size);
-                    memcpy(pl_groups[j].entries[i].unitBuffer, buffer_str, MIN(buffer_str_len, unit_buffer_size));
-                }
+                pl_groups[j].entries[i].unitBuffer = calloc(1, unit_buffer_size);
+                esp_err_t ret = buffer_from_string(buffer_str, unitbuf_b64, pl_groups[j].entries[i].unitBuffer, unit_buffer_size, LOG_TAG);
+                if (ret != ESP_OK) free(pl_groups[j].entries[i].unitBuffer);
             }
         }
     }
