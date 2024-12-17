@@ -208,16 +208,6 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNullToObject(json, "unitbuf_size");
 #endif
 
-#if defined(DISPLAY_HAS_PIXEL_BUFFER) || defined(DISPLAY_HAS_TEXT_BUFFER)
-    cJSON_AddStringToObject(json, "output_buf_based_on", DISPLAY_OUTPUT_BUFFER_BASED_ON);
-    cJSON_AddNumberToObject(json, "output_width", DISPLAY_OUTPUT_WIDTH);
-    cJSON_AddNumberToObject(json, "output_height", DISPLAY_OUTPUT_HEIGHT);
-#else
-    cJSON_AddNullToObject(json, "output_buf_based_on");
-    cJSON_AddNullToObject(json, "output_width");
-    cJSON_AddNullToObject(json, "output_height");
-#endif
-
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
     cJSON_AddNumberToObject(json, "pixbuf_size", DISPLAY_PIX_BUF_SIZE);
     cJSON_AddStringToObject(json, "pixbuf_type", DISPLAY_PIX_BUF_TYPE);

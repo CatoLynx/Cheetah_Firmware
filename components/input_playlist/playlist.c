@@ -147,7 +147,6 @@ esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
 
             esp_err_t ret = playlist_process_json(json);
             if (ret != ESP_OK) {
-                //memset(output_buffer, 0x00, output_buffer_size);
                 ESP_LOGE(LOG_TAG,  "Error");
                 cJSON_Delete(json);
                 return ret;
@@ -429,7 +428,6 @@ void playlist_update_from_http() {
                 esp_http_client_get_content_length(client));
     } else {
         ESP_LOGE(LOG_TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
-        // sprintf((char*)output_buffer, "GET FAILED %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
 }

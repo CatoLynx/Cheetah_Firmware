@@ -315,18 +315,6 @@ config DISPLAY_VIEWPORT_OFFSET_Y_CHAR
         In case the frame height is larger than the character display height,
         this specifies the Y offset between the viewport and the framebuffer.
 
-choice DISPLAY_OUTPUT_BUFFER_BASED_ON
-    depends on DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
-    bool "Output buffer based on"
-    default DISPLAY_OUTPUT_BUFFER_BASED_ON_PIXEL
-
-    config DISPLAY_OUTPUT_BUFFER_BASED_ON_PIXEL
-        bool "Output buffer based on pixel buffer"
-    
-    config DISPLAY_OUTPUT_BUFFER_BASED_ON_CHAR
-        bool "Output buffer based on character buffer"
-endchoice
-
 config DISPLAY_OUTPUT_WIDTH
     depends on DISPLAY_TYPE_PIXEL || DISPLAY_TYPE_CHARACTER || DISPLAY_TYPE_CHAR_ON_PIXEL || DISPLAY_TYPE_PIXEL_ON_CHAR
     int "Output width"

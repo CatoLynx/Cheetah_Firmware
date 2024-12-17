@@ -51,7 +51,7 @@ Some other noteworthy features include:
 
 ## Buffers and formats
 Since this firmware supports many different types of displays, there is a need for multiple different kinds of buffers and formats.
-One buffer is common to all of them: `display_output_buffer`, which holds the raw data that gets sent to the display in the format required by the display.
+One buffer is common to all of them: `display_outputBuffer`, which is defined within the display driver and holds the raw data that gets sent to the display in the format required by the display.
 
 Details about the buffers and the general operational workflow can be found in `docs/buffer_overview.pdf`.
 
@@ -66,7 +66,7 @@ Pixel-based displays use the following buffers:
 
 * `display_pixel_buffer`, which contains the bitmap data as vertical columns, starting at the top left, going down, from left to right
 * Optionally `display_prev_pixel_buffer`, which holds the pixel data from the previous display update
-* `display_output_buffer`, as explained above
+* `display_outputBuffer`, as explained above
 
 ### Character-based displays
 Character-based displays use the following buffers:
@@ -75,7 +75,7 @@ Character-based displays use the following buffers:
 * Optionally `display_prev_text_buffer`, which holds the input text data from the previous display update
 * `display_char_buffer`, which holds an intermediary representation of each character, e.g. a different character set
 * `display_quirk_flags_buffer`, which holds additional data for each character, such as combining diacritical marks, in a display-specific format
-* `display_output_buffer`, as explained above
+* `display_outputBuffer`, as explained above
 
 ### Character-on-pixel displays
 Character-based displays on top of pixel-based displays basically modulate a pixel-based display with a character-based display and use the following buffers:
@@ -84,7 +84,7 @@ Character-based displays on top of pixel-based displays basically modulate a pix
 * `display_text_buffer`, which holds the input text as entered by the user
 * `display_char_buffer`, which holds an intermediary representation of each character, e.g. a different character set
 * `display_quirk_flags_buffer`, which holds additional data for each character, such as combining diacritical marks, in a display-specific format
-* `display_output_buffer`, as explained above
+* `display_outputBuffer`, as explained above
 
 ### Pixel-on-character displays
 Planned, but not yet implemented.
@@ -93,7 +93,7 @@ Planned, but not yet implemented.
 Selection-based displays use the following buffers:
 
 * `display_framebuf_mask`, which is used to know which unit addresses are in use
-* `display_output_buffer`, which in this case consists of one byte per display unit (e.g. a split-flap module) and contains that unit's target position
+* `display_outputBuffer`, which in this case consists of one byte per display unit (e.g. a split-flap module) and contains that unit's target position
 
 The buffer mask is used because for selection displays, the firmware only defines the display driver and buffer size, but the actual configuration
 of the layout and contents of the individual units is done via a JSON file uploaded to SPIFFS.

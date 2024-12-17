@@ -84,7 +84,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
         .sclk_io_num = -1,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
-        .max_transfer_sz = DISPLAY_OUT_BUF_SIZE
+        .max_transfer_sz = OUTPUT_BUFFER_SIZE
     };
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = 3200000UL,    // 3.2 MHz gives correct timings
