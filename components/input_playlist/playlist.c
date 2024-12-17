@@ -573,7 +573,6 @@ esp_err_t playlist_process_json(cJSON* json) {
 
         // Populate new buffers
         for (uint16_t i = 0; i < numBuffers; i++) {
-            size_t b64_len = 0;
             cJSON* item = cJSON_GetArrayItem(sub_arr, i);
 
             cJSON* duration_field = cJSON_GetObjectItem(item, "duration");
