@@ -15,6 +15,7 @@
 
 #define LOG_TAG "LAWO-ALUMA"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 static uint8_t display_dirty = 1;
 
 
@@ -173,60 +174,64 @@ void display_set_backlight(uint8_t state) {
     gpio_set_level(PIN_LED, state);
 }
 
-void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
+void display_render() {
     uint16_t prev_p, p, x, y;
     prev_p = 65535;
-    if(!display_dirty && prevFrame) {
-        for(uint16_t i = 0; i < frameBufSize; i++) {
-            if((frame[i] > 127) == (prevFrame[i] > 127)) continue;
-            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL);
-            y = i % CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL;
-            p = x / CONFIG_ALUMA_PANEL_WIDTH;
-            x %= CONFIG_ALUMA_PANEL_WIDTH;
-            if (p != prev_p) {
-                ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
-                display_select_panel(p);
-                prev_p = p;
-            }
-            display_select_color(frame[i] > 127);
-            display_select_column(x);
-            display_select_row(y);
-            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
-            display_flip();
+    for(size_t i = 0; i < OUTPUT_BUFFER_SIZE; i++) {
+        if (display_outBuf[i] == 0xFF) continue;
+        x = (i / CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL);
+        y = i % CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL;
+        p = x / CONFIG_ALUMA_PANEL_WIDTH;
+        x %= CONFIG_ALUMA_PANEL_WIDTH;
+        if (p != prev_p) {
+            ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
+            display_select_panel(p);
+            prev_p = p;
         }
-    } else {
-        for(uint16_t i = 0; i < frameBufSize; i++) {
-            x = (i / CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL);
-            y = i % CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL;
-            p = x / CONFIG_ALUMA_PANEL_WIDTH;
-            x %= CONFIG_ALUMA_PANEL_WIDTH;
-            if (p != prev_p) {
-                ESP_LOGV(LOG_TAG, "Selecting panel %d", p);
-                display_select_panel(p);
-                prev_p = p;
-            }
-            display_select_color(frame[i] > 127);
-            display_select_column(x);
-            display_select_row(y);
-            ESP_LOGV(LOG_TAG, "frame[%d, %d, %d] = %d", p, x, y, frame[i]);
-            display_flip();
-        }
-        display_dirty = 0;
+        display_select_color(display_outBuf[i]);
+        display_select_column(x);
+        display_select_row(y);
+        ESP_LOGV(LOG_TAG, "display_outBuf[%d, %d, %d] = %d", p, x, y, display_outBuf[i]);
+        display_flip();
     }
+    display_dirty = 0;
     display_deselect();
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize) {
-    memcpy(outBuf, pixBuf, outBufSize < pixBufSize ? outBufSize : pixBufSize);
+void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {
+    // 0 = Set pixel black
+    // 1 = Set pixel yellow
+    // 0xFF = Skip pixel
+    memset(display_outBuf, 0xFF, OUTPUT_BUFFER_SIZE);
+
+    if (prevPixBuf != NULL && !display_dirty) {
+        for (size_t i = 0; i < pixBufSize; i++) {
+            if (prevPixBuf[i] > 127 && pixBuf[i] <= 127) {
+                display_outBuf[i] = 0;
+            } else if (prevPixBuf[i] <= 127 && pixBuf[i] > 127) {
+                display_outBuf[i] = 1;
+            }
+        }
+    } else {
+        for (size_t i = 0; i < pixBufSize; i++) {
+            if (pixBuf[i] <= 127) {
+                display_outBuf[i] = 0;
+            } else {
+                display_outBuf[i] = 1;
+            }
+        }
+    }
 }
 
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock) {
     // Nothing to do if buffer hasn't changed
     if (prevPixBuf != NULL && memcmp(pixBuf, prevPixBuf, pixBufSize) == 0) return;
 
-    display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize);
-    // TODO: This is fine since we just copy the frame, but maybe make it look less like outBuf is unnecessary here
-    display_render_frame_8bpp(pixBuf, prevPixBuf, pixBufSize);
+    taskENTER_CRITICAL(pixBufLock);
+    display_buffers_to_out_buf(pixBuf, prevPixBuf, pixBufSize);
+    if (prevPixBuf != NULL) memcpy(prevPixBuf, pixBuf, pixBufSize);
+    taskEXIT_CRITICAL(pixBufLock);
+    display_render();
 }
 
 #endif

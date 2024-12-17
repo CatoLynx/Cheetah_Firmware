@@ -32,16 +32,21 @@
 
 #define LOG_TAG "Canvas"
 
+extern portMUX_TYPE display_pixel_buffer_lock;
+
 static httpd_handle_t* canvas_server;
 static nvs_handle_t canvas_nvs_handle;
 static basic_auth_info_t* basic_auth_info;
 static uint8_t canvas_use_auth = 0;
 static uint8_t* canvas_pixel_buffer = NULL;
 static size_t canvas_pixel_buffer_size = 0;
+static portMUX_TYPE* canvas_pixel_buffer_lock = NULL;
 static uint8_t* canvas_text_buffer = NULL;
 static size_t canvas_text_buffer_size = 0;
+static portMUX_TYPE* canvas_text_buffer_lock = NULL;
 static uint8_t* canvas_unit_buffer = NULL;
 static size_t canvas_unit_buffer_size = 0;
+static portMUX_TYPE* canvas_unit_buffer_lock = NULL;
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static uint8_t* canvas_brightness = NULL;
@@ -166,7 +171,9 @@ static esp_err_t canvas_pixel_buffer_post_handler(httpd_req_t *req) {
         return abortRequest(req, HTTPD_500);
     } else {
         b64_len = 0;
+        taskENTER_CRITICAL(canvas_pixel_buffer_lock);
         result = mbedtls_base64_decode(canvas_pixel_buffer, canvas_pixel_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        taskEXIT_CRITICAL(canvas_pixel_buffer_lock);
         if (result != 0) {
             free(buf);
             ESP_LOGI(LOG_TAG, "result != 0");
@@ -214,7 +221,9 @@ static esp_err_t canvas_text_buffer_post_handler(httpd_req_t *req) {
         return abortRequest(req, HTTPD_500);
     } else {
         b64_len = 0;
+        taskENTER_CRITICAL(canvas_text_buffer_lock);
         result = mbedtls_base64_decode(canvas_text_buffer, canvas_text_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        taskEXIT_CRITICAL(canvas_text_buffer_lock);
         if (b64_len < canvas_text_buffer_size) canvas_text_buffer[b64_len] = 0; // Ensure null termination
         if (result != 0) {
             free(buf);
@@ -263,7 +272,9 @@ static esp_err_t canvas_unit_buffer_post_handler(httpd_req_t *req) {
         return abortRequest(req, HTTPD_500);
     } else {
         b64_len = 0;
+        taskENTER_CRITICAL(canvas_unit_buffer_lock);
         result = mbedtls_base64_decode(canvas_unit_buffer, canvas_unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        taskEXIT_CRITICAL(canvas_unit_buffer_lock);
         if (result != 0) {
             free(buf);
             return abortRequest(req, HTTPD_500);
@@ -856,15 +867,18 @@ static const httpd_uri_t canvas_save_startup_post = {
     .handler   = save_startup_post_handler
 };
 
-void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
+void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
     canvas_pixel_buffer = pixBuf;
     canvas_pixel_buffer_size = pixBufSize;
+    canvas_pixel_buffer_lock = pixBufLock;
     canvas_text_buffer = textBuf;
     canvas_text_buffer_size = textBufSize;
+    canvas_text_buffer_lock = textBufLock;
     canvas_unit_buffer = unitBuf;
     canvas_unit_buffer_size = unitBufSize;
+    canvas_unit_buffer_lock = unitBufLock;
 
     basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;

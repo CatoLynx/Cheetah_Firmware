@@ -24,6 +24,7 @@
 
 #define LOG_TAG "CH-16SEG-LED-SPI"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 uint8_t display_currentBrightness = 255;
@@ -206,45 +207,49 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
-    memset(outBuf, 0x00, outBufSize);
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    memset(display_outBuf, 0x00, OUTPUT_BUFFER_SIZE);
 
     for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
         if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min]);
+            display_setCharDataAt(display_outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min]);
         }
         if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(outBuf, charBufIndex, 1);
+            display_setDecimalPointAt(display_outBuf, charBufIndex, 1);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, size_t frameBufSize) {
+void display_render() {
     if (display_transferOngoing) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame");
     spi_transaction_t spi_trans = {
-        .length = frameBufSize * 8,
-        .tx_buffer = frame,
+        .length = OUTPUT_BUFFER_SIZE * 8,
+        .tx_buffer = display_outBuf,
     };
     ESP_ERROR_CHECK(spi_device_polling_transmit(spi, &spi_trans));
 }
 
 static uint8_t charBufModified_prev = 0;
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    uint8_t changed = (memcmp(textBuf, prevTextBuf, textBufSize) != 0);
     #if !defined(CONFIG_DISPLAY_HAS_EFFECTS)
     // Nothing to do if buffer hasn't changed
-    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
+    if (prevTextBuf != NULL && !changed) return;
     #endif
 
+    taskENTER_CRITICAL(textBufLock);
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
+    taskEXIT_CRITICAL(textBufLock);
 
     #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
     // Process effect and check if update is needed
     uint8_t charBufModified = effect_fromJSON(charBuf, charBufSize, display_currentEffect);
     // Only evaluate charBufModified when the text buf hasn't changed
     // Otherwise, an update is required anyway
-    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) {
+    if (prevTextBuf != NULL && !changed) {
         // TODO: This isn't quite right yet. It checks if the effect modified the buffer,
         // and if it did, triggers an update. If it didn't, the update is skipped,
         // but only if the buffer wasn't modified in the previous run either.
@@ -260,20 +265,20 @@ void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_
     charBufModified_prev = charBufModified;
     #endif
 
-    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
-    display_render_frame(outBuf, outBufSize);
+    display_buffers_to_out_buf(charBuf, quirkFlagBuf, charBufSize);
+    display_render();
 }
 
-uint8_t display_get_fan_speed(uint8_t* frameBuf, uint16_t frameBufSize) {
+uint8_t display_get_fan_speed() {
     // Calculates the required fan speed based on the number of active segments in the framebuffer
     uint32_t numActiveSegments = 0;
-    for (uint16_t i = 0; i < frameBufSize; i++) {
-        numActiveSegments += count_set_bits(frameBuf[i]);
+    for (uint16_t i = 0; i < OUTPUT_BUFFER_SIZE; i++) {
+        numActiveSegments += count_set_bits(display_outBuf[i]);
     }
 
     // Dividing by (frameBufSize * 5) instead of * 8 to reach maximum fan speed
     // with less than literally every segment lit up
-    uint16_t speed = (255 * numActiveSegments * display_currentBrightness) / (frameBufSize * 5 * 255);
+    uint16_t speed = (255 * numActiveSegments * display_currentBrightness) / (OUTPUT_BUFFER_SIZE * 5 * 255);
     if (speed > 255) speed = 255;
     return (uint8_t)speed;
 }

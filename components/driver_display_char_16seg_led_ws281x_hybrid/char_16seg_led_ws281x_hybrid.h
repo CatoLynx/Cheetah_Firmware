@@ -6,10 +6,11 @@
 
 #include "char_16seg_font.h"
 
+#define OUTPUT_BUFFER_SIZE (DISPLAY_CHAR_BUF_SIZE * DIV_CEIL(CONFIG_DISPLAY_OUT_BUF_BITS_PER_CHAR, 8))
 #define BYTES_PER_LED 12
 #define NUM_LEDS (DISPLAY_OUT_BUF_SIZE / BYTES_PER_LED)
 #define UPPER_OUT_BUF_SIZE (BYTES_PER_LED * CONFIG_16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS)
-#define LOWER_OUT_BUF_SIZE (DISPLAY_OUT_BUF_SIZE - UPPER_OUT_BUF_SIZE)
+#define LOWER_OUT_BUF_SIZE (OUTPUT_BUFFER_SIZE - UPPER_OUT_BUF_SIZE)
 
 typedef struct {
     uint8_t red;
@@ -31,6 +32,6 @@ void display_setDecimalPointAt(uint8_t* frameBuf, uint16_t charPos, uint8_t stat
 void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charData, color_t color);
 uint8_t display_led_in_segment(uint16_t ledPos, seg_t segment);
 uint8_t display_led_in_char_data(uint16_t ledPos, uint32_t charData);
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
-void display_render_frame(uint8_t* frame, uint16_t frameBufSize);
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_buffers_to_out_buf(uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_render();
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);

@@ -28,6 +28,7 @@
 
 #define LOG_TAG "CH-16SEG-LED-WS281X"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 spi_device_handle_t spi;
 volatile uint8_t display_transferOngoing = false;
 uint8_t display_currentBrightness = 255;
@@ -256,11 +257,11 @@ void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charDat
     }
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     color_t color;
     color_rgb_t calcColor_rgb;
 
-    memset(outBuf, 0x88, charBufSize);
+    memset(display_outBuf, 0x88, OUTPUT_BUFFER_SIZE);
 
     for (uint16_t charBufIndex = 0; charBufIndex < charBufSize; charBufIndex++) {
         calcColor_rgb = shader_fromJSON(charBufIndex, charBufSize, charBuf[charBufIndex], display_currentShader);
@@ -270,42 +271,46 @@ void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* cha
         color.blue = calcColor_rgb.b * 255;
 
         if (charBuf[charBufIndex] >= char_seg_font_min && charBuf[charBufIndex] <= char_seg_font_max) {
-            display_setCharDataAt(outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
+            display_setCharDataAt(display_outBuf, charBufIndex, char_16seg_font[charBuf[charBufIndex] - char_seg_font_min], color);
         }
         if (quirkFlagBuf[charBufIndex] & QUIRK_FLAG_COMBINING_FULL_STOP) {
-            display_setDecimalPointAt(outBuf, charBufIndex, 1, color);
+            display_setDecimalPointAt(display_outBuf, charBufIndex, 1, color);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, uint16_t frameBufSize) {
+void display_render() {
     if (display_transferOngoing) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame:");
     //ESP_LOG_BUFFER_HEX(LOG_TAG, frame, frameBufSize);
     spi_transaction_t spi_trans = {
-        .length = (uint32_t)frameBufSize * 8,
-        .tx_buffer = frame,
+        .length = (uint32_t)OUTPUT_BUFFER_SIZE * 8,
+        .tx_buffer = display_outBuf,
     };
     ESP_ERROR_CHECK(spi_device_transmit(spi, &spi_trans));
     ets_delay_us(350); // Ensure reset pulse
 }
 
 static uint8_t charBufModified_prev = 0;
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    uint8_t changed = (memcmp(textBuf, prevTextBuf, textBufSize) != 0);
     #if !defined(CONFIG_DISPLAY_HAS_EFFECTS)
     // Nothing to do if buffer hasn't changed
-    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
+    if (prevTextBuf != NULL && !changed) return;
     #endif
 
+    taskENTER_CRITICAL(textBufLock);
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
+    taskEXIT_CRITICAL(textBufLock);
 
     #if defined(CONFIG_DISPLAY_HAS_EFFECTS)
     // Process effect and check if update is needed
     uint8_t charBufModified = effect_fromJSON(charBuf, charBufSize, display_currentEffect);
     // Only evaluate charBufModified when the text buf hasn't changed
     // Otherwise, an update is required anyway
-    if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) {
+    if (prevTextBuf != NULL && !changed) {
         // TODO: This isn't quite right yet. It checks if the effect modified the buffer,
         // and if it did, triggers an update. If it didn't, the update is skipped,
         // but only if the buffer wasn't modified in the previous run either.
@@ -321,8 +326,8 @@ void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_
     charBufModified_prev = charBufModified;
     #endif
 
-    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
-    display_render_frame(outBuf, outBufSize);
+    display_buffers_to_out_buf(charBuf, quirkFlagBuf, charBufSize);
+    display_render();
 }
 
 #endif

@@ -24,6 +24,7 @@
 
 #define LOG_TAG "CH-IBIS"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 spi_device_handle_t spi;
 volatile uint8_t display_backlight_transferOngoing = false;
 uint8_t display_currentBrightness = 255;
@@ -194,26 +195,26 @@ uint8_t _makeChecksum(uint8_t* buf, uint16_t endPos) {
     return checksum;
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     #if defined(CONFIG_IBIS_TELEGRAM_TYPE_DS009)
     uint16_t pos = 0;
     // Telegram identifier
-    outBuf[pos++] = 'v';
+    display_outBuf[pos++] = 'v';
     // Payload
     for (uint16_t i = 0; i < charBufSize; i++) {
-        if (pos >= outBufSize - 3 /*CR + checksum + NUL*/) break;
+        if (pos >= OUTPUT_BUFFER_SIZE - 3 /*CR + checksum + NUL*/) break;
         if (charBuf[i] == 0) break;
-        outBuf[pos++] = _getIbisChar(charBuf[i]);
+        display_outBuf[pos++] = _getIbisChar(charBuf[i]);
     }
-    outBuf[pos++] = '\r';
-    outBuf[pos] = _makeChecksum(outBuf, pos);
-    outBuf[++pos] = 0;
+    display_outBuf[pos++] = '\r';
+    display_outBuf[pos] = _makeChecksum(display_outBuf, pos);
+    display_outBuf[++pos] = 0;
     #endif
 }
 
-void display_render_frame(uint8_t* outBuf, size_t outBufSize) {
+void display_render() {
     ESP_LOGV(LOG_TAG, "Rendering frame:");
-    //ESP_LOG_BUFFER_HEX(LOG_TAG, outBuf, outBufSize);
+    //ESP_LOG_BUFFER_HEX(LOG_TAG, display_outBuf, OUTPUT_BUFFER_SIZE);
 
     esp_err_t ret = uart_wait_tx_done(IBIS_UART, 10 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) {
@@ -222,9 +223,9 @@ void display_render_frame(uint8_t* outBuf, size_t outBufSize) {
     }
 
     // Find first null byte
-    uint16_t endPos = outBufSize - 1;
-    for (uint16_t i = 0; i < outBufSize; i++) {
-        if (outBuf[i] == 0) {
+    uint16_t endPos = OUTPUT_BUFFER_SIZE - 1;
+    for (uint16_t i = 0; i < OUTPUT_BUFFER_SIZE; i++) {
+        if (display_outBuf[i] == 0) {
             endPos = i;
             break;
         }
@@ -232,13 +233,13 @@ void display_render_frame(uint8_t* outBuf, size_t outBufSize) {
 
     // If the data ends in \r, the checksum was 0x00, so extend by one byte
     // Otherwise, the checksum will be cut off
-    if ((endPos > 0) && (outBuf[endPos - 1] == '\r') && (endPos < (outBufSize - 1))) endPos++;
+    if ((endPos > 0) && (display_outBuf[endPos - 1] == '\r') && (endPos < (OUTPUT_BUFFER_SIZE - 1))) endPos++;
 
     // Send everything up to (excluding) the first null byte
-    uart_write_bytes(IBIS_UART, outBuf, endPos);
+    uart_write_bytes(IBIS_UART, display_outBuf, endPos);
 }
 
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     #if defined(CONFIG_DISPLAY_HAS_SHADERS)
     // Update shader
     color_t color;
@@ -272,9 +273,12 @@ void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_
     if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
 
     // Update display
+    taskENTER_CRITICAL(textBufLock);
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
-    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
-    display_render_frame(outBuf, outBufSize);
+    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
+    taskEXIT_CRITICAL(textBufLock);
+    display_buffers_to_out_buf(charBuf, quirkFlagBuf, charBufSize);
+    display_render();
 }
 
 #endif

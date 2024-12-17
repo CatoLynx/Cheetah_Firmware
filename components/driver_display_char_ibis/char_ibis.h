@@ -3,6 +3,7 @@
 #include "esp_system.h"
 #include "nvs.h"
 
+#define OUTPUT_BUFFER_SIZE (DISPLAY_TEXT_BUF_SIZE + 3)
 #define BACKLIGHT_FRAMEBUF_SIZE (CONFIG_IBIS_WS281X_NUM_LEDS * 12)
 
 #if defined(CONFIG_IBIS_UART_0)
@@ -25,6 +26,6 @@ esp_err_t display_set_shader(void* shaderData);
 void display_backlight_pre_transfer_cb(spi_transaction_t *t);
 void display_backlight_post_transfer_cb(spi_transaction_t *t);
 void display_setBacklightColor(color_t color);
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
-void display_render_frame(uint8_t* outBuf, size_t outBufSize);
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_render();
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);

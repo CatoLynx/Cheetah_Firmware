@@ -33,7 +33,7 @@ typedef enum {
 
 
 esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt);
-void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize);
+void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock);
 void playlist_deinit();
 void playlist_register_brightness(uint8_t* brightness);
 void playlist_register_shaders(cJSON** shaderData, uint8_t* shaderDataDeletable);

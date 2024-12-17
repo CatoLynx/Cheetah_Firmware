@@ -1,5 +1,7 @@
 #include "esp_log.h"
 #include <string.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "bitmap_generators.h"
 #include "util_fixed_point.h"
@@ -19,6 +21,7 @@
 
 static uint8_t* pixel_buffer;
 static size_t pixel_buffer_size = 0;
+static portMUX_TYPE* pixel_buffer_lock = NULL;
 static uint16_t frame_width = 0;
 static uint16_t frame_height = 0;
 static cJSON* current_bitmap_generator = NULL;
@@ -48,10 +51,11 @@ enum generator_func {
 };
 
 
-void bitmap_generators_init(uint8_t* pixBuf, size_t pixBufSize, uint16_t frameWidth, uint16_t frameHeight) {
+void bitmap_generators_init(uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint16_t frameWidth, uint16_t frameHeight) {
     ESP_LOGI(LOG_TAG, "Initializing bitmap generators");
     pixel_buffer = pixBuf;
     pixel_buffer_size = pixBufSize;
+    pixel_buffer_lock = pixBufLock;
     frame_width = frameWidth;
     frame_height = frameHeight;
 }
@@ -444,6 +448,7 @@ void bitmap_generator_none(int64_t t) {
 
 void bitmap_generator_solid_single(int64_t t, color_rgb_u8_t color) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         
@@ -451,6 +456,7 @@ void bitmap_generator_solid_single(int64_t t, color_rgb_u8_t color) {
         pixel_buffer[pixBufIndex + 1] = color.g;
         pixel_buffer[pixBufIndex + 2] = color.b;
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 
@@ -479,6 +485,7 @@ void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle
     // Calculate the diagonal length of the frame
     fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
 
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -510,6 +517,7 @@ void bitmap_generator_rainbow_gradient(int64_t t, uint16_t speed, uint16_t angle
         pixel_buffer[pixBufIndex + 1] = rgb_u8.g;
         pixel_buffer[pixBufIndex + 2] = rgb_u8.b;
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 
@@ -523,6 +531,7 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
     // Calculate the diagonal length of the frame
     fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
     
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint32_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -554,6 +563,7 @@ void bitmap_generator_hard_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         pixel_buffer[pixBufIndex + 1] = color.g;
         pixel_buffer[pixBufIndex + 2] = color.b;
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 
@@ -581,6 +591,7 @@ void bitmap_generator_soft_gradient(int64_t t, uint16_t speed, uint16_t angle, u
     // Calculate the diagonal length of the frame
     fx20_12_t diagonal_length_fx = sqrt_i32_to_fx20_12(frame_width * frame_width + frame_height * frame_height);
     
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint32_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -616,6 +627,7 @@ void bitmap_generator_soft_gradient(int64_t t, uint16_t speed, uint16_t angle, u
         pixel_buffer[pixBufIndex + 1] = interpolate_fx20_12_i32(segment_fraction_fx, color1.g, color2.g);
         pixel_buffer[pixBufIndex + 2] = interpolate_fx20_12_i32(segment_fraction_fx, color1.b, color2.b);
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 
@@ -638,6 +650,7 @@ void bitmap_generator_on_off_100_frames(int64_t t) {
     static uint8_t on_off_100_frames_n = 0;
     static uint8_t on_off_100_frames_val = 255;
 
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         
@@ -645,6 +658,7 @@ void bitmap_generator_on_off_100_frames(int64_t t) {
         pixel_buffer[pixBufIndex + 1] = on_off_100_frames_val;
         pixel_buffer[pixBufIndex + 2] = on_off_100_frames_val;
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     on_off_100_frames_n++;
     if (on_off_100_frames_n == 100) {
         on_off_100_frames_n = 0;
@@ -677,6 +691,7 @@ void bitmap_generator_matrix(int64_t t, uint16_t speed, color_rgb_u8_t base_colo
         initialized = 1;
     }
 
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -719,6 +734,7 @@ void bitmap_generator_matrix(int64_t t, uint16_t speed, color_rgb_u8_t base_colo
             pixel_buffer[pixBufIndex + 2] = 0;
         }
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
 
     // Update the previous timestamp
     matrix_prev_t = t;
@@ -730,6 +746,7 @@ void bitmap_generator_plasma(int64_t t, uint16_t speed, uint16_t scale, uint8_t 
     fx20_12_t normalized_s_fx = FX20_12(s) / 255;
     fx20_12_t normalized_v_fx = FX20_12(v) / 255;
 
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -765,12 +782,14 @@ void bitmap_generator_plasma(int64_t t, uint16_t speed, uint16_t scale, uint8_t 
         pixel_buffer[pixBufIndex + 1] = rgb_u8.g;
         pixel_buffer[pixBufIndex + 2] = rgb_u8.b;
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 
 void bitmap_generator_plasma_2(int64_t t, uint16_t speed, uint16_t scale, color_rgb_u8_t color1, color_rgb_u8_t color2) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_24BPP)
 
+    taskENTER_CRITICAL(pixel_buffer_lock);
     for (uint16_t i = 0; i < MAPPING_LENGTH; i++) {
         uint16_t pixBufIndex = LED_TO_BITMAP_MAPPING[i];
         uint16_t x = pixBufIndex / (frame_height * 3);
@@ -800,6 +819,7 @@ void bitmap_generator_plasma_2(int64_t t, uint16_t speed, uint16_t scale, color_
         pixel_buffer[pixBufIndex + 1] = interpolate_fx20_12_i32(gradient_pos_fx, color1.g, color2.g);
         pixel_buffer[pixBufIndex + 2] = interpolate_fx20_12_i32(gradient_pos_fx, color1.b, color2.b);
     }
+    taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
 

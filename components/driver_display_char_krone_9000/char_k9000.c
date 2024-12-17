@@ -20,6 +20,8 @@
 
 // TODO: Do something with Rx pin?
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
+
 
 esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
@@ -59,35 +61,31 @@ void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     outBuf[2] = code & 0x7F;
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
-    // No conversion needed, display takes straight text data
-    memcpy(outBuf, charBuf, outBufSize < charBufSize ? outBufSize : charBufSize);
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    memset(display_outBuf, 0x00, OUTPUT_BUFFER_SIZE);
+    for (uint16_t i = 0; i < charBufSize; i++) {
+        // Frame needs to be ISO-8859-1 encoded (same as UTF-8 up until 0xFF)
+        getCommandBytes_SetCode(CONFIG_K9000_START_ADDR + i, charBuf[i], &display_outBuf[i*3]);
+    }
+    display_outBuf[OUTPUT_BUFFER_SIZE - 1] = 0b10010001; // CMD_SET_ALL
 }
 
-void display_render_frame(uint8_t* frame, uint16_t frameBufSize) {
+void display_render() {
     esp_err_t ret = uart_wait_tx_done(K9000_UART, 10 / portTICK_PERIOD_MS);
     if (ret != ESP_OK) return; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
-
-    size_t bufSize = frameBufSize * 3 + 1; // + 1 for CMD_SET_ALL at the end
-    uint8_t* buf = malloc(bufSize);
-
-    for (uint16_t i = 0; i < frameBufSize; i++) {
-        // Frame needs to be ISO-8859-1 encoded (same as UTF-8 up until 0xFF)
-        getCommandBytes_SetCode(CONFIG_K9000_START_ADDR + i, frame[i], &buf[i*3]);
-    }
-    buf[bufSize-1] = 0b10010001; // CMD_SET_ALL
-
-    uart_write_bytes(K9000_UART, buf, bufSize);
-    free(buf);
+    uart_write_bytes(K9000_UART, display_outBuf, OUTPUT_BUFFER_SIZE);
 }
 
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     // Nothing to do if buffer hasn't changed
     if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
 
+    taskENTER_CRITICAL(textBufLock);
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
-    display_buffers_to_out_buf(outBuf, outBufSize, charBuf, quirkFlagBuf, charBufSize);
-    display_render_frame(outBuf, outBufSize);
+    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
+    taskEXIT_CRITICAL(textBufLock);
+    display_buffers_to_out_buf(charBuf, quirkFlagBuf, charBufSize);
+    display_render();
 }
 
 #endif

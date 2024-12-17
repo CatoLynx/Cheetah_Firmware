@@ -2,6 +2,9 @@
 
 #include "esp_system.h"
 #include "nvs.h"
+#include "macros.h"
+
+#define OUTPUT_BUFFER_SIZE (DISPLAY_FRAME_WIDTH_PIXEL * DISPLAY_FRAME_HEIGHT_PIXEL)
 
 //TODO: Move this to Kconfig
 
@@ -31,6 +34,6 @@ void display_select_color(uint8_t color);
 void display_deselect();
 void display_flip();
 void display_set_backlight(uint8_t state);
-void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize);
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize);
+void display_render();
+void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize);
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock);

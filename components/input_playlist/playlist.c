@@ -46,10 +46,13 @@ static uint64_t pl_last_update = 0;
 
 static uint8_t* pixel_buffer;
 static size_t pixel_buffer_size = 0;
+static portMUX_TYPE* pixel_buffer_lock = NULL;
 static uint8_t* text_buffer;
 static size_t text_buffer_size = 0;
+static portMUX_TYPE* text_buffer_lock = NULL;
 static uint8_t* unit_buffer;
 static size_t unit_buffer_size = 0;
+static portMUX_TYPE* unit_buffer_lock = NULL;
 
 extern uint8_t wifi_gotIP, eth_gotIP;
 
@@ -167,15 +170,18 @@ esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, uint8_t* textBuf, size_t textBufSize, uint8_t* unitBuf, size_t unitBufSize) {
+void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock) {
     ESP_LOGI(LOG_TAG, "Initializing playlist");
     pl_nvs_handle = *nvsHandle;
     pixel_buffer = pixBuf;
     pixel_buffer_size = pixBufSize;
+    pixel_buffer_lock = pixBufLock;
     text_buffer = textBuf;
     text_buffer_size = textBufSize;
+    text_buffer_lock = textBufLock;
     unit_buffer = unitBuf;
     unit_buffer_size = unitBufSize;
+    unit_buffer_lock = unitBufLock;
 
     playlist_deinit();
 
@@ -326,9 +332,21 @@ void playlist_task(void* arg) {
                     nvs_get_u8(pl_nvs_handle, "playlist_active", &active);
                     if (active) {
                         ESP_LOGD(LOG_TAG, "Switching to buffer %d", pl_cur_buffer);
-                        if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
-                        if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
-                        if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
+                        if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) {
+                            taskENTER_CRITICAL(pixel_buffer_lock);
+                            memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
+                            taskEXIT_CRITICAL(pixel_buffer_lock);
+                        }
+                        if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) {
+                            taskENTER_CRITICAL(text_buffer_lock);
+                            memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
+                            taskEXIT_CRITICAL(text_buffer_lock);
+                        }
+                        if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) {
+                            taskENTER_CRITICAL(unit_buffer_lock);
+                            memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
+                            taskEXIT_CRITICAL(unit_buffer_lock);
+                        }
 
                         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
                         if (pl_brightness != NULL && pl_buffers[pl_cur_buffer].brightness != -1) {

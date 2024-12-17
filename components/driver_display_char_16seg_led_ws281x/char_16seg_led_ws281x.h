@@ -3,6 +3,7 @@
 #include "esp_system.h"
 #include "nvs.h"
 
+#define OUTPUT_BUFFER_SIZE (DISPLAY_CHAR_BUF_SIZE * DIV_CEIL(CONFIG_DISPLAY_OUT_BUF_BITS_PER_CHAR, 8))
 #define WS281X_NUM_LEDS (DISPLAY_CHAR_BUF_SIZE * 49)
 
 typedef struct {
@@ -21,6 +22,6 @@ uint32_t display_calculateFrameBufferCharacterIndex(uint16_t charPos);
 void display_setLEDColor(uint8_t* frameBuf, uint16_t ledPos, color_t color);
 void display_setDecimalPointAt(uint8_t* frameBuf, uint16_t charPos, uint8_t state, color_t color);
 void display_setCharDataAt(uint8_t* frameBuf, uint16_t charPos, uint16_t charData, color_t color);
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
-void display_render_frame(uint8_t* frame, uint16_t frameBufSize);
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);
+void display_render();
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize);

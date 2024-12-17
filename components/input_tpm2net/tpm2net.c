@@ -20,6 +20,7 @@ static uint8_t* tpm2net_temp_buffer;
 static size_t tpm2net_temp_buffer_size = 0;
 static uint8_t* tpm2net_pixel_buffer;
 static size_t tpm2net_pixel_buffer_size = 0;
+static portMUX_TYPE* tpm2net_pixel_buffer_lock = NULL;
 
 uint16_t tpm2net_chunkSize = 0;
 
@@ -101,7 +102,9 @@ static void tpm2net_task(void* arg) {
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+                    taskENTER_CRITICAL(tpm2net_pixel_buffer_lock);
                     buffer_8to1(tpm2net_temp_buffer, tpm2net_pixel_buffer, DISPLAY_FRAME_WIDTH_PIXEL, DISPLAY_FRAME_HEIGHT_PIXEL, MT_OVERWRITE);
+                    taskEXIT_CRITICAL(tpm2net_pixel_buffer_lock);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif
@@ -109,7 +112,9 @@ static void tpm2net_task(void* arg) {
                     #if defined(CONFIG_TPM2NET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
+                    taskENTER_CRITICAL(tpm2net_pixel_buffer_lock);
                     memcpy(tpm2net_pixel_buffer, tpm2net_temp_buffer, tpm2net_temp_buffer_size);
+                    taskEXIT_CRITICAL(tpm2net_pixel_buffer_lock);
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
 
                     #endif
@@ -119,7 +124,9 @@ static void tpm2net_task(void* arg) {
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_8BPP)
 
                     #elif defined(CONFIG_TPM2NET_FRAME_TYPE_24BPP)
+                    taskENTER_CRITICAL(tpm2net_pixel_buffer_lock);
                     memcpy(tpm2net_pixel_buffer, tpm2net_temp_buffer, tpm2net_temp_buffer_size);
+                    taskEXIT_CRITICAL(tpm2net_pixel_buffer_lock);
                     #endif
                 #endif
             }
@@ -134,12 +141,13 @@ static void tpm2net_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void tpm2net_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, size_t tmpBufSize) {
+void tpm2net_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, size_t tmpBufSize) {
     ESP_LOGI(LOG_TAG, "Starting tpm2.net receiver");
     tpm2net_temp_buffer = tmpBuf;
     tpm2net_temp_buffer_size = tmpBufSize;
     tpm2net_pixel_buffer = pixBuf;
     tpm2net_pixel_buffer_size = pixBufSize;
+    tpm2net_pixel_buffer_lock = pixBufLock;
     xTaskCreatePinnedToCore(tpm2net_task, "tpm2net_server", 4096, NULL, 5, &tpm2netTaskHandle, 0);
 }
 

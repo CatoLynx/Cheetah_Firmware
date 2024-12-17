@@ -20,6 +20,7 @@ static uint8_t* artnet_temp_buffer;
 static size_t artnet_temp_buffer_size = 0;
 static uint8_t* artnet_pixel_buffer;
 static size_t artnet_pixel_buffer_size = 0;
+static portMUX_TYPE* artnet_pixel_buffer_lock = NULL;
 
 
 static void artnet_task(void* arg) {
@@ -94,7 +95,9 @@ static void artnet_task(void* arg) {
                     #if defined(CONFIG_ARTNET_FRAME_TYPE_1BPP)
                     
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_8BPP)
+                    taskENTER_CRITICAL(artnet_pixel_buffer_lock);
                     buffer_8to1(artnet_temp_buffer, artnet_pixel_buffer, DISPLAY_FRAME_WIDTH_PIXEL, DISPLAY_FRAME_HEIGHT_PIXEL, MT_OVERWRITE);
+                    taskEXIT_CRITICAL(artnet_pixel_buffer_lock);
                     #elif defined(CONFIG_ARTNET_FRAME_TYPE_24BPP)
 
                     #endif
@@ -127,12 +130,13 @@ static void artnet_task(void* arg) {
     vTaskDelete(NULL);
 }
 
-void artnet_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, size_t tmpBufSize) {
+void artnet_init(uint8_t* pixBuf, uint8_t* tmpBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, size_t tmpBufSize) {
     ESP_LOGI(LOG_TAG, "Starting ArtNet receiver");
     artnet_temp_buffer = tmpBuf;
     artnet_temp_buffer_size = tmpBufSize;
     artnet_pixel_buffer = pixBuf;
     artnet_pixel_buffer_size = pixBufSize;
+    artnet_pixel_buffer_lock = pixBufLock;
     xTaskCreatePinnedToCore(artnet_task, "artnet_server", 4096, NULL, 5, &artnetTaskHandle, 0);
 }
 

@@ -25,6 +25,7 @@
 
 #define LOG_TAG "CH-16SEG-LED-WS281X-HYB"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 spi_device_handle_t spiUpper;
 spi_device_handle_t spiLower;
 volatile uint8_t display_transferOngoingUpper = false;
@@ -229,11 +230,11 @@ uint8_t display_led_in_char_data(uint16_t ledPos, uint32_t charData) {
     return 0;
 }
 
-void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_buffers_to_out_buf(uint8_t* pixBuf, size_t pixBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
     color_t color, shaderColor;
     color_rgb_t calcColor_rgb;
 
-    memset(outBuf, 0x88, outBufSize);
+    memset(display_outBuf, 0x88, OUTPUT_BUFFER_SIZE);
 
     for (uint16_t charPos = 0; charPos < charBufSize; charPos++) {
         uint32_t charData = 0;
@@ -262,23 +263,23 @@ void display_buffers_to_out_buf(uint8_t* outBuf, size_t outBufSize, uint8_t* pix
             } else {
                 color = OFF;
             }
-            display_setLEDColor(outBuf, led, color);
+            display_setLEDColor(display_outBuf, led, color);
         }
     }
 }
 
-void display_render_frame(uint8_t* frame, uint16_t outBufSize) {
+void display_render() {
     if (display_transferOngoingUpper || display_transferOngoingLower) return;
 
     ESP_LOGV(LOG_TAG, "Rendering frame");
     //ESP_LOG_BUFFER_HEX(LOG_TAG, frame, outBufSize);
     spi_transaction_t spi_trans_upper = {
         .length = UPPER_OUT_BUF_SIZE * 8,
-        .tx_buffer = frame,
+        .tx_buffer = display_outBuf,
     };
     spi_transaction_t spi_trans_lower = {
         .length = LOWER_OUT_BUF_SIZE * 8,
-        .tx_buffer = &frame[CONFIG_16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS * BYTES_PER_LED],
+        .tx_buffer = &display_outBuf[CONFIG_16SEG_WS281X_HYBRID_UPPER_LOWER_SPLIT_POS * BYTES_PER_LED],
     };
     // Make sure to block for the larger of the two buffers
     if (UPPER_OUT_BUF_SIZE > LOWER_OUT_BUF_SIZE) {
@@ -291,17 +292,24 @@ void display_render_frame(uint8_t* frame, uint16_t outBufSize) {
     ets_delay_us(350); // Ensure reset pulse
 }
 
-void display_update(uint8_t* outBuf, size_t outBufSize, uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+    taskENTER_CRITICAL(textBufLock);
     buffer_textbuf_to_charbuf(textBuf, charBuf, quirkFlagBuf, textBufSize, charBufSize);
+    if (prevTextBuf != NULL) memcpy(prevTextBuf, textBuf, textBufSize);
+    taskEXIT_CRITICAL(textBufLock);
+    
+    taskENTER_CRITICAL(pixBufLock);
     #if defined(CONFIG_DISPLAY_HAS_TRANSITIONS)
     // TODO: This won't work. Need to a) actually render all the inbetween steps and b) work on masked bitmaps (segment mask for old and new buffers baked in)
     // otherwise we would just transition the background instead of the whole thing
     transition_fromJSON(prevPixBuf, pixBuf, display_transitionPixBuf, pixBufSize, display_currentTransition);
     display_buffers_to_out_buf(outBuf, outBufSize, display_transitionPixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
     #else
-    display_buffers_to_out_buf(outBuf, outBufSize, pixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
+    display_buffers_to_out_buf(pixBuf, pixBufSize, charBuf, quirkFlagBuf, charBufSize);
     #endif
-    display_render_frame(outBuf, outBufSize);
+    if (prevPixBuf != NULL) memcpy(prevPixBuf, pixBuf, pixBufSize);
+    taskEXIT_CRITICAL(pixBufLock);
+    display_render();
 }
 
 #endif

@@ -31,6 +31,7 @@ static char* err_desc = NULL;
 
 static uint8_t* output_buffer;
 static size_t output_buffer_size = 0;
+static portMUX_TYPE* output_buffer_lock = NULL;
 
 extern uint8_t wifi_gotIP, eth_gotIP;
 
@@ -103,13 +104,10 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
 
             esp_err_t ret = telegram_bot_process_response((telegram_api_endpoint_t)(evt->user_data), json);
             if (ret != ESP_OK) {
-                //memset(output_buffer, 0x00, output_buffer_size);
                 if (err_desc == NULL) {
                     ESP_LOGE(LOG_TAG,  "Error status %u", err_status);
-                    // sprintf((char*)output_buffer, "TELEGRAM API FAIL %u", err_status);
                 } else {
                     ESP_LOGE(LOG_TAG,  "Error: %s", err_desc);
-                    // strncpy((char*)output_buffer, err_desc, output_buffer_size);
                     err_desc = NULL;
                 }
                 return ret;
@@ -132,10 +130,11 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* outBuf, size_t bufSize) {
+void telegram_bot_init(nvs_handle_t* nvsHandle, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock) {
     tg_bot_nvs_handle = *nvsHandle;
-    output_buffer = outBuf;
-    output_buffer_size = bufSize;
+    output_buffer = textBuf;
+    output_buffer_size = textBufSize;
+    output_buffer_lock = textBufLock;
 
     telegram_bot_deinit();
 
@@ -263,7 +262,6 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
                 esp_http_client_get_content_length(client));
     } else {
         ESP_LOGE(LOG_TAG, "HTTP GET request failed: %s", esp_err_to_name(err));
-        // sprintf((char*)output_buffer, "GET FAILED %s", esp_err_to_name(err));
     }
     esp_http_client_cleanup(client);
     free(escapedText);
@@ -307,9 +305,10 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
             if (cJSON_IsString(field_username)) {
                 char* username = cJSON_GetStringValue(field_username);
                 str_toUpper(username);
+                taskENTER_CRITICAL(output_buffer_lock);
                 memset(output_buffer, 0x00, output_buffer_size);
+                taskEXIT_CRITICAL(output_buffer_lock);
                 ESP_LOGI(LOG_TAG, "Telegram Username: @%s", username);
-                // sprintf((char*)output_buffer, "USERNAME=%s", username);
             }
             break;
         }
@@ -427,8 +426,10 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                     }
 
                     ESP_LOGD(LOG_TAG, "Converting message for display");
+                    taskENTER_CRITICAL(output_buffer_lock);
                     memset(output_buffer, 0x00, output_buffer_size);
                     strncpy((char*)output_buffer, filteredText_iso88591, output_buffer_size);
+                    taskEXIT_CRITICAL(output_buffer_lock);
                     free(filteredText_utf8);
                     free(filteredText_iso88591);
 
