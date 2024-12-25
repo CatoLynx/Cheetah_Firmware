@@ -533,9 +533,9 @@ void app_main(void) {
                     display_bitmapGeneratorDataDeletable = 1;
                 }
                 #endif
-            }
 
-            cJSON_Delete(startupData);
+                cJSON_Delete(startupData);
+            }
         }
         free(startupFile);
         
