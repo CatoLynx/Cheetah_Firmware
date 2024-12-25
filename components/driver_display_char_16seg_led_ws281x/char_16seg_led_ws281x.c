@@ -294,7 +294,10 @@ void display_render() {
 
 static uint8_t charBufModified_prev = 0;
 void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
-    uint8_t changed = (memcmp(textBuf, prevTextBuf, textBufSize) != 0);
+    uint8_t changed = 0;
+    if (prevTextBuf != NULL) {
+        changed = (memcmp(textBuf, prevTextBuf, textBufSize) != 0);
+    }
     #if !defined(CONFIG_DISPLAY_HAS_EFFECTS)
     // Nothing to do if buffer hasn't changed
     if (prevTextBuf != NULL && !changed) return;
