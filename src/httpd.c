@@ -248,10 +248,6 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
 
     char *resp = cJSON_Print(json);
 
-    #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
-    cJSON_Delete(quirk_entry_combining_full_stop);
-    #endif
-
     httpd_resp_set_type(req, "application/json");
     httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
     httpd_resp_send(req, resp, strlen(resp));
