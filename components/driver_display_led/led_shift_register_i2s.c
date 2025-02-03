@@ -21,13 +21,11 @@
 #error "I2S shift register LED matrix driver can only be used with 1bpp frame buffer"
 #endif
 
-#define DIV_CEIL(x, y) ((x % y) ? x / y + 1 : x / y)
-#define DISPLAY_OUT_BUF_SIZE DIV_CEIL(CONFIG_DISPLAY_FRAME_WIDTH * CONFIG_DISPLAY_FRAME_HEIGHT, 8)
-#define I2S_BUF_SIZE (DISPLAY_OUT_BUF_SIZE * 8)
-uint8_t i2s_buf[I2S_BUF_SIZE];
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 
 // Indices: Logical addresses; Values: Actual addresses
-uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 14, 13, 12, 11, 10, 9, 15, 16, 17};
+// 0, 1, 2, 3, 4, 5, 6, 7, 8, 14, 13, 12, 11, 10, 9, 15, 16, 17
+static const uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};
 
 
 esp_err_t display_init(nvs_handle_t* nvsHandle) {
@@ -79,42 +77,55 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
 
     i2s_parallel_buffer_desc_t bufdesc;
     i2s_parallel_config_t cfg = {
-        .gpio_bus = {CONFIG_SR_LED_MATRIX_DATA_IO, CONFIG_SR_LED_MATRIX_LATCH_IO, CONFIG_SR_LED_MATRIX_EN_IO, CONFIG_SR_LED_MATRIX_ROW_A0_IO, CONFIG_SR_LED_MATRIX_ROW_A1_IO, CONFIG_SR_LED_MATRIX_ROW_A2_IO, CONFIG_SR_LED_MATRIX_ROW_A3_IO, CONFIG_SR_LED_MATRIX_ROW_A4_IO},
+        .gpio_bus = {
+            CONFIG_SR_LED_MATRIX_DATA_IO,
+            CONFIG_SR_LED_MATRIX_LATCH_IO,
+            CONFIG_SR_LED_MATRIX_EN_IO,
+            CONFIG_SR_LED_MATRIX_ROW_A0_IO,
+            CONFIG_SR_LED_MATRIX_ROW_A1_IO,
+            CONFIG_SR_LED_MATRIX_ROW_A2_IO,
+            #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT) || defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
+            CONFIG_SR_LED_MATRIX_ROW_A3_IO,
+            #endif
+            #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
+            CONFIG_SR_LED_MATRIX_ROW_A4_IO
+            #endif
+        },
         .gpio_clk = CONFIG_SR_LED_MATRIX_CLK_IO,
         .clkspeed_hz = 1 * 1000 * 1000,
-        .clk_inv = false,
+        .clk_inv = true, // TODO: Kconfig!
         .bits = I2S_PARALLEL_BITS_8,
         .buf = &bufdesc
     };
 
-    bufdesc.memory = i2s_buf;
-    bufdesc.size = I2S_BUF_SIZE;
+    bufdesc.memory = display_outBuf;
+    bufdesc.size = OUTPUT_BUFFER_SIZE;
 
     i2s_parallel_setup(&I2S1, &cfg);
     return ESP_OK;
 }
 
-void _convertBuffer(uint8_t* src) {
+void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {
     // Convert 1bpp framebuffer to I²S buffer format
     uint32_t byteIdx;
     uint8_t bitIdx;
-    uint32_t i2sBufIdx = 0;
+    uint32_t outBufIdx = 0;
     uint8_t byte;
     uint8_t _y;
-    for (uint16_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT; y++) {
-        for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH; x++) {
-            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT, 8) + y / 8;
+    for (uint16_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL; y++) {
+        for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH_PIXEL; x++) {
+            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + y / 8;
             bitIdx = y % 8;
             _y = ROW_MAP[(y - 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
 
             // Data bit
-            byte = (src[byteIdx] & (1 << bitIdx)) >> bitIdx;
+            byte = (pixBuf[byteIdx] & (1 << bitIdx)) >> bitIdx;
 
             // Latch bit
-            if (x == CONFIG_DISPLAY_FRAME_WIDTH - 1) byte |= 0x02;
+            if (x != CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 1) byte |= 0x02; // TODO: Inverted! use Kconfig
 
             // Enable bit
-            if (x < 20) byte |= 0x04;
+            if (x < 1 || x >= CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 2) byte |= 0x04; // TODO: Inverted! use Kconfig. make length configurable. This locks out the row select shortly after the latch
 
             // Row A0 bit
             if (_y & 1) byte |= 0x08;
@@ -130,15 +141,21 @@ void _convertBuffer(uint8_t* src) {
 
             // Row A4 bit
             if (_y >= 8 && _y < 16) byte |= 0x80;
-
-            i2s_buf[i2sBufIdx ^ 0x02] = byte;
-            i2sBufIdx++;
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
         }
+        //display_outBuf[outBufIdx++ ^ 0x02] = 0x00; // Trigger latch
     }
 }
 
-void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    _convertBuffer(frame);
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock) {
+    // Nothing to do if buffer hasn't changed
+    if (prevPixBuf != NULL && memcmp(pixBuf, prevPixBuf, pixBufSize) == 0) return;
+
+    taskENTER_CRITICAL(pixBufLock);
+    display_buffers_to_out_buf(pixBuf, prevPixBuf, pixBufSize);
+    if (prevPixBuf != NULL) memcpy(prevPixBuf, pixBuf, pixBufSize);
+    taskEXIT_CRITICAL(pixBufLock);
 }
 
 #endif
