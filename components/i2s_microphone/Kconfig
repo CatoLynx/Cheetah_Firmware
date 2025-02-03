@@ -1,0 +1,47 @@
+menu "I2S Microphone"
+
+choice I2S_MIC_PERIPHERAL
+    bool "I2S Peripheral"
+    default I2S_MIC_PERIPHERAL_I2S0
+    
+    config I2S_MIC_PERIPHERAL_I2S0
+        bool "I2S0"
+    
+    config I2S_MIC_PERIPHERAL_I2S1
+        bool "I2S1"
+endchoice
+
+config I2S_MIC_CLK_IO
+    int "Clock GPIO"
+    default 0
+
+config I2S_MIC_WS_IO
+    int "WS GPIO"
+    default 0
+
+config I2S_MIC_DATA_IO
+    int "Data GPIO"
+    default 0
+
+config I2S_MIC_SAMPLE_RATE
+    int "Sample Rate"
+    default 44100
+
+choice I2S_MIC_SAMPLE_WIDTH
+    bool "Sample Width"
+    default I2S_MIC_SAMPLE_WIDTH_24BIT
+    
+    config I2S_MIC_SAMPLE_WIDTH_8BIT
+        bool "8 Bit"
+    
+    config I2S_MIC_SAMPLE_WIDTH_16BIT
+        bool "16 Bit"
+    
+    config I2S_MIC_SAMPLE_WIDTH_24BIT
+        bool "24 Bit"
+    
+    config I2S_MIC_SAMPLE_WIDTH_32BIT
+        bool "24 Bit"
+endchoice
+
+endmenu
