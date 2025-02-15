@@ -28,7 +28,7 @@
 #define CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV 0
 #endif
 
-#define OUTPUT_BUFFER_SIZE (DISPLAY_PIX_BUF_SIZE_1BPP * 8)
+#define OUTPUT_BUFFER_SIZE ((DISPLAY_PIX_BUF_SIZE_1BPP * 8) + (CONFIG_SR_LED_MATRIX_NUM_ROWS * 10 /*5 clocks before and 5 after per row*/))
 
 esp_err_t display_init(nvs_handle_t* nvsHandle);
 void display_enable();

@@ -25,14 +25,14 @@ static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
 
 // Indices: Logical addresses; Values: Actual addresses
 // 0, 1, 2, 3, 4, 5, 6, 7, 8, 14, 13, 12, 11, 10, 9, 15, 16, 17
-static const uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {0, 1, 2, 3, 4, 5, 6, 7};
+static const uint8_t ROW_MAP[CONFIG_SR_LED_MATRIX_NUM_ROWS] = {7, 6, 5, 4, 3, 2, 1, 0};
 
 
 esp_err_t display_init(nvs_handle_t* nvsHandle) {
     /*
      * Set up all needed peripherals
      */
-    
+
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_DATA_IO);
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_CLK_IO);
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_LATCH_IO);
@@ -86,13 +86,17 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
             CONFIG_SR_LED_MATRIX_ROW_A2_IO,
             #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_4BIT) || defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
             CONFIG_SR_LED_MATRIX_ROW_A3_IO,
+            #else
+            -1,
             #endif
             #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
             CONFIG_SR_LED_MATRIX_ROW_A4_IO
+            #else
+            -1
             #endif
         },
         .gpio_clk = CONFIG_SR_LED_MATRIX_CLK_IO,
-        .clkspeed_hz = 1 * 1000 * 1000,
+        .clkspeed_hz = 156555, // results in a divider of 255 (the maximum)
         .clk_inv = true, // TODO: Kconfig!
         .bits = I2S_PARALLEL_BITS_8,
         .buf = &bufdesc
@@ -113,19 +117,17 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
     uint8_t byte;
     uint8_t _y;
     for (uint16_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL; y++) {
-        for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH_PIXEL; x++) {
-            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + y / 8;
-            bitIdx = y % 8;
-            _y = ROW_MAP[(y - 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
+        bitIdx = y % 8;
+        _y = ROW_MAP[(y - 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
 
-            // Data bit
-            byte = (pixBuf[byteIdx] & (1 << bitIdx)) >> bitIdx;
+        for (uint8_t preIdx = 0; preIdx < 5; preIdx++) {
+            byte = 0x00;
 
-            // Latch bit
-            if (x != CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 1) byte |= 0x02; // TODO: Inverted! use Kconfig
+            // Enable bit (enable row on 1st pre-clock)
+            byte &= ~0x04; // TODO: Inverted! use Kconfig. (bit useless to write it like that, but okay for clarity)
 
-            // Enable bit
-            if (x < 1 || x >= CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 2) byte |= 0x04; // TODO: Inverted! use Kconfig. make length configurable. This locks out the row select shortly after the latch
+            // Latch bit (disable latch)
+            byte |= 0x02; // TODO: Inverted! use Kconfig
 
             // Row A0 bit
             if (_y & 1) byte |= 0x08;
@@ -141,6 +143,67 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
 
             // Row A4 bit
             if (_y >= 8 && _y < 16) byte |= 0x80;
+            
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
+        }
+
+        for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH_PIXEL; x++) {
+            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + y / 8;
+
+            // Data bit
+            byte = (pixBuf[byteIdx] & (1 << bitIdx)) >> bitIdx;
+
+            // Latch bit (latch on last bit)
+            if (!(x == CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 1)) byte |= 0x02; // TODO: Inverted! use Kconfig
+
+            // Enable bit
+            byte &= ~0x04; // TODO: Inverted! use Kconfig. (bit useless to write it like that, but okay for clarity)
+
+            // Row A0 bit
+            if (_y & 1) byte |= 0x08;
+
+            // Row A1 bit
+            if (_y & 2) byte |= 0x10;
+
+            // Row A2 bit
+            if (_y & 4) byte |= 0x20;
+
+            // Row A3 bit
+            if (_y < 16) byte |= 0x40;
+
+            // Row A4 bit
+            if (_y >= 8 && _y < 16) byte |= 0x80;
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
+        }
+
+        for (uint8_t postIdx = 0; postIdx < 5; postIdx++) {
+            byte = 0x00;
+
+            // Enable bit (disable row on 2nd clock after row data)
+            //if (postIdx >= 1) byte |= 0x04; // TODO: Inverted! use Kconfig.
+
+            // Latch bit (disable latch)
+            byte |= 0x02; // TODO: Inverted! use Kconfig
+
+            // Row A0 bit
+            if (_y & 1) byte |= 0x08;
+
+            // Row A1 bit
+            if (_y & 2) byte |= 0x10;
+
+            // Row A2 bit
+            if (_y & 4) byte |= 0x20;
+
+            // Row A3 bit
+            if (_y < 16) byte |= 0x40;
+
+            // Row A4 bit
+            if (_y >= 8 && _y < 16) byte |= 0x80;
+
+            // TODO: Switch row index between row disable / enable
+            
             display_outBuf[outBufIdx ^ 0x02] = byte;
             outBufIdx++;
         }
