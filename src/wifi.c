@@ -236,6 +236,7 @@ void wifi_init(nvs_handle_t* nvsHandle) {
     } else {
         ESP_ERROR_CHECK(ret);
     }
+    if (strlen(sta_fallb_ssid) == 0) sta_fallback_credentials_valid = 0;
 
     ret = nvs_get_str(*nvsHandle, "ap_ssid", ap_ssid, &ap_ssid_len);
     ap_ssid_len = 33; // Reset after nvs_get_str modified it
