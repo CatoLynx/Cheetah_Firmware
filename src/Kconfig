@@ -459,6 +459,13 @@ config DISPLAY_USE_PREV_TEXT_BUF
         This allows the display to take advantage of knowing what has changed between the current
         and previous frames, thus enabling a quicker refresh or fancy effects.
 
+config DISPLAY_USE_PREV_UNIT_BUF
+    depends on DISPLAY_TYPE_SELECTION
+    bool "Use second unit buffer to store the previous data"
+    help
+        This allows the display to take advantage of knowing what has changed between the current
+        and previous frames, thus enabling a quicker refresh or fancy effects.
+
 
 menu "Quirks"
 

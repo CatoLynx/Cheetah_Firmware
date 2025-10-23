@@ -87,6 +87,13 @@
     // if the unit at the given address is present, otherwise a 0 bit.
     uint8_t display_framebuf_mask[DIV_CEIL(DISPLAY_OUT_BUF_SIZE, 8)] = {0};
     uint16_t display_num_units = 0;
+    uint8_t display_unit_buffer[DISPLAY_UNIT_BUF_SIZE] = {0};
+    #if defined(CONFIG_DISPLAY_USE_PREV_UNIT_BUF)
+    uint8_t display_prev_unit_buffer[DISPLAY_UNIT_BUF_SIZE] = {0};
+    #else
+    uint8_t* display_prev_unit_buffer = NULL;
+    #endif
+    portMUX_TYPE display_unit_buffer_lock = portMUX_INITIALIZER_UNLOCKED;
 #endif
 
 #if defined(DISPLAY_HAS_PIXEL_BUFFER)
@@ -215,10 +222,7 @@ static void display_refresh_task(void* arg) {
             //memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock);
             #endif
         #elif defined(CONFIG_DISPLAY_TYPE_SELECTION)
-            // TODO: Use a separate unit buffer instead of writing directly to the output buffer
-            // and actually update the display. Selection displays currently don't update at all
-            // ever since the buffer structure has changed.
-            // The unit buffer currently does not exist yet.
+            display_update(display_unit_buffer, display_prev_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock, display_framebuf_mask, display_num_units);
         #endif
 
         #if defined(CONFIG_FAN_ENABLED)

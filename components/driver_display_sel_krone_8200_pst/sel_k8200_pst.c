@@ -20,6 +20,8 @@
 
 #define LOG_TAG "SEL-K8200-PST"
 
+static uint8_t display_outBuf[OUTPUT_BUFFER_SIZE] = {0};
+
 // TODO: Do something with Rx pin?
 
 
@@ -91,31 +93,42 @@ void getCommandBytes_SetCode(uint8_t address, uint8_t code, uint8_t* outBuf) {
     outBuf[2] = code == 0x7F ? code : uint8_to_bcd(code); // 0x7F is always the last position (empty)
 }
 
-void display_render_frame(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
-    // Nothing to do if frame hasn't changed
-    if (prevFrame != NULL && memcmp(frame, prevFrame, frameBufSize) == 0) return;
-
-    esp_err_t ret = uart_wait_tx_done(K8200_PST_SEL_UART, 10 / portTICK_PERIOD_MS);
-    if (ret != ESP_OK) return; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
-
-    size_t bufSize = display_num_units * 3 + 1; // + 1 for CMD_SET_ALL at the end
-    uint8_t* buf = malloc(bufSize);
-
+void display_buffers_to_out_buf(uint8_t* unitBuf, size_t unitBufSize, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
+    memset(display_outBuf, 0x00, OUTPUT_BUFFER_SIZE);
+    uint16_t usedBufSize = display_num_units * 3 + 1;
     uint16_t bufIdx = 0;
-    for (uint16_t addr = 0; addr < frameBufSize; addr++) {
+    for (uint16_t addr = 0; addr < unitBufSize; addr++) {
         // Skip addresses that aren't present
         if (!GET_MASK(display_framebuf_mask, addr)) continue;
-        getCommandBytes_SetCode(addr, frame[addr], &buf[bufIdx*3]);
+        getCommandBytes_SetCode(addr, unitBuf[addr], &display_outBuf[bufIdx*3]);
         bufIdx++;
     }
-    buf[bufSize-1] = 0x1C; // Start all units
+    display_outBuf[usedBufSize - 1] = 0x1C; // Start all units
+}
 
-    ESP_LOG_BUFFER_HEX(LOG_TAG, buf, bufSize);
-    for (uint16_t i = 0; i < bufSize; i++) {
-        uart_write_bytes(K8200_PST_SEL_UART, &buf[i], 1);
+esp_err_t display_render(uint16_t display_num_units) {
+    esp_err_t ret = uart_wait_tx_done(K8200_PST_SEL_UART, 10 / portTICK_PERIOD_MS);
+    if (ret != ESP_OK) return ret; // If this is ESP_ERR_TIMEOUT, Tx is still ongoing
+
+    uint16_t usedBufSize = display_num_units * 3 + 1;
+    for (uint16_t i = 0; i < usedBufSize; i++) {
+        uart_write_bytes(K8200_PST_SEL_UART, &display_outBuf[i], 1);
         ets_delay_us(7500);
     }
-    free(buf);
+    return ESP_OK;
+}
+
+void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
+    // Nothing to do if buffer hasn't changed
+    if (prevUnitBuf != NULL && memcmp(unitBuf, prevUnitBuf, unitBufSize) == 0) return;
+
+    taskENTER_CRITICAL(unitBufLock);
+    display_buffers_to_out_buf(unitBuf, unitBufSize, display_framebuf_mask, display_num_units);
+    if (prevUnitBuf != NULL) memcpy(prevUnitBuf, unitBuf, unitBufSize);
+    taskEXIT_CRITICAL(unitBufLock);
+
+    esp_err_t ret = display_render(display_num_units);
+    if (ret != ESP_OK) return;
 
     // TODO: Implement better monitoring by querying rotation status using framebuffer mask
     vTaskDelay(CONFIG_K8200_PST_SEL_ROTATION_TIMEOUT / portTICK_PERIOD_MS);
