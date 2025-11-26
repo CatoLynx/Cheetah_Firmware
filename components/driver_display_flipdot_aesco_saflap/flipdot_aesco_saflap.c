@@ -16,6 +16,7 @@
 
 #define LOG_TAG "FLIPDOT-AESCO-SAFLAP"
 
+// TODO: Implement output buffer
 static uint8_t display_dirty = 1;
 
 esp_err_t display_init(nvs_handle_t* nvsHandle) {
@@ -125,10 +126,14 @@ void display_setRowSingle(uint8_t panel, uint8_t row, uint16_t cols) {
     vTaskDelay(40 / portTICK_PERIOD_MS); // Wait for the refresh cycle to complete
 }
 
-void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {
-    if(!display_dirty && prevFrame) {
-        for (uint16_t x_base = 0; x_base < DISPLAY_FRAME_WIDTH; x_base += SAFLAP_PANEL_WIDTH) {
-            for (uint16_t y = 0; y < DISPLAY_FRAME_HEIGHT; y++) {
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock) {
+    // Nothing to do if buffer hasn't changed
+    if (prevPixBuf != NULL && memcmp(pixBuf, prevPixBuf, pixBufSize) == 0) return;
+
+    //taskENTER_CRITICAL(pixBufLock);
+    if(!display_dirty && prevPixBuf) {
+        for (uint16_t x_base = 0; x_base < DISPLAY_FRAME_WIDTH_PIXEL; x_base += SAFLAP_PANEL_WIDTH) {
+            for (uint16_t y = 0; y < DISPLAY_FRAME_HEIGHT_PIXEL; y++) {
                 uint8_t panelAddr = 1 + (x_base / SAFLAP_PANEL_WIDTH) * CONFIG_SAFLAP_NUM_PANELS_Y + (y / SAFLAP_PANEL_HEIGHT);
                 uint8_t panelRow = y % SAFLAP_PANEL_HEIGHT;
                 uint16_t colData = 0x000;
@@ -136,8 +141,8 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
                 uint16_t x = 0;
                 for (uint16_t x_offset = 0; x_offset < SAFLAP_PANEL_WIDTH; x_offset++) {
                     x = x_base + x_offset;
-                    colData |= ((uint16_t)PIX_BUF_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
-                    prevColData |= ((uint16_t)PIX_BUF_VAL(prevFrame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    colData |= ((uint16_t)PIX_BUF_VAL(pixBuf, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    prevColData |= ((uint16_t)PIX_BUF_VAL(prevPixBuf, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
                 }
                 if (colData != prevColData) {
                     ESP_LOGD(LOG_TAG, "P%u R%u = %#03x", panelAddr, panelRow, colData);
@@ -146,15 +151,15 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
             }
         }
     } else {
-        for (uint16_t x_base = 0; x_base < DISPLAY_FRAME_WIDTH; x_base += SAFLAP_PANEL_WIDTH) {
-            for (uint16_t y = 0; y < DISPLAY_FRAME_HEIGHT; y++) {
+        for (uint16_t x_base = 0; x_base < DISPLAY_FRAME_WIDTH_PIXEL; x_base += SAFLAP_PANEL_WIDTH) {
+            for (uint16_t y = 0; y < DISPLAY_FRAME_HEIGHT_PIXEL; y++) {
                 uint8_t panelAddr = 1 + (x_base / SAFLAP_PANEL_WIDTH) * CONFIG_SAFLAP_NUM_PANELS_Y + (y / SAFLAP_PANEL_HEIGHT);
                 uint8_t panelRow = y % SAFLAP_PANEL_HEIGHT;
                 uint16_t colData = 0x000;
                 uint16_t x = 0;
                 for (uint16_t x_offset = 0; x_offset < SAFLAP_PANEL_WIDTH; x_offset++) {
                     x = x_base + x_offset;
-                    colData |= ((uint16_t)PIX_BUF_VAL(frame, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
+                    colData |= ((uint16_t)PIX_BUF_VAL(pixBuf, x, y)) << (SAFLAP_PANEL_WIDTH - x_offset - 1);
                 }
                 ESP_LOGD(LOG_TAG, "P%u R%u = 0x%03x", panelAddr, panelRow, colData);
                 display_setRowSingle(panelAddr, panelRow, colData);
@@ -162,6 +167,8 @@ void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t fram
         }
         display_dirty = 0;
     }
+    if (prevPixBuf != NULL) memcpy(prevPixBuf, pixBuf, pixBufSize);
+    //taskEXIT_CRITICAL(pixBufLock);
 }
 
 #endif

@@ -17,4 +17,4 @@ void display_setNibble(uint8_t panel, uint8_t row, uint8_t nibbleIdx, uint8_t ni
 void display_reset();
 void display_setRow(uint8_t panel, uint8_t row, uint16_t cols);
 void display_setRowSingle(uint8_t panel, uint8_t row, uint16_t cols);
-void display_render_frame_1bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize);
+void display_update(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock);
