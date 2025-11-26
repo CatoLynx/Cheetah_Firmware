@@ -86,6 +86,9 @@ bool basic_auth_handler(httpd_req_t* req, const char* log_tag) {
     size_t buf_len = 0;
     bool authenticated = false;
 
+    // If no auth data is available, assume authenticated
+    if (req->user_ctx == NULL) return true;
+
     basic_auth_info_t* basic_auth_info = req->user_ctx;
     buf_len = httpd_req_get_hdr_value_len(req, "Authorization") + 1;
 

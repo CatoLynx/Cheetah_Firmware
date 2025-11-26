@@ -394,6 +394,7 @@ void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
+    #if defined(CONFIG_PROJ_USE_AUTH)
     basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
@@ -402,6 +403,7 @@ void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     config_get.user_ctx = basic_auth_info;
     config_get_fields.user_ctx = basic_auth_info;
     config_post_update.user_ctx = basic_auth_info;
+    #endif
 
     httpd_register_uri_handler(*server, &config_get);
     httpd_register_uri_handler(*server, &config_get_fields);
@@ -415,5 +417,7 @@ void browser_config_deinit(void) {
     httpd_unregister_uri_handler(*config_server, config_get.uri, config_get.method);
     httpd_unregister_uri_handler(*config_server, config_get_fields.uri, config_get_fields.method);
     httpd_unregister_uri_handler(*config_server, config_post_update.uri, config_post_update.method);
+    #if defined(CONFIG_PROJ_USE_AUTH)
     free(basic_auth_info);
+    #endif
 }

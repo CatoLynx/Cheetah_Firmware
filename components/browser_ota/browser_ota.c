@@ -283,6 +283,7 @@ void browser_ota_init(httpd_handle_t* server) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
+    #if defined(CONFIG_PROJ_USE_AUTH)
     basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
@@ -294,6 +295,7 @@ void browser_ota_init(httpd_handle_t* server) {
     ota_status_get.user_ctx = basic_auth_info;
     ota_verify_get.user_ctx = basic_auth_info;
     ota_restart_get.user_ctx = basic_auth_info;
+    #endif
 
     httpd_register_uri_handler(*server, &ota_get);
     httpd_register_uri_handler(*server, &ota_spinner_get);

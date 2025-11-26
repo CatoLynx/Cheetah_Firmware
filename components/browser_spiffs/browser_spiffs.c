@@ -352,6 +352,7 @@ void browser_spiffs_init(httpd_handle_t* server) {
     ESP_LOGI(LOG_TAG, "Init");
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
+    #if defined(CONFIG_PROJ_USE_AUTH)
     basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
@@ -363,6 +364,7 @@ void browser_spiffs_init(httpd_handle_t* server) {
     spiffs_delete_post.user_ctx = basic_auth_info;
     spiffs_upload_metadata_post.user_ctx = basic_auth_info;
     spiffs_upload_post.user_ctx = basic_auth_info;
+    #endif
 
     httpd_register_uri_handler(*server, &spiffs_get);
     httpd_register_uri_handler(*server, &spiffs_files_get);

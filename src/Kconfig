@@ -19,6 +19,12 @@ config PROJ_DEFAULT_AP_PASS
         AP WiFi password (WPA or WPA2) to use if none is stored in NVS.
         Leave blank to create an open WiFi.
 
+config PROJ_USE_AUTH
+    bool "Use authentication for sensitive areas"
+    default true
+    help
+        Use auth for Config, SPIFFS, and OTA
+
 endmenu
 
 
