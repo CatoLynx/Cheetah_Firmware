@@ -33,6 +33,12 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
      * Set up all needed peripherals
      */
 
+    // TODO: No no no no UGLY no hardcoded pins aaaaaaaa
+    // Stop indicator
+    gpio_reset_pin(23);
+    gpio_set_direction(23, GPIO_MODE_OUTPUT);
+    gpio_set(23, 0, 0);
+
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_DATA_IO);
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_CLK_IO);
     gpio_reset_pin(CONFIG_SR_LED_MATRIX_LATCH_IO);
@@ -89,13 +95,14 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
             #else
             -1,
             #endif
-            #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
+            CONFIG_SR_LED_MATRIX_CLK_IO
+            /*#if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_SIZE_5BIT)
             CONFIG_SR_LED_MATRIX_ROW_A4_IO
             #else
             -1
-            #endif
+            #endif*/
         },
-        .gpio_clk = CONFIG_SR_LED_MATRIX_CLK_IO,
+        .gpio_clk = -1,
         .clkspeed_hz = 156555, // results in a divider of 255 (the maximum)
         .clk_inv = true, // TODO: Kconfig!
         .bits = I2S_PARALLEL_BITS_8,
@@ -116,18 +123,23 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
     uint32_t outBufIdx = 0;
     uint8_t byte;
     uint8_t _y;
-    for (uint16_t y = 0; y < CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL; y++) {
+    for (uint16_t raw_y = 0; raw_y < CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL; raw_y++) {
+        uint16_t y = raw_y; //CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL - (raw_y + 1); // mostly to "fix" the top left dot glitch for the FFT
+#if defined(CONFIG_SR_LED_MATRIX_FLIP_Y)
+        bitIdx = (CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL - y - 1) % 8;
+#else
         bitIdx = y % 8;
-        _y = ROW_MAP[(y - 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
+#endif
+        _y = ROW_MAP[(y - /* related to y direction flip */ 1 + CONFIG_SR_LED_MATRIX_NUM_ROWS) % CONFIG_SR_LED_MATRIX_NUM_ROWS];
 
         for (uint8_t preIdx = 0; preIdx < 5; preIdx++) {
             byte = 0x00;
 
-            // Enable bit (enable row on 1st pre-clock)
-            byte &= ~0x04; // TODO: Inverted! use Kconfig. (bit useless to write it like that, but okay for clarity)
+            // Enable bit (enable row)
+            //byte |= 0x04; // TODO: Inverted! use Kconfig
 
             // Latch bit (disable latch)
-            byte |= 0x02; // TODO: Inverted! use Kconfig
+            byte &= ~0x02;
 
             // Row A0 bit
             if (_y & 1) byte |= 0x08;
@@ -139,25 +151,42 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
             if (_y & 4) byte |= 0x20;
 
             // Row A3 bit
-            if (_y < 16) byte |= 0x40;
+            //if (_y < 16) byte |= 0x40;
 
             // Row A4 bit
-            if (_y >= 8 && _y < 16) byte |= 0x80;
+            //if (_y >= 8 && _y < 16) byte |= 0x80;
             
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
+
+            // No clock
+            //byte |= 0x80;
             display_outBuf[outBufIdx ^ 0x02] = byte;
             outBufIdx++;
         }
 
         for (uint16_t x = 0; x < CONFIG_DISPLAY_FRAME_WIDTH_PIXEL; x++) {
+#if defined(CONFIG_SR_LED_MATRIX_FLIP_X)
+    #if defined(CONFIG_SR_LED_MATRIX_FLIP_Y)
+            byteIdx = x * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + (CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL - y - 1) / 8;
+    #else
+            byteIdx = x * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + y / 8;
+    #endif
+#else
+    #if defined(CONFIG_SR_LED_MATRIX_FLIP_Y)
+            byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + (CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL - y - 1) / 8;
+    #else
             byteIdx = (CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - x - 1) * DIV_CEIL(CONFIG_DISPLAY_FRAME_HEIGHT_PIXEL, 8) + y / 8;
+    #endif
+#endif
 
             // Data bit
             byte = (pixBuf[byteIdx] & (1 << bitIdx)) >> bitIdx;
 
-            // Latch bit (latch on last bit)
-            if (!(x == CONFIG_DISPLAY_FRAME_WIDTH_PIXEL - 1)) byte |= 0x02; // TODO: Inverted! use Kconfig
+            // Latch bit (latch disabled)
+            byte &= ~0x02;
 
-            // Enable bit
+            // Enable bit (enable row)
             byte &= ~0x04; // TODO: Inverted! use Kconfig. (bit useless to write it like that, but okay for clarity)
 
             // Row A0 bit
@@ -170,10 +199,15 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
             if (_y & 4) byte |= 0x20;
 
             // Row A3 bit
-            if (_y < 16) byte |= 0x40;
+            //if (_y < 16) byte |= 0x40;
 
             // Row A4 bit
-            if (_y >= 8 && _y < 16) byte |= 0x80;
+            //if (_y >= 8 && _y < 16) byte |= 0x80;
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
+
+            // Rising clock edge
+            byte |= 0x80;
             display_outBuf[outBufIdx ^ 0x02] = byte;
             outBufIdx++;
         }
@@ -181,11 +215,11 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
         for (uint8_t postIdx = 0; postIdx < 5; postIdx++) {
             byte = 0x00;
 
-            // Enable bit (disable row on 2nd clock after row data)
-            //if (postIdx >= 1) byte |= 0x04; // TODO: Inverted! use Kconfig.
+            // Enable bit (enable row)
+            //byte |= 0x04; // TODO: Inverted! use Kconfig.
 
-            // Latch bit (disable latch)
-            byte |= 0x02; // TODO: Inverted! use Kconfig
+            // Latch bit (latch on 5th bit after row data)
+            if (postIdx == 4) byte |= 0x02;
 
             // Row A0 bit
             if (_y & 1) byte |= 0x08;
@@ -197,13 +231,18 @@ void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pix
             if (_y & 4) byte |= 0x20;
 
             // Row A3 bit
-            if (_y < 16) byte |= 0x40;
+            //if (_y < 16) byte |= 0x40;
 
             // Row A4 bit
-            if (_y >= 8 && _y < 16) byte |= 0x80;
+            //if (_y >= 8 && _y < 16) byte |= 0x80;
 
             // TODO: Switch row index between row disable / enable
             
+            display_outBuf[outBufIdx ^ 0x02] = byte;
+            outBufIdx++;
+
+            // No clock
+            //byte |= 0x80;
             display_outBuf[outBufIdx ^ 0x02] = byte;
             outBufIdx++;
         }

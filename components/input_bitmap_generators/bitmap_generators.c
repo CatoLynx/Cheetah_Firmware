@@ -4,10 +4,12 @@
 #include "freertos/task.h"
 
 #include "bitmap_generators.h"
+#include "i2s_microphone.h"
 #include "util_fixed_point.h"
 #include "macros.h"
 #include "util_buffer.h"
 #include "util_generic.h"
+#include "util_gpio.h"
 #include "math.h"
 
 // TODO: More elegant buffer type gating than just gating the entire function content
@@ -47,7 +49,8 @@ enum generator_func {
     ON_OFF_100_FRAMES,
     MATRIX,
     PLASMA,
-    PLASMA_2
+    PLASMA_2,
+    MIC_FFT
 };
 
 
@@ -439,6 +442,34 @@ cJSON* bitmap_generators_get_available() {
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
 
+    // Generator: 1bpp Microphone FFT
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "1bpp_mic_fft");
+    params = cJSON_CreateObject();
+
+        // Parameter: Loagrithmic
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "checkbox");
+        cJSON_AddBoolToObject(param, "checked", 0);
+        cJSON_AddItemToObject(params, "logarithmic", param);
+
+        // Parameter: Lin/Log Factor
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 0);
+        cJSON_AddNumberToObject(param, "max", 100);
+        cJSON_AddNumberToObject(param, "value", 50);
+        cJSON_AddItemToObject(params, "lin_log_factor", param);
+
+        // Parameter: Line only
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "checkbox");
+        cJSON_AddBoolToObject(param, "checked", 0);
+        cJSON_AddItemToObject(params, "line_only", param);
+    
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
     return json;
 }
 
@@ -823,6 +854,43 @@ void bitmap_generator_plasma_2(int64_t t, uint16_t speed, uint16_t scale, color_
     #endif
 }
 
+static float fft_bins[120] = { 0.0f };
+static int8_t fft_columns[120] = { 0 };
+void bitmap_generator_1bpp_mic_fft(int64_t t, uint8_t logarithmic, uint8_t lin_log_factor, uint8_t lineOnly) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
+    i2s_mic_get_fft_bins(fft_bins, 120, logarithmic, (float)lin_log_factor / 100.0f);
+
+    taskENTER_CRITICAL(pixel_buffer_lock);
+    uint8_t bass_count = 0;
+    for (uint16_t x = 0; x < DISPLAY_FRAME_WIDTH_PIXEL; x++) {
+        uint16_t pixBufIndex = x;
+        int8_t v = (uint8_t)((fft_bins[x] - 130.0f) * (8 - 0) / (200.0f - 130.0f) + 0);
+        if (v < 0) v = 0;
+        if (v > 8) v = 8;
+        int8_t prev_col = fft_columns[x];
+        
+        int8_t col = 0;
+        if (v >= prev_col) col = v;
+        if (v < prev_col && prev_col > 0) col = prev_col - 1;
+        if (lineOnly) {
+            pixel_buffer[pixBufIndex] = (0x0100 >> (col)) & 0xFF;
+        } else {
+            pixel_buffer[pixBufIndex] = (0xFF00 >> (col)) & 0xFF;
+        }
+        fft_columns[x] = col;
+
+        if (x < 8) {
+            // Max. count: 8 * 2 = 16
+            if (col >= 7) bass_count += col - 6;
+        }
+    }
+    // TODO: NO no no no no CRUDE BAD aaa
+    // Stop indicator kinda mirrors bass level
+    gpio_set(23, (bass_count >= 4), 0);
+    taskEXIT_CRITICAL(pixel_buffer_lock);
+    #endif
+}
+
 static color_rgb_u8_t _color_rgb_u8_from_json(cJSON* json, color_rgb_u8_t fallback) {
     color_rgb_u8_t color;
     cJSON* r_field = cJSON_GetObjectItem(json, "r");
@@ -1026,6 +1094,20 @@ void bitmap_generator_current(int64_t t) {
             if (!cJSON_IsObject(color2_obj)) return;
             color_rgb_u8_t color2 = _color_rgb_u8_from_json(color2_obj, white);
             bitmap_generator_plasma_2(t, speed, scale, color1, color2);
+            return;
+        }
+
+        case MIC_FFT: {
+            cJSON* line_only_field = cJSON_GetObjectItem(params, "line_only");
+            if (!cJSON_IsBool(line_only_field)) return;
+            uint8_t line_only = (uint8_t)cJSON_IsTrue(line_only_field);
+            cJSON* lin_log_factor_field = cJSON_GetObjectItem(params, "lin_log_factor");
+            if (!cJSON_IsNumber(lin_log_factor_field)) return;
+            uint8_t lin_log_factor = (uint8_t)cJSON_GetNumberValue(lin_log_factor_field);
+            cJSON* logarithmic_field = cJSON_GetObjectItem(params, "logarithmic");
+            if (!cJSON_IsBool(logarithmic_field)) return;
+            uint8_t logarithmic = (uint8_t)cJSON_IsTrue(logarithmic_field);
+            bitmap_generator_1bpp_mic_fft(t, logarithmic, lin_log_factor, line_only);
             return;
         }
     }

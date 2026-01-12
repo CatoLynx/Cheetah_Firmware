@@ -161,4 +161,16 @@ config SR_LED_MATRIX_LATCH_PULSE_LENGTH
     help
         Pulse length of the latch pulse, in microseconds
 
+config SR_LED_MATRIX_FLIP_X
+    bool "Flip X axis"
+    default false
+    help
+        If selected, flips the display around the X axis
+
+config SR_LED_MATRIX_FLIP_Y
+    bool "Flip Y axis"
+    default false
+    help
+        If selected, flips the display around the Y axis
+
 endmenu

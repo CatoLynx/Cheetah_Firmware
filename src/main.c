@@ -23,6 +23,7 @@
 #include "browser_ota.h"
 #include "git_version.h"
 #include "httpd.h"
+#include "i2s_microphone.h"
 #include "logging_tcp.h"
 #include "playlist.h"
 #include "telegram_bot.h"
@@ -378,6 +379,8 @@ void app_main(void) {
     browser_ota_init(&server);
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
+    
+    i2s_mic_init();
 
     #if defined(DISPLAY_HAS_PIXEL_BUFFER) && defined(CONFIG_DISPLAY_PIX_BUF_INIT_WHITE)
     memset(display_pixel_buffer, 0xFF, DISPLAY_PIX_BUF_SIZE);

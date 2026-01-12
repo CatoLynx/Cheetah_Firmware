@@ -126,7 +126,6 @@ static esp_err_t spiffs_download_get_handler(httpd_req_t *req) {
     // Close connection
     httpd_resp_send_chunk(req, NULL, 0);
 
-    ESP_LOGI(LOG_TAG, "free");
     fclose(file);
     free(disposition_header);
     return ESP_OK;

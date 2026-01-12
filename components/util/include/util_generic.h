@@ -60,3 +60,5 @@ int32_t map_int32(int32_t in, int32_t inMin, int32_t inMax, int32_t outMin, int3
 double map_double(double in, double inMin, double inMax, double outMin, double outMax);
 int32_t rand_range(int32_t min, int32_t max);
 int32_t rand_spread(int32_t nominal, int32_t spread);
+int32_t min_i32(int32_t in1, int32_t in2);
+int32_t max_i32(int32_t in1, int32_t in2);

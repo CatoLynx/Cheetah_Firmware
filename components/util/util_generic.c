@@ -293,3 +293,13 @@ int32_t rand_spread(int32_t nominal, int32_t spread) {
   if (spread == 0) return nominal;
   return nominal + (rand() % (spread * 2)) - spread;
 }
+
+int32_t min_i32(int32_t in1, int32_t in2) {
+  if (in2 > in1) return in1;
+  return in2;
+}
+
+int32_t max_i32(int32_t in1, int32_t in2) {
+  if (in2 > in1) return in2;
+  return in1;
+}
