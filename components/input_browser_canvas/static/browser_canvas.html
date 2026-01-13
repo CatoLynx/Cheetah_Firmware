@@ -1043,11 +1043,16 @@
         for (var paramName of Object.keys(data["params"])) {
           let paramInfo = shader_info["params"][paramName];
           let paramCtrl = $("#shader-param-" + paramName);
+          let paramLabel = $("#shader-param-display-" + paramName);
 
           if (paramInfo["type"] == "color") {
             paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
           } else {
             paramCtrl.val(data["params"][paramName]);
+          }
+
+          if (paramInfo["type"] == "range") {
+            paramLabel.text(data["params"][paramName]);
           }
         }
         if (sendRequest) updateShader();
@@ -1220,11 +1225,16 @@
         for (var paramName of Object.keys(data["params"])) {
           let paramInfo = transition_info["params"][paramName];
           let paramCtrl = $("#transition-param-" + paramName);
+          let paramLabel = $("#transition-param-display-" + paramName);
 
           if (paramInfo["type"] == "color") {
             paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
           } else {
             paramCtrl.val(data["params"][paramName]);
+          }
+
+          if (paramInfo["type"] == "range") {
+            paramLabel.text(data["params"][paramName]);
           }
           paramCtrl.trigger("change");
         }
@@ -1397,11 +1407,16 @@
         for (var paramName of Object.keys(data["params"])) {
           let paramInfo = effect_info["params"][paramName];
           let paramCtrl = $("#effect-param-" + paramName);
+          let paramLabel = $("#effect-param-display-" + paramName);
 
           if (paramInfo["type"] == "color") {
             paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
           } else {
             paramCtrl.val(data["params"][paramName]);
+          }
+
+          if (paramInfo["type"] == "range") {
+            paramLabel.text(data["params"][paramName]);
           }
         }
         if (sendRequest) updateEffect();
@@ -1589,11 +1604,16 @@
         for (var paramName of Object.keys(data["params"])) {
           let paramInfo = bitmap_generator_info["params"][paramName];
           let paramCtrl = $("#bitmap-generator-param-" + paramName);
+          let paramLabel = $("#bitmap-generator-param-display-" + paramName);
 
           if (paramInfo["type"] == "color") {
             paramCtrl.val(rgbToHex(data["params"][paramName]["r"], data["params"][paramName]["g"], data["params"][paramName]["b"]));
           } else {
             paramCtrl.val(data["params"][paramName]);
+          }
+
+          if (paramInfo["type"] == "range") {
+            paramLabel.text(data["params"][paramName]);
           }
         }
         updateBitmapGenerator();
