@@ -380,7 +380,9 @@ void app_main(void) {
     browser_config_init(&server, &nvs_handle);
     browser_spiffs_init(&server);
     
+    #if defined(CONFIG_I2S_MIC_ENABLED)
     i2s_mic_init();
+    #endif
 
     #if defined(DISPLAY_HAS_PIXEL_BUFFER) && defined(CONFIG_DISPLAY_PIX_BUF_INIT_WHITE)
     memset(display_pixel_buffer, 0xFF, DISPLAY_PIX_BUF_SIZE);

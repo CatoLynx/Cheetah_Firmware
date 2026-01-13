@@ -50,7 +50,8 @@ enum generator_func {
     MATRIX,
     PLASMA,
     PLASMA_2,
-    MIC_FFT
+    MIC_FFT,
+    MIC_AMPLITUDE
 };
 
 
@@ -447,7 +448,7 @@ cJSON* bitmap_generators_get_available() {
     cJSON_AddStringToObject(generator_entry, "name", "1bpp_mic_fft");
     params = cJSON_CreateObject();
 
-        // Parameter: Loagrithmic
+        // Parameter: Logarithmic
         param = cJSON_CreateObject();
         cJSON_AddStringToObject(param, "type", "checkbox");
         cJSON_AddBoolToObject(param, "checked", 0);
@@ -506,6 +507,46 @@ cJSON* bitmap_generators_get_available() {
         cJSON_AddNumberToObject(param, "max", 255);
         cJSON_AddNumberToObject(param, "value", 1);
         cJSON_AddItemToObject(params, "bin_width", param);
+
+    cJSON_AddItemToObject(generator_entry, "params", params);
+    cJSON_AddItemToArray(generators_arr, generator_entry);
+
+    // Generator: 1bpp Microphone Amplitude
+    generator_entry = cJSON_CreateObject();
+    cJSON_AddStringToObject(generator_entry, "name", "1bpp_mic_amplitude");
+    params = cJSON_CreateObject();
+
+        // Parameter: Min. Normalization Factor (* 0.1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 10);
+        cJSON_AddNumberToObject(param, "max", 5000);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "min_norm_factor", param);
+
+        // Parameter: Max. Normalization Factor (* 0.1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 5000);
+        cJSON_AddNumberToObject(param, "value", 5000);
+        cJSON_AddItemToObject(params, "max_norm_factor", param);
+
+        // Parameter: Normalization Factor Increase (* 0.1 ^ -1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 10000);
+        cJSON_AddNumberToObject(param, "value", 5120);
+        cJSON_AddItemToObject(params, "norm_factor_increase", param);
+
+        // Parameter: Normalization Factor Decrease (* 0.1 ^ -1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 10000);
+        cJSON_AddNumberToObject(param, "value", 160);
+        cJSON_AddItemToObject(params, "norm_factor_decrease", param);
     
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
@@ -916,6 +957,7 @@ void bitmap_generator_1bpp_mic_fft(int64_t t, uint8_t logarithmic, uint8_t lin_l
         fft_columns[binIdx] = col;
 
         for (uint8_t i = 0; i < binWidth; i++) {
+            // TODO: Adjust for display height
             if (lineOnly) {
                 pixel_buffer[binIdx * binWidth + i] = (0x0100 >> (col)) & 0xFF;
             } else {
@@ -933,6 +975,31 @@ void bitmap_generator_1bpp_mic_fft(int64_t t, uint8_t logarithmic, uint8_t lin_l
     // TODO: NO no no no no CRUDE BAD aaa
     // Stop indicator kinda mirrors bass level
     gpio_set(23, (bass_count >= 4), 0);
+    taskEXIT_CRITICAL(pixel_buffer_lock);
+    #endif
+}
+
+static uint16_t amplitude_history[DISPLAY_FRAME_WIDTH_PIXEL] = { 0 };
+static uint16_t amplitude_history_start = 0;
+void bitmap_generator_1bpp_mic_amplitude(int64_t t, uint16_t minNormFactor, uint16_t maxNormFactor, uint16_t normFactorChangeIncrease, uint16_t normFactorChangeDecrease) {
+    #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
+    uint16_t numBins = 10;
+    i2s_mic_get_fft_bins(fft_bins, numBins, false, 0.5f, minNormFactor * 0.1f, maxNormFactor * 0.1f, 1 / (normFactorChangeIncrease * 0.1f), 1 / (normFactorChangeDecrease * 0.1f));
+    int32_t amplitude = 0;
+    for (uint8_t i = 0; i < numBins; i++) {
+        amplitude += fft_bins[i];
+    }
+    amplitude /= numBins;
+    uint16_t amplitudePixels = (uint16_t)(amplitude - 130.0f) * DISPLAY_FRAME_HEIGHT_PIXEL / (200.0f - 130.0f); // TODO: Get rid of magic numbers
+    amplitude_history[amplitude_history_start++] = amplitudePixels;
+    amplitude_history_start %= DISPLAY_FRAME_WIDTH_PIXEL;
+
+    taskENTER_CRITICAL(pixel_buffer_lock);
+    for (uint16_t x = 0; x < DISPLAY_FRAME_WIDTH_PIXEL; x++) {
+        // TODO: Adjust for display height
+        uint16_t histIdx = (amplitude_history_start + x) % DISPLAY_FRAME_WIDTH_PIXEL;
+        pixel_buffer[x] = (0xFF00 >> (amplitude_history[histIdx])) & 0xFF;
+    }
     taskEXIT_CRITICAL(pixel_buffer_lock);
     #endif
 }
@@ -1169,6 +1236,23 @@ void bitmap_generator_current(int64_t t) {
             if (!cJSON_IsNumber(bin_width_field)) return;
             uint8_t bin_width = (uint8_t)cJSON_GetNumberValue(bin_width_field);
             bitmap_generator_1bpp_mic_fft(t, logarithmic, lin_log_factor, line_only, min_norm_factor, max_norm_factor, norm_factor_increase, norm_factor_decrease, bin_width);
+            return;
+        }
+
+        case MIC_AMPLITUDE: {
+            cJSON* min_norm_factor_field = cJSON_GetObjectItem(params, "min_norm_factor");
+            if (!cJSON_IsNumber(min_norm_factor_field)) return;
+            uint16_t min_norm_factor = (uint16_t)cJSON_GetNumberValue(min_norm_factor_field);
+            cJSON* max_norm_factor_field = cJSON_GetObjectItem(params, "max_norm_factor");
+            if (!cJSON_IsNumber(max_norm_factor_field)) return;
+            uint16_t max_norm_factor = (uint16_t)cJSON_GetNumberValue(max_norm_factor_field);
+            cJSON* norm_factor_increase_field = cJSON_GetObjectItem(params, "norm_factor_increase");
+            if (!cJSON_IsNumber(norm_factor_increase_field)) return;
+            uint16_t norm_factor_increase = (uint16_t)cJSON_GetNumberValue(norm_factor_increase_field);
+            cJSON* norm_factor_decrease_field = cJSON_GetObjectItem(params, "norm_factor_decrease");
+            if (!cJSON_IsNumber(norm_factor_decrease_field)) return;
+            uint16_t norm_factor_decrease = (uint16_t)cJSON_GetNumberValue(norm_factor_decrease_field);
+            bitmap_generator_1bpp_mic_amplitude(t, min_norm_factor, max_norm_factor, norm_factor_increase, norm_factor_decrease);
             return;
         }
     }

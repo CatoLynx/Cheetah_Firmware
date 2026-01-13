@@ -1,7 +1,14 @@
 menu "I2S Microphone"
 
+config I2S_MIC_ENABLED
+    bool "Use I2S Microphone"
+    default false
+    help
+        Enable support for I2S Microphone
+
 choice I2S_MIC_PERIPHERAL
     bool "I2S Peripheral"
+    depends on I2S_MIC_ENABLED
     default I2S_MIC_PERIPHERAL_I2S0
     
     config I2S_MIC_PERIPHERAL_I2S0
@@ -13,22 +20,27 @@ endchoice
 
 config I2S_MIC_CLK_IO
     int "Clock GPIO"
+    depends on I2S_MIC_ENABLED
     default 0
 
 config I2S_MIC_WS_IO
     int "WS GPIO"
+    depends on I2S_MIC_ENABLED
     default 0
 
 config I2S_MIC_DATA_IO
     int "Data GPIO"
+    depends on I2S_MIC_ENABLED
     default 0
 
 config I2S_MIC_SAMPLE_RATE
     int "Sample Rate"
+    depends on I2S_MIC_ENABLED
     default 44100
 
 choice I2S_MIC_SAMPLE_WIDTH
     bool "Sample Width"
+    depends on I2S_MIC_ENABLED
     default I2S_MIC_SAMPLE_WIDTH_24BIT
     
     config I2S_MIC_SAMPLE_WIDTH_8BIT
