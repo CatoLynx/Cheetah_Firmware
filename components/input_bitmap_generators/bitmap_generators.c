@@ -466,6 +466,46 @@ cJSON* bitmap_generators_get_available() {
         cJSON_AddStringToObject(param, "type", "checkbox");
         cJSON_AddBoolToObject(param, "checked", 0);
         cJSON_AddItemToObject(params, "line_only", param);
+
+        // Parameter: Min. Normalization Factor (* 0.1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 10);
+        cJSON_AddNumberToObject(param, "max", 5000);
+        cJSON_AddNumberToObject(param, "value", 10);
+        cJSON_AddItemToObject(params, "min_norm_factor", param);
+
+        // Parameter: Max. Normalization Factor (* 0.1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 5000);
+        cJSON_AddNumberToObject(param, "value", 5000);
+        cJSON_AddItemToObject(params, "max_norm_factor", param);
+
+        // Parameter: Normalization Factor Increase (* 0.1 ^ -1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 10000);
+        cJSON_AddNumberToObject(param, "value", 5120);
+        cJSON_AddItemToObject(params, "norm_factor_increase", param);
+
+        // Parameter: Normalization Factor Decrease (* 0.1 ^ -1)
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 10000);
+        cJSON_AddNumberToObject(param, "value", 160);
+        cJSON_AddItemToObject(params, "norm_factor_decrease", param);
+
+        // Parameter: Bin Width
+        param = cJSON_CreateObject();
+        cJSON_AddStringToObject(param, "type", "range");
+        cJSON_AddNumberToObject(param, "min", 1);
+        cJSON_AddNumberToObject(param, "max", 255);
+        cJSON_AddNumberToObject(param, "value", 1);
+        cJSON_AddItemToObject(params, "bin_width", param);
     
     cJSON_AddItemToObject(generator_entry, "params", params);
     cJSON_AddItemToArray(generators_arr, generator_entry);
@@ -854,32 +894,38 @@ void bitmap_generator_plasma_2(int64_t t, uint16_t speed, uint16_t scale, color_
     #endif
 }
 
-static float fft_bins[120] = { 0.0f };
-static int8_t fft_columns[120] = { 0 };
-void bitmap_generator_1bpp_mic_fft(int64_t t, uint8_t logarithmic, uint8_t lin_log_factor, uint8_t lineOnly) {
+static float fft_bins[DISPLAY_FRAME_WIDTH_PIXEL] = { 0.0f };
+static int8_t fft_columns[DISPLAY_FRAME_WIDTH_PIXEL] = { 0 };
+void bitmap_generator_1bpp_mic_fft(int64_t t, uint8_t logarithmic, uint8_t lin_log_factor, uint8_t lineOnly, uint16_t minNormFactor, uint16_t maxNormFactor, uint16_t normFactorChangeIncrease, uint16_t normFactorChangeDecrease, uint8_t binWidth) {
     #if defined(CONFIG_DISPLAY_PIX_BUF_TYPE_1BPP)
-    i2s_mic_get_fft_bins(fft_bins, 120, logarithmic, (float)lin_log_factor / 100.0f);
+    if (binWidth == 0) binWidth = 1;
+    uint16_t numBins = DISPLAY_FRAME_WIDTH_PIXEL / binWidth;
+    i2s_mic_get_fft_bins(fft_bins, numBins, logarithmic, (float)lin_log_factor / 100.0f, minNormFactor * 0.1f, maxNormFactor * 0.1f, 1 / (normFactorChangeIncrease * 0.1f), 1 / (normFactorChangeDecrease * 0.1f));
 
     taskENTER_CRITICAL(pixel_buffer_lock);
     uint8_t bass_count = 0;
-    for (uint16_t x = 0; x < DISPLAY_FRAME_WIDTH_PIXEL; x++) {
-        uint16_t pixBufIndex = x;
-        int8_t v = (uint8_t)((fft_bins[x] - 130.0f) * (8 - 0) / (200.0f - 130.0f) + 0);
-        if (v < 0) v = 0;
-        if (v > 8) v = 8;
-        int8_t prev_col = fft_columns[x];
+    for (uint16_t binIdx = 0; binIdx < numBins; binIdx++) {
+        int8_t v = (uint8_t)((fft_bins[binIdx] - 130.0f) * (8 - 0) / (200.0f - 130.0f) + 0); // TODO: Get rid of magic numbers
+        if (v < 0) v = 0; // TODO: Adjust for display height
+        if (v > 8) v = 8; // TODO: Adjust for display height
+        int8_t prev_col = fft_columns[binIdx];
         
         int8_t col = 0;
-        if (v >= prev_col) col = v;
-        if (v < prev_col && prev_col > 0) col = prev_col - 1;
-        if (lineOnly) {
-            pixel_buffer[pixBufIndex] = (0x0100 >> (col)) & 0xFF;
-        } else {
-            pixel_buffer[pixBufIndex] = (0xFF00 >> (col)) & 0xFF;
-        }
-        fft_columns[x] = col;
+        if (v >= prev_col) col = v; // Immediately set if new amplitude is greater
+        if (v < prev_col && prev_col > 0) col = prev_col - 1; // Otherwise allow 1 pixel decrease per frame
+        fft_columns[binIdx] = col;
 
-        if (x < 8) {
+        for (uint8_t i = 0; i < binWidth; i++) {
+            if (lineOnly) {
+                pixel_buffer[binIdx * binWidth + i] = (0x0100 >> (col)) & 0xFF;
+            } else {
+                pixel_buffer[binIdx * binWidth + i] = (0xFF00 >> (col)) & 0xFF;
+            }
+        }
+
+        // TODO: Replace this fucked up shit with actual beat detection or something
+        // It counts amplitudes in a specific area
+        if (binIdx < 8) {
             // Max. count: 8 * 2 = 16
             if (col >= 7) bass_count += col - 6;
         }
@@ -1107,7 +1153,22 @@ void bitmap_generator_current(int64_t t) {
             cJSON* logarithmic_field = cJSON_GetObjectItem(params, "logarithmic");
             if (!cJSON_IsBool(logarithmic_field)) return;
             uint8_t logarithmic = (uint8_t)cJSON_IsTrue(logarithmic_field);
-            bitmap_generator_1bpp_mic_fft(t, logarithmic, lin_log_factor, line_only);
+            cJSON* min_norm_factor_field = cJSON_GetObjectItem(params, "min_norm_factor");
+            if (!cJSON_IsNumber(min_norm_factor_field)) return;
+            uint16_t min_norm_factor = (uint16_t)cJSON_GetNumberValue(min_norm_factor_field);
+            cJSON* max_norm_factor_field = cJSON_GetObjectItem(params, "max_norm_factor");
+            if (!cJSON_IsNumber(max_norm_factor_field)) return;
+            uint16_t max_norm_factor = (uint16_t)cJSON_GetNumberValue(max_norm_factor_field);
+            cJSON* norm_factor_increase_field = cJSON_GetObjectItem(params, "norm_factor_increase");
+            if (!cJSON_IsNumber(norm_factor_increase_field)) return;
+            uint16_t norm_factor_increase = (uint16_t)cJSON_GetNumberValue(norm_factor_increase_field);
+            cJSON* norm_factor_decrease_field = cJSON_GetObjectItem(params, "norm_factor_decrease");
+            if (!cJSON_IsNumber(norm_factor_decrease_field)) return;
+            uint16_t norm_factor_decrease = (uint16_t)cJSON_GetNumberValue(norm_factor_decrease_field);
+            cJSON* bin_width_field = cJSON_GetObjectItem(params, "bin_width");
+            if (!cJSON_IsNumber(bin_width_field)) return;
+            uint8_t bin_width = (uint8_t)cJSON_GetNumberValue(bin_width_field);
+            bitmap_generator_1bpp_mic_fft(t, logarithmic, lin_log_factor, line_only, min_norm_factor, max_norm_factor, norm_factor_increase, norm_factor_decrease, bin_width);
             return;
         }
     }

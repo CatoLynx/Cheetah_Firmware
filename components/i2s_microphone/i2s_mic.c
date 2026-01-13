@@ -140,7 +140,7 @@ uint8_t buf[NUM_SAMPLES * 4];
 
 float sampleNormalizationFactor = 1.0f;
 
-void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float lin_log_factor) {
+void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float lin_log_factor, float minSampleNormFactor /*1.0*/, float maxSampleNormFactor /*500.0*/, float maxSampleNormFactorIncrease /*getting quieter, 1/512.0*/, float maxSampleNormFactorDecrease/*getting louder, 1/16.0*/) {
     // ESP_LOGI(LOG_TAG, "Opening SPIFFS file");
     // FILE* file = fopen("/spiffs/test.raw", "r");
     // if (file == NULL) {
@@ -229,25 +229,26 @@ void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float li
             // this section of audio is louder than previously.
             // Allow fast change (16th of the diff)
             float diff = (sampleNormalizationFactor - instantaneousNormalizationFactor);
-            sampleNormalizationFactor -= diff / 16.0f; //fmin(diff, 1.0);
+            sampleNormalizationFactor -= diff  * maxSampleNormFactorDecrease; //fmin(diff, 1.0);
         } else if (instantaneousNormalizationFactor > sampleNormalizationFactor) {
             // Inst. norm. factor larger than prev. factor means
             // this section of audio is quieter than previously.
             // Allow slow change (512th of the diff)
             float diff = (instantaneousNormalizationFactor - sampleNormalizationFactor);
-            sampleNormalizationFactor += diff / 512.0f; //fmin(diff, 0.1);
+            sampleNormalizationFactor += diff * maxSampleNormFactorIncrease; //fmin(diff, 0.1);
         }
 
         if (isinf(sampleNormalizationFactor) || isnan(sampleNormalizationFactor)) {
-            if (isinf(sampleNormalizationFactor)) ESP_LOGW(LOG_TAG, "Sample normalization factor is Inf");
-            if (isnan(sampleNormalizationFactor)) ESP_LOGW(LOG_TAG, "Sample normalization factor is NaN");
-            ESP_LOGW(LOG_TAG, "Max. sample ampl.:  %.2f", max);
-            ESP_LOGW(LOG_TAG, "Inst. norm. factor: %.2f", instantaneousNormalizationFactor);
-            ESP_LOGW(LOG_TAG, "Samp. norm. factor: %.2f", sampleNormalizationFactor);
+            if (isinf(sampleNormalizationFactor)) ESP_LOGD(LOG_TAG, "Sample normalization factor is Inf");
+            if (isnan(sampleNormalizationFactor)) ESP_LOGD(LOG_TAG, "Sample normalization factor is NaN");
+            ESP_LOGD(LOG_TAG, "Max. sample ampl.:  %.2f", max);
+            ESP_LOGD(LOG_TAG, "Inst. norm. factor: %.2f", instantaneousNormalizationFactor);
+            ESP_LOGD(LOG_TAG, "Samp. norm. factor: %.2f", sampleNormalizationFactor);
             sampleNormalizationFactor = 1.0f;
         }
 
-        if (sampleNormalizationFactor > 500.0f) sampleNormalizationFactor = 500.0f;
+        if (sampleNormalizationFactor < minSampleNormFactor) sampleNormalizationFactor = minSampleNormFactor;
+        if (sampleNormalizationFactor > maxSampleNormFactor) sampleNormalizationFactor = maxSampleNormFactor;
 
         ESP_LOGD(LOG_TAG, "Normalizing samples (Factor: %.2f)", sampleNormalizationFactor);
         for (uint16_t i = 0; i < NUM_SAMPLES; i++) {
@@ -313,8 +314,8 @@ void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float li
                     count++;
                 }
 
-                //bins[b] = (count > 0) ? (bin_sum / count) : 0;  // Prevent divide-by-zero
-                bins[b] = bin_max;
+                //bins[b] = (count > 0) ? (bin_sum / count) : 0; // Use average as bin value
+                bins[b] = bin_max; // Use maximum as bin value
                 if (bins[b] < bMin) bMin = bins[b];
                 if (bins[b] > bMax) bMax = bins[b];
 
@@ -326,10 +327,13 @@ void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float li
             float bMax = 0;
             for (uint8_t b = 0; b < numBins; b++) {
                 float bin_sum = 0.0f;
+                float bin_max = 0.0f;
                 for (uint8_t f = 0; f < binSize; f++) {
+                    if (y_cf[b * binSize + f] > bin_max) bin_max = y_cf[b * binSize + f];
                     bin_sum += y_cf[b * binSize + f];
                 }
-                bins[b] = bin_sum / binSize;
+                //bins[b] = bin_sum / binSize; // Use average as bin value
+                bins[b] = bin_max; // Use maximum as bin value
                 if (bins[b] < bMin) bMin = bins[b];
                 if (bins[b] > bMax) bMax = bins[b];
             }
