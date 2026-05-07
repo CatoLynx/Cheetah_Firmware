@@ -10,6 +10,8 @@
 #include <math.h>
 #include <string.h>
 
+#if defined(CONFIG_I2S_MIC_ENABLED)
+
 #define LOG_TAG "I2S-MIC"
 
 
@@ -259,3 +261,5 @@ void i2s_mic_get_fft_bins(float* bins, uint16_t numBins, uint8_t x_log, float li
     //dsps_view(bins, numBins, 8, 10, 150, 200, '#');
     //dsps_view(y_cf, NUM_SAMPLES / 2, 128, 15, 100, 200, '#');
 }
+
+#endif
