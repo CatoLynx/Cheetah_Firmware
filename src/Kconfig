@@ -531,3 +531,49 @@ config FAN_SPEED_ADJUST_DELAY
         How many milliseconds between each fan speed adjustment step. There are 256 steps in total. Minimum is 10.
 
 endmenu
+
+
+menu "Heartbeat Configuration"
+
+config HEARTBEAT_ENABLED
+    bool "Use heartbeat"
+    default false
+    help
+        Enable heartbeat output
+
+config HEARTBEAT_TIMER_NUM
+    depends on HEARTBEAT_ENABLED
+    int "Heartbeat timer number"
+    default 0
+    help
+        LEDC timer number for heartbeat (0 to 3)
+
+config HEARTBEAT_CHANNEL_NUM
+    depends on HEARTBEAT_ENABLED
+    int "Heartbeat channel number"
+    default 0
+    help
+        LEDC channel number for heartbeat (0 to 7)
+
+config HEARTBEAT_GPIO_NUM
+    depends on HEARTBEAT_ENABLED
+    int "Heartbeat GPIO number"
+    default 0
+    help
+        GPIO number for heartbeat output
+
+config HEARTBEAT_FREQ
+    depends on HEARTBEAT_ENABLED
+    int "Heartbeat frequency (Hz)"
+    default 1
+    help
+        Frequency for heartbeat
+
+config HEARTBEAT_DUTY_CYCLE
+    depends on HEARTBEAT_ENABLED
+    int "Heartbeat duty cycle (0 to 255)"
+    default 128
+    help
+        Duty cycle for heartbeat (0 to 255)
+
+endmenu
