@@ -35,6 +35,7 @@
 #include "util_fan.h"
 #include "util_generic.h"
 #include "util_gpio.h"
+#include "util_heartbeat.h"
 #include "wg.h"
 
 
@@ -351,6 +352,10 @@ void app_main(void) {
 
     #if defined(CONFIG_FAN_ENABLED)
     ESP_ERROR_CHECK(fan_init());
+    #endif
+
+    #if defined(CONFIG_HEARTBEAT_ENABLED)
+    ESP_ERROR_CHECK(heartbeat_init());
     #endif
 
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL) && defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
