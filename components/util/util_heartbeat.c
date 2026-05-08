@@ -16,7 +16,7 @@ gptimer_config_t timer_config = {
 };
 gptimer_alarm_config_t alarm_config = {
     .reload_count = 0, // Value to load on alarm
-    .alarm_count = CONFIG_HEARTBEAT_PERIOD_MS,
+    .alarm_count = CONFIG_HEARTBEAT_PERIOD_MS / 2,
     .flags.auto_reload_on_alarm = true, // Enable auto-reload
 };
 
