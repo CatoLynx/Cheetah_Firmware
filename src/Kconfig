@@ -541,20 +541,6 @@ config HEARTBEAT_ENABLED
     help
         Enable heartbeat output
 
-config HEARTBEAT_TIMER_NUM
-    depends on HEARTBEAT_ENABLED
-    int "Heartbeat timer number"
-    default 0
-    help
-        LEDC timer number for heartbeat (0 to 3)
-
-config HEARTBEAT_CHANNEL_NUM
-    depends on HEARTBEAT_ENABLED
-    int "Heartbeat channel number"
-    default 0
-    help
-        LEDC channel number for heartbeat (0 to 7)
-
 config HEARTBEAT_GPIO_NUM
     depends on HEARTBEAT_ENABLED
     int "Heartbeat GPIO number"
@@ -562,18 +548,11 @@ config HEARTBEAT_GPIO_NUM
     help
         GPIO number for heartbeat output
 
-config HEARTBEAT_FREQ
+config HEARTBEAT_PERIOD_MS
     depends on HEARTBEAT_ENABLED
-    int "Heartbeat frequency (Hz)"
-    default 1
+    int "Heartbeat period (ms)"
+    default 1000
     help
-        Frequency for heartbeat
-
-config HEARTBEAT_DUTY_CYCLE
-    depends on HEARTBEAT_ENABLED
-    int "Heartbeat duty cycle (0 to 255)"
-    default 128
-    help
-        Duty cycle for heartbeat (0 to 255)
+        Period in milliseconds for heartbeat
 
 endmenu

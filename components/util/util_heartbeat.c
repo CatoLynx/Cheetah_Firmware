@@ -1,36 +1,41 @@
 #include "util_heartbeat.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "driver/ledc.h"
+#include "driver/gpio.h"
+#include "driver/gptimer.h"
 
 
 #if defined(CONFIG_HEARTBEAT_ENABLED)
 
+static bool heartbeat_gpioState = false;
 
-ledc_timer_config_t heartbeat_timer = {
-    .duty_resolution = LEDC_TIMER_8_BIT,
-    .freq_hz = CONFIG_HEARTBEAT_FREQ,
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .timer_num = CONFIG_HEARTBEAT_TIMER_NUM,
-    .clk_cfg = LEDC_AUTO_CLK
+gptimer_handle_t gptimer = NULL;
+gptimer_config_t timer_config = {
+    .clk_src = GPTIMER_CLK_SRC_DEFAULT,
+    .direction = GPTIMER_COUNT_UP,
+    .resolution_hz = 1000, // 1000 Hz => 1 tick = 1 ms
 };
-
-ledc_channel_config_t heartbeat_channel = {
-    .channel    = CONFIG_HEARTBEAT_CHANNEL_NUM,
-    .duty       = 0,
-    .gpio_num   = CONFIG_HEARTBEAT_GPIO_NUM,
-    .speed_mode = LEDC_LOW_SPEED_MODE,
-    .timer_sel  = CONFIG_HEARTBEAT_TIMER_NUM
+gptimer_alarm_config_t alarm_config = {
+    .reload_count = 0, // Value to load on alarm
+    .alarm_count = CONFIG_HEARTBEAT_PERIOD_MS,
+    .flags.auto_reload_on_alarm = true, // Enable auto-reload
+};
+gptimer_event_callbacks_t cbs = {
+    .on_alarm = heartbeat_callback,
 };
 
 
 esp_err_t heartbeat_init() {
-    ESP_ERROR_CHECK(ledc_timer_config(&heartbeat_timer));
-    ESP_ERROR_CHECK(ledc_channel_config(&heartbeat_channel));
-    ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, CONFIG_HEARTBEAT_CHANNEL_NUM, CONFIG_HEARTBEAT_DUTY_CYCLE));
-    ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, CONFIG_HEARTBEAT_CHANNEL_NUM));
+    gpio_reset_pin(CONFIG_HEARTBEAT_GPIO_NUM);
+    gpio_set_direction(CONFIG_HEARTBEAT_GPIO_NUM, GPIO_MODE_OUTPUT);
+    ESP_ERROR_CHECK(gptimer_new_timer(&timer_config, &gptimer));
+    ESP_ERROR_CHECK(gptimer_set_alarm_action(gptimer, &alarm_config));
     return ESP_OK;
+}
+
+static bool heartbeat_callback(gptimer_handle_t timer, const gptimer_alarm_event_data_t *edata, void *user_ctx) {
+    heartbeat_gpioState = !heartbeat_gpioState;
+    gpio_set_level(CONFIG_HEARTBEAT_GPIO_NUM, heartbeat_gpioState);
+    return false; // No high-priority task was awoken by the event
 }
 
 #endif
