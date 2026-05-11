@@ -68,6 +68,8 @@
     #include "driver_display_sel_krone_9000.h"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_8200_PST)
     #include "driver_display_sel_krone_8200_pst.h"
+#elif defined(CONFIG_DISPLAY_DRIVER_SEL_AEG_SPLITFLAP)
+    #include "driver_display_sel_aeg_splitflap.h"
 #endif
 
 #if defined(DISPLAY_HAS_TEXT_BUFFER)

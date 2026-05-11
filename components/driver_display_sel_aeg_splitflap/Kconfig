@@ -1,0 +1,90 @@
+menu "AEG Split-Flap Configuration (Selection Mode)"
+
+config AEG_SEL_DATA_OUT_IO
+    int "Data Output GPIO"
+    default 0
+    help
+        GPIO pin for data output
+
+config AEG_SEL_DATA_IN_IO
+    int "Data Input GPIO"
+    default 0
+    help
+        GPIO pin for data input
+
+config AEG_SEL_CLOCK_IO
+    int "Clock GPIO"
+    default 0
+    help
+        GPIO pin for clock signal
+
+config AEG_SEL_OUT_LATCH_IO
+    int "Output Latch GPIO"
+    default 0
+    help
+        GPIO pin for latch signal for output data
+
+config AEG_SEL_IN_LATCH_IO
+    int "Input Latch GPIO"
+    default 0
+    help
+        GPIO pin for latch signal for input data
+
+config AEG_SEL_SET_BUTTON_IO
+    int "Set Button GPIO"
+    default 0
+    help
+        GPIO pin for set button
+
+config AEG_SEL_USE_ZACE
+    bool "Use ZACE expansion card"
+    default false
+    help
+        If set, the AEG ZACE expansion card will be used to control more split-flap units
+
+config AEG_SEL_ZACE_REG_SEL_A0_IO
+    depends on AEG_SEL_USE_ZACE
+    int "ZACE Register select A0 GPIO"
+    default 0
+    help
+        GPIO pin for ZACE register selection address bit 0
+
+config AEG_SEL_ZACE_REG_SEL_A1_IO
+    depends on AEG_SEL_USE_ZACE
+    int "ZACE Register select A1 GPIO"
+    default 0
+    help
+        GPIO pin for ZACE register selection address bit 1
+
+config AEG_SEL_ZACE_REG_SEL_EN_TOP_IO
+    depends on AEG_SEL_USE_ZACE
+    int "ZACE Register select enable top half GPIO"
+    default 0
+    help
+        GPIO pin for ZACE register selection enable on top half of ZACE card
+
+config AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO
+    depends on AEG_SEL_USE_ZACE
+    int "ZACE Register select enable bottom half GPIO"
+    default 0
+    help
+        GPIO pin for ZACE register selection enable on bottom half of ZACE card
+
+choice AEG_SEL_SPI_HOST
+    bool "SPI Host"
+    default AEG_SEL_SPI_HOST_VSPI
+
+    config AEG_SEL_SPI_HOST_VSPI
+        bool "VSPI"
+    
+    config AEG_SEL_SPI_HOST_HSPI
+        bool "HSPI"
+endchoice
+
+config AEG_SEL_ROTATION_TIMEOUT
+    int "Rotation Timeout (ms)"
+    default 5000
+    help
+        How many milliseconds to wait for rotation to complete before stopping any rogue units
+
+endmenu

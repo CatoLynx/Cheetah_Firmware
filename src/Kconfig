@@ -198,6 +198,10 @@ choice DISPLAY_DRIVER
     config DISPLAY_DRIVER_SEL_KRONE_8200_PST
         depends on DISPLAY_TYPE_SELECTION
         bool "KRONE 8200 Split-Flap, PST (using UART peripheral)"
+        
+    config DISPLAY_DRIVER_SEL_AEG_SPLITFLAP
+        depends on DISPLAY_TYPE_SELECTION
+        bool "AEG / ADtranz Split-Flap"
 endchoice
 
 config DISPLAY_UNIT_BUF_SIZE

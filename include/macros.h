@@ -139,6 +139,8 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #define DISPLAY_DRIVER "sel_krone_9000"
 #elif defined(CONFIG_DISPLAY_DRIVER_SEL_KRONE_8200_PST)
     #define DISPLAY_DRIVER "sel_krone_8200_pst"
+#elif defined(CONFIG_DISPLAY_DRIVER_SEL_AEG_SPLITFLAP)
+    #define DISPLAY_DRIVER "sel_aeg_splitflap"
 #endif
 
 #if defined(CONFIG_DISPLAY_HAS_SHADERS)
