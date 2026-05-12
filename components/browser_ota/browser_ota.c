@@ -62,7 +62,7 @@ static esp_err_t ota_length_post_handler(httpd_req_t *req) {
 
     char buf[10];
     size_t length = req->content_len;
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", length);
     
     if (length > 9) {
         return abortRequest(req, "413 Payload Too Large");
@@ -112,7 +112,7 @@ static esp_err_t ota_post_handler(httpd_req_t *req) {
         return abortRequest(req, HTTPD_500);
     }
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", length);
 
     while (remaining > 0) {
         ret = httpd_req_recv(req, ota_buf, MIN(remaining, sizeof(ota_buf)));

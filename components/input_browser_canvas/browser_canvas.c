@@ -161,7 +161,7 @@ static esp_err_t canvas_pixel_buffer_post_handler(httpd_req_t *req) {
     
     if (canvas_pixel_buffer == NULL) return abortRequest(req, HTTPD_404);
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
     char* buf = malloc(req->content_len + 1);
     int bytesRead = 0;
     while (bytesRead < req->content_len) {
@@ -211,7 +211,7 @@ static esp_err_t canvas_text_buffer_post_handler(httpd_req_t *req) {
     
     if (canvas_text_buffer == NULL) return abortRequest(req, HTTPD_404);
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
     char* buf = malloc(req->content_len + 1);
     int bytesRead = 0;
     while (bytesRead < req->content_len) {
@@ -262,7 +262,7 @@ static esp_err_t canvas_unit_buffer_post_handler(httpd_req_t *req) {
     
     if (canvas_unit_buffer == NULL) return abortRequest(req, HTTPD_404);
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
     char* buf = malloc(req->content_len + 1);
     int bytesRead = 0;
     while (bytesRead < req->content_len) {
@@ -311,7 +311,7 @@ static esp_err_t canvas_line_flags_buffer_post_handler(httpd_req_t *req) {
     
     if (canvas_line_flags_buffer == NULL) return abortRequest(req, HTTPD_404);
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
     char* buf = malloc(req->content_len + 1);
     int bytesRead = 0;
     while (bytesRead < req->content_len) {
@@ -374,7 +374,7 @@ static esp_err_t canvas_brightness_get_handler(httpd_req_t *req) {
 static esp_err_t canvas_brightness_post_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -450,7 +450,7 @@ static esp_err_t canvas_shader_get_handler(httpd_req_t *req) {
 static esp_err_t canvas_shader_post_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -516,7 +516,7 @@ static esp_err_t canvas_transition_get_handler(httpd_req_t *req) {
 static esp_err_t canvas_transition_post_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -582,7 +582,7 @@ static esp_err_t canvas_effect_get_handler(httpd_req_t *req) {
 static esp_err_t canvas_effect_post_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -648,7 +648,7 @@ static esp_err_t canvas_bitmap_generator_get_handler(httpd_req_t *req) {
 static esp_err_t canvas_bitmap_generator_post_handler(httpd_req_t *req) {
     if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
     
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);

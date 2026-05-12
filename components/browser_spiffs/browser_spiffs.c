@@ -136,7 +136,7 @@ static esp_err_t spiffs_delete_post_handler(httpd_req_t *req) {
     bool authenticated = basic_auth_handler(req, LOG_TAG);
     if (authenticated == false) return ESP_OK;
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -176,7 +176,7 @@ static esp_err_t spiffs_upload_metadata_post_handler(httpd_req_t *req) {
     bool authenticated = basic_auth_handler(req, LOG_TAG);
     if (authenticated == false) return ESP_OK;
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", req->content_len);
 
     char* buf = malloc(req->content_len);
     httpd_req_recv(req, buf, req->content_len);
@@ -233,7 +233,7 @@ static esp_err_t spiffs_upload_post_handler(httpd_req_t *req) {
         return abortRequest(req, HTTPD_500);
     }
 
-    ESP_LOGI(LOG_TAG, "Content length: %d bytes", length);
+    ESP_LOGD(LOG_TAG, "Content length: %d bytes", length);
 
     FILE* file = NULL;
 
