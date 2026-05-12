@@ -470,8 +470,8 @@ void app_main(void) {
         // Load startup defaults
         cJSON* startupData;
         char* startupFile = get_string_from_nvs(&nvs_handle, "startup_file");
-        if (startupFile == NULL) {
-            ESP_LOGW(LOG_TAG, "Not using startup file");
+        if (startupFile == NULL || strlen(startupFile) == 0) {
+            ESP_LOGI(LOG_TAG, "Not using startup file");
         } else {
             esp_err_t ret = get_json_from_spiffs(startupFile, &startupData, LOG_TAG);
 

@@ -771,16 +771,15 @@ static esp_err_t save_startup_post_handler(httpd_req_t *req) {
     cJSON_AddItemToObject(startupData, "buffers", buffers_field);
 
     char* startupFile = get_string_from_nvs(&canvas_nvs_handle, "startup_file");
-    if (startupFile == NULL) {
+    if (startupFile == NULL || strlen(startupFile) == 0) {
+        startupFile = "STARTUP.JSN";
+        ESP_LOGI(LOG_TAG, "No startup file selected, using default startup file name: %s", startupFile);
+    }
+    esp_err_t ret = save_json_to_spiffs(startupFile, startupData, LOG_TAG);
+    ESP_LOGI(LOG_TAG, "Saved");
+    if (ret != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "Failed to save startup file");
         success = 0;
-        ESP_LOGW(LOG_TAG, "Not using startup file");
-    } else {
-        esp_err_t ret = save_json_to_spiffs(startupFile, startupData, LOG_TAG);
-        ESP_LOGI(LOG_TAG, "Saved");
-        if (ret != ESP_OK) {
-            ESP_LOGE(LOG_TAG, "Failed to save startup file");
-            success = 0;
-        }
     }
     cJSON_Delete(startupData);
 
