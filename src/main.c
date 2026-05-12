@@ -504,6 +504,17 @@ void app_main(void) {
                         char* buffer_str = cJSON_GetStringValue(textbuf_field);
                         buffer_from_string(buffer_str, textbuf_b64, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, LOG_TAG);
                     }
+
+                    cJSON* line_flags_buf_field = cJSON_GetObjectItem(buffers_field, "line_flags");
+                    uint8_t line_flags_buf_b64 = 0;
+                    if (line_flags_buf_field == NULL || cJSON_IsNull(line_flags_buf_field)) {
+                        line_flags_buf_field = cJSON_GetObjectItem(buffers_field, "line_flags_b64");
+                        line_flags_buf_b64 = 1;
+                    }
+                    if (line_flags_buf_field != NULL && !cJSON_IsNull(line_flags_buf_field)) {
+                        char* buffer_str = cJSON_GetStringValue(line_flags_buf_field);
+                        buffer_from_string(buffer_str, line_flags_buf_b64, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, LOG_TAG);
+                    }
                     #endif
                     
                     #if defined(CONFIG_DISPLAY_TYPE_SELECTION)

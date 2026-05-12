@@ -51,6 +51,34 @@ config CSEG_LCD_LATCH_PULSE_LENGTH
         Pulse length of the latch pulse, in microseconds
 
 
+config CSEG_LCD_SEPARATE_OUTPUTS_PER_LINE
+    bool "Use latch addressing"
+    default false
+    help
+        Allow controlling multiple LCD buses by outputting a row address to select which row to latch
+
+config CSEG_LCD_LATCH_A0_IO
+    depends on CSEG_LCD_SEPARATE_OUTPUTS_PER_LINE
+    int "Latch address A0 GPIO"
+    default 0
+    help
+        GPIO pin for latch address bit A0
+
+config CSEG_LCD_LATCH_A1_IO
+    depends on CSEG_LCD_SEPARATE_OUTPUTS_PER_LINE
+    int "Latch address A1 GPIO"
+    default 0
+    help
+        GPIO pin for latch address bit A1
+
+config CSEG_LCD_LATCH_A2_IO
+    depends on CSEG_LCD_SEPARATE_OUTPUTS_PER_LINE
+    int "Latch address A2 GPIO"
+    default 0
+    help
+        GPIO pin for latch address bit A2
+
+
 config CSEG_LCD_USE_ENABLE
     bool "Use enable"
     default false
@@ -71,11 +99,29 @@ config CSEG_LCD_EN_INV
     help
         Output enable GPIO active-low or active-high
 
+
+config CSEG_LCD_LATCH_INDICATOR_IO
+    depends on DISPLAY_LINE_FLAGS_INDICATOR_LIGHT
+    int "Indicator latch GPIO"
+    default 0
+    help
+        GPIO pin for indicator latch
+
+config CSEG_LCD_LATCH_INDICATOR_INV
+    depends on DISPLAY_LINE_FLAGS_INDICATOR_LIGHT
+    bool "Indicator latch GPIO active-low"
+    default false
+    help
+        Indicator latch GPIO active-low or active-high
+
 choice CSEG_LCD_FONT
     bool "LCD type / font"
 
     config CSEG_LCD_FONT_GV07
         bool "GV07"
+
+    config CSEG_LCD_FONT_SAF_MOSAIC_20
+        bool "SaF MOSAIC 20"
 endchoice
 
 choice CSEG_LCD_SPI_HOST
