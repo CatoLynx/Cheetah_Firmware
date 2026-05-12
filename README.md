@@ -75,6 +75,7 @@ Character-based displays use the following buffers:
 * Optionally `display_prev_text_buffer`, which holds the input text data from the previous display update
 * `display_char_buffer`, which holds an intermediary representation of each character, e.g. a different character set
 * `display_quirk_flags_buffer`, which holds additional data for each character, such as combining diacritical marks, in a display-specific format
+* `display_line_flags_buffer`, which holds flags for each line of text, such as enabling an indicator light associated with that line
 * `display_outputBuffer`, as explained above
 
 ### Character-on-pixel displays
@@ -84,6 +85,7 @@ Character-based displays on top of pixel-based displays basically modulate a pix
 * `display_text_buffer`, which holds the input text as entered by the user
 * `display_char_buffer`, which holds an intermediary representation of each character, e.g. a different character set
 * `display_quirk_flags_buffer`, which holds additional data for each character, such as combining diacritical marks, in a display-specific format
+* `display_line_flags_buffer`, which holds flags for each line of text, such as enabling an indicator light associated with that line
 * `display_outputBuffer`, as explained above
 
 ### Pixel-on-character displays

@@ -44,8 +44,19 @@
       <input type="button" id="btn-bitmap-generator-preset-delete" value="Delete" /><br />
     </div>
     <div id="text-container" style="display: none;">
-      <label for="text-input">Text</label>
-      <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
+      <table id="text-input-table" class="no-accent no-borders">
+        <tr id="text-input-table-header">
+          <td>
+            <label for="text-input">Text</label>
+          </td>
+        </tr>
+        <tr>
+          <td id="text-input-table-spacer"><!-- This is to move the textarea to the right spot and also align the checkboxes with the text lines inside the textarea --></td>
+          <td rowspan="0">
+            <textarea id="text-input" name="text" style="font-family: monospace; font-size: 3em; overflow: hidden;"></textarea>
+          </td>
+        </tr>
+      </table>
     </div>
     <div id="selection-container" style="display: none;"></div>
     <div id="brightness-container" style="display: none;">
@@ -88,28 +99,29 @@
     <script type="text/javascript">
       var _CANVASDEBUG = false;
       var _CANVASDEBUGINFO = {
-        "type": "char_on_pixel",
-        "driver": "char_16seg_led_ws281x_hybrid",
-        "viewport_width_pixel": 74,
-        "viewport_height_pixel": 101,
-        "frame_width_pixel": 74,
-        "frame_height_pixel": 101,
+        "type": "character",
+        "driver": "char_segment_lcd_spi",
+        "viewport_width_pixel": 0,
+        "viewport_height_pixel": 0,
+        "frame_width_pixel": 0,
+        "frame_height_pixel": 0,
         "viewport_offset_x_pixel": 0,
         "viewport_offset_y_pixel": 0,
-        "viewport_width_char": 1,
-        "viewport_height_char": 1,
-        "frame_width_char": 1,
-        "frame_height_char": 1,
+        "viewport_width_char": 40,
+        "viewport_height_char": 8,
+        "frame_width_char": 40,
+        "frame_height_char": 8,
         "viewport_offset_x_char": 0,
         "viewport_offset_y_char": 0,
+        "line_flags_available": 153,
         "unitbuf_size": null,
-        "pixbuf_size": 74 * 101 * 3,
-        "pixbuf_type": "24bpp",
-        "textbuf_size": 2,
-        "charbuf_size": 1,
+        "pixbuf_size": null,
+        "pixbuf_type": null,
+        "textbuf_size": 320,
+        "charbuf_size": 320,
         "brightness_control": true,
         "config": {},
-        "quirks": ["combining_full_stop"]
+        "quirks": []
       };
       
       var display_info = {};
@@ -137,6 +149,7 @@
       var textBufferUpdateInProgress = false;
       var unitBufferUpdateInProgress = false;
       var liveUpdate = false;
+      const lineFlagNames = ["Indicator", "Flag 1", "Flag 2", "Flag 3", "Flag 4", "Flag 5", "Flag 6", "Flag 7"];
       
       /* PIXEL FUNCTIONS ################################################### */
       let Pixel = function(x, y, width, height, spacing, color) {
@@ -537,11 +550,53 @@
         $("#text-input").prop('rows', display_info["viewport_height_char"]);
         $("#text-container").show();
         $("#text-input").on("input", onTextInputInput);
+
+        // Draw line flag controls if available
+        if (display_info["line_flags_available"]) {
+          let num_line_flags = 0;
+          let table = $("#text-input-table");
+          let header = $("#text-input-table-header");
+
+          // Add header columns
+          for (var flag = 0; flag < 8; flag++) {
+            if (!(display_info["line_flags_available"] & (1 << flag))) continue;
+            num_line_flags++;
+            let header_td = $("<td>");
+            header_td.css("font-size", "0.5em");
+            let div = $("<div>");
+            div.css("transform", "rotate(-45deg)");
+            div.text(lineFlagNames[flag]);
+            header_td.append(div);
+            header.prepend(header_td);
+          }
+
+          // Add checkboxes per line
+          for (var line = 0; line < display_info["viewport_height_char"]; line++) {
+            let tr = $("<tr>");
+            for (var flag = 0; flag < 8; flag++) {
+              if (!(display_info["line_flags_available"] & (1 << flag))) continue;
+              let td = $("<td>");
+              let checkbox = $("<input type=\"checkbox\">");
+              checkbox.attr("id", "line-flag-line" + line + "-flag" + flag);
+              checkbox.click(onLineFlagClick);
+              td.append(checkbox);
+              tr.prepend(td);
+            }
+            table.find("tbody").append(tr);
+          }
+
+          // Adjust colspan of spacer to move textarea to right cell
+          $("#text-input-table-spacer").attr("colspan", num_line_flags);
+        }
       }
 
       function onTextInputInput(event) {
         event.preventDefault();
         updateTextBuffer(event);
+      }
+
+      function onLineFlagClick(event) {
+        updateLineFlagsBuffer(event);
       }
 
       function getActualCharCount(str) {
@@ -635,6 +690,97 @@
       function onUpdateTextBufferError(jqXHR, textStatus, errorThrown) {
         textBufferUpdateInProgress = false;
         console.log("Error updating text buffer!");
+        console.log(errorThrown);
+      }
+
+      function getLineFlagsBufferFromDisplay() {
+        if (!display_info["line_flags_available"]) return;
+
+        $.ajax({
+          type: "GET",
+          dataType: "text",
+          url: "/canvas/buffer/lineFlags",
+          success: onGetLineFlagsBufferFromDisplaySuccess,
+          error: onGetLineFlagsBufferFromDisplayError
+        });
+      }
+
+      function onGetLineFlagsBufferFromDisplaySuccess(data, textStatus, jqXHR) {
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          let lineFlags = Uint8Array.from(atob(data), c => c.charCodeAt(0));
+          
+          for (var line = 0; line < display_info["viewport_height_char"]; line++) {
+            let flag_byte = 0;
+            for (var flag = 0; flag < 8; flag++) {
+              if (!(display_info["line_flags_available"] & (1 << flag))) continue;
+              let val = !!(lineFlags[line] & (1 << flag));
+              $("#line-flag-line" + line + "-flag" + flag).prop("checked", val);
+            }
+          }
+        }
+      }
+
+      function onGetLineFlagsBufferFromDisplayError(jqXHR, textStatus, errorThrown) {
+        console.log("Error getting line flags buffer from display!");
+        console.log(errorThrown);
+      }
+
+      function getLineFlagsBuffer() {
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
+          let line_flags_buf = new Array(display_info["viewport_height_char"]);
+
+          for (var line = 0; line < display_info["viewport_height_char"]; line++) {
+            let flag_byte = 0;
+            for (var flag = 0; flag < 8; flag++) {
+              if (!(display_info["line_flags_available"] & (1 << flag))) continue;
+              let val = $("#line-flag-line" + line + "-flag" + flag).prop("checked");
+              if (val) flag_byte |= (1 << flag);
+            }
+            line_flags_buf[line] = flag_byte;
+          }
+
+          return line_flags_buf;
+        }
+        
+      }
+
+      function updateLineFlagsBuffer(event) {
+        if (!display_info["line_flags_available"]) return;
+
+        // If live update is disabled, only allow events from the update button
+        if (!liveUpdate) {
+          if (event === null) return;
+          if ($(event.target)[0] != $("#btn-update")[0]) return;
+        }
+        
+        let fb = getLineFlagsBuffer();
+        buffer_b64 = btoa(String.fromCharCode.apply(null, fb));
+        
+        if (_CANVASDEBUG) {
+          console.log(fb);
+          console.log(buffer_b64);
+          setTimeout(onUpdateLineFlagsBufferSuccess, 250);
+        } else {
+          if(lineFlagsBufferUpdateInProgress) return;
+          lineFlagsBufferUpdateInProgress = true;
+          $.ajax({
+            type: "POST",
+            contentType: "text/plain",
+            url: "/canvas/buffer/lineFlags",
+            data: buffer_b64,
+            success: onUpdateLineFlagsBufferSuccess,
+            error: onUpdateLineFlagsBufferError
+          });
+        }
+      }
+
+      function onUpdateLineFlagsBufferSuccess(data, textStatus, jqXHR) {
+        lineFlagsBufferUpdateInProgress = false;
+      }
+
+      function onUpdateLineFlagsBufferError(jqXHR, textStatus, errorThrown) {
+        lineFlagsBufferUpdateInProgress = false;
+        console.log("Error updating line flags buffer!");
         console.log(errorThrown);
       }
 
@@ -1862,6 +2008,7 @@
         } else if(display_info["type"] == "character") {
           drawTextInput();
           getTextBufferFromDisplay();
+          getLineFlagsBufferFromDisplay();
         } else if(display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") {
           pixels = new Array(data["viewport_width_pixel"] * data["viewport_height_pixel"]);
           pixels.fill(bgColor);
@@ -1869,6 +2016,7 @@
           drawTextInput();
           getPixelBufferFromDisplay();
           getTextBufferFromDisplay();
+          getLineFlagsBufferFromDisplay();
         } else if(display_info["type"] == "selection") {
           drawSelectionInput();
           getUnitBufferFromDisplay();
@@ -1913,6 +2061,7 @@
       function updateAllBuffers(event) {
         if (display_info["type"] == "pixel" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updatePixelBuffer(event);
         if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(event);
+        if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateLineFlagsBuffer(event);
         if (display_info["type"] == "selection") updateUnitBuffer(event);
       }
 

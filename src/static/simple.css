@@ -379,6 +379,14 @@ table {
   width: 100%;
 }
 
+table.no-accent tr,th {
+  background-color: inherit;
+}
+
+table.no-borders td {
+  border: none;
+}
+
 td,
 th {
   border: 1px solid var(--border);

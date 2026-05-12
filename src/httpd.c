@@ -193,6 +193,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(json, "frame_height_char", DISPLAY_FRAME_HEIGHT_CHAR);
     cJSON_AddNumberToObject(json, "viewport_offset_x_char", DISPLAY_VIEWPORT_OFFSET_X_CHAR);
     cJSON_AddNumberToObject(json, "viewport_offset_y_char", DISPLAY_VIEWPORT_OFFSET_Y_CHAR);
+    cJSON_AddNumberToObject(json, "line_flags_available", DISPLAY_LINE_FLAGS_AVAILABLE);
 #else
     cJSON_AddNullToObject(json, "viewport_width_char");
     cJSON_AddNullToObject(json, "viewport_height_char");
@@ -200,6 +201,7 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
     cJSON_AddNullToObject(json, "frame_height_char");
     cJSON_AddNullToObject(json, "viewport_offset_x_char");
     cJSON_AddNullToObject(json, "viewport_offset_y_char");
+    cJSON_AddNullToObject(json, "line_flags_available");
 #endif
 
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)

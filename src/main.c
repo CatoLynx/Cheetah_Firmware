@@ -77,6 +77,8 @@
     uint8_t display_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
     uint8_t display_char_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
     uint16_t display_quirk_flags_buffer[DISPLAY_CHAR_BUF_SIZE] = {0};
+    portMUX_TYPE display_line_flags_buffer_lock = portMUX_INITIALIZER_UNLOCKED;
+    uint8_t display_line_flags_buffer[DISPLAY_LINE_FLAGS_BUF_SIZE] = {0};
     #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
     uint8_t display_prev_text_buffer[DISPLAY_TEXT_BUF_SIZE] = {0};
     #else
@@ -187,7 +189,7 @@ static void display_refresh_task(void* arg) {
             STRCPY_TEXTBUF((char*)display_text_buffer, splash_text, DISPLAY_TEXT_BUF_SIZE);
 
             #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-                display_update(display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+                display_update(display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE);
                 #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
                 memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
                 #endif
@@ -210,13 +212,13 @@ static void display_refresh_task(void* arg) {
             //memcpy(display_prev_pixel_buffer, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE);
             #endif
         #elif defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-            display_update(display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            display_update(display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE);
             #if defined(CONFIG_DISPLAY_USE_PREV_TEXT_BUF)
             // TODO: OBSOLETE AGAIN - DRIVER MUST HANDLE
             //memcpy(display_prev_text_buffer, display_text_buffer, DISPLAY_TEXT_BUF_SIZE);
             #endif
         #elif defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
-            display_update(display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE);
+            display_update(display_pixel_buffer, display_prev_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, display_prev_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_char_buffer, display_quirk_flags_buffer, DISPLAY_CHAR_BUF_SIZE, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE);
             #if defined(CONFIG_DISPLAY_USE_PREV_PIX_BUF)
             // TODO: OBSOLETE AGAIN - DRIVER MUST HANDLE
             //memcpy(display_prev_pixel_buffer, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock);
@@ -404,13 +406,13 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_TYPE_PIXEL)
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, ARTNET_FRAMEBUF_SIZE);
-        browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL);
+        browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL);
         playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
-        browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
+        browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock);
         telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock);
         playlist_init(&nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
         #endif
@@ -418,13 +420,13 @@ void app_main(void) {
         #if defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, ARTNET_FRAMEBUF_SIZE);
-        browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
+        browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock);
         playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
-        browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock);
+        browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock, NULL, 0, NULL);
         playlist_init(&nvs_handle, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock);
         #endif
 

@@ -13,6 +13,10 @@ typedef enum {
     QUIRK_FLAG_COMBINING_FULL_STOP = (1 << 0),
 } quirk_flag_t;
 
+typedef enum {
+    LINE_FLAG_INDICATOR_LIGHT = (1 << 0),
+} line_flag_t;
+
 
 void buffer_8to1(uint8_t* buf8, uint8_t* buf1, uint16_t width, uint16_t height, buf_merge_t mergeType);
 void buffer_utf8_to_iso88591(char* dst, char* src);

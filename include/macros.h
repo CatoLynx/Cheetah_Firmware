@@ -101,6 +101,7 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
 
 #if defined(DISPLAY_HAS_TEXT_BUFFER)
     #define DISPLAY_CHAR_BUF_SIZE (DISPLAY_FRAME_WIDTH_CHAR * DISPLAY_FRAME_HEIGHT_CHAR)
+    #define DISPLAY_LINE_FLAGS_BUF_SIZE (DISPLAY_FRAME_HEIGHT_CHAR)
 
     #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
         // If the display has combining full stops, the text buffer needs to be
@@ -109,6 +110,22 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #else
         #define DISPLAY_TEXT_BUF_SIZE DISPLAY_CHAR_BUF_SIZE
     #endif
+
+    #if defined(CONFIG_DISPLAY_LINE_FLAGS_INDICATOR_LIGHT)
+        #define _LINE_FLAG_BIT_0 0x01
+    #else
+        #define _LINE_FLAG_BIT_0 0x00
+    #endif
+
+    #define _LINE_FLAG_BIT_1 0x00
+    #define _LINE_FLAG_BIT_2 0x00
+    #define _LINE_FLAG_BIT_3 0x00
+    #define _LINE_FLAG_BIT_4 0x00
+    #define _LINE_FLAG_BIT_5 0x00
+    #define _LINE_FLAG_BIT_6 0x00
+    #define _LINE_FLAG_BIT_7 0x00
+
+    #define DISPLAY_LINE_FLAGS_AVAILABLE ((_LINE_FLAG_BIT_7) | (_LINE_FLAG_BIT_6) | (_LINE_FLAG_BIT_5) | (_LINE_FLAG_BIT_4) | (_LINE_FLAG_BIT_3) | (_LINE_FLAG_BIT_2) | (_LINE_FLAG_BIT_1) | (_LINE_FLAG_BIT_0))
 #endif
 
 #if defined(CONFIG_DISPLAY_DRIVER_FLIPDOT_LAWO_ALUMA)

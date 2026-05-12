@@ -32,8 +32,6 @@
 
 #define LOG_TAG "Canvas"
 
-extern portMUX_TYPE display_pixel_buffer_lock;
-
 static httpd_handle_t* canvas_server;
 static nvs_handle_t canvas_nvs_handle;
 static basic_auth_info_t* basic_auth_info;
@@ -47,6 +45,9 @@ static portMUX_TYPE* canvas_text_buffer_lock = NULL;
 static uint8_t* canvas_unit_buffer = NULL;
 static size_t canvas_unit_buffer_size = 0;
 static portMUX_TYPE* canvas_unit_buffer_lock = NULL;
+static uint8_t* canvas_line_flags_buffer = NULL;
+static size_t canvas_line_flags_buffer_size = 0;
+static portMUX_TYPE* canvas_line_flags_buffer_lock = NULL;
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 static uint8_t* canvas_brightness = NULL;
@@ -126,6 +127,23 @@ static esp_err_t canvas_unit_buffer_get_handler(httpd_req_t *req) {
     
     unsigned char* b64_buf = NULL;
     esp_err_t ret = buffer_to_base64(canvas_unit_buffer, canvas_unit_buffer_size, &b64_buf);
+
+    if (ret == ESP_OK) {
+        httpd_resp_set_type(req, "text/plain");
+        httpd_resp_set_hdr(req, "Access-Control-Allow-Origin", "*");
+        httpd_resp_send(req, (char*)b64_buf, strlen((char*)b64_buf));
+        free(b64_buf);
+        return ESP_OK;
+    } else {
+        return abortRequest(req, HTTPD_404);
+    }
+}
+
+static esp_err_t canvas_line_flags_buffer_get_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    unsigned char* b64_buf = NULL;
+    esp_err_t ret = buffer_to_base64(canvas_line_flags_buffer, canvas_line_flags_buffer_size, &b64_buf);
 
     if (ret == ESP_OK) {
         httpd_resp_set_type(req, "text/plain");
@@ -275,6 +293,55 @@ static esp_err_t canvas_unit_buffer_post_handler(httpd_req_t *req) {
         taskENTER_CRITICAL(canvas_unit_buffer_lock);
         result = mbedtls_base64_decode(canvas_unit_buffer, canvas_unit_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
         taskEXIT_CRITICAL(canvas_unit_buffer_lock);
+        if (result != 0) {
+            free(buf);
+            return abortRequest(req, HTTPD_500);
+        }
+    }
+
+    free(buf);
+
+    // End response
+    httpd_resp_send_chunk(req, NULL, 0);
+    return ESP_OK;
+}
+
+static esp_err_t canvas_line_flags_buffer_post_handler(httpd_req_t *req) {
+    if (canvas_use_auth) if (!basic_auth_handler(req, LOG_TAG)) return ESP_OK;
+    
+    if (canvas_line_flags_buffer == NULL) return abortRequest(req, HTTPD_404);
+
+    ESP_LOGI(LOG_TAG, "Content length: %d bytes", req->content_len);
+    char* buf = malloc(req->content_len + 1);
+    int bytesRead = 0;
+    while (bytesRead < req->content_len) {
+        int ret = httpd_req_recv(req, &buf[bytesRead], req->content_len - bytesRead);
+        if (ret <= 0) {
+            if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+                ESP_LOGI(LOG_TAG, "Socket timeout, continuing");
+                continue;
+            }
+            ESP_LOGI(LOG_TAG, "Receive error, aborting");
+            return abortRequest(req, HTTPD_500);
+        }
+        bytesRead += ret;
+    }
+    buf[req->content_len] = 0;
+
+    size_t b64_len = 0;
+    size_t buffer_str_len = strlen(buf);
+    unsigned char* buffer_str_uchar = (unsigned char*)buf;
+    int result = mbedtls_base64_decode(NULL, 0, &b64_len, buffer_str_uchar, buffer_str_len);
+    if (result == MBEDTLS_ERR_BASE64_INVALID_CHARACTER) {
+        // We don't cover MBEDTLS_ERR_BASE64_BUFFER_TOO_SMALL here
+        // because this will always be returned when checking size
+        free(buf);
+        return abortRequest(req, HTTPD_500);
+    } else {
+        b64_len = 0;
+        taskENTER_CRITICAL(canvas_line_flags_buffer_lock);
+        result = mbedtls_base64_decode(canvas_line_flags_buffer, canvas_line_flags_buffer_size, &b64_len, buffer_str_uchar, buffer_str_len);
+        taskEXIT_CRITICAL(canvas_line_flags_buffer_lock);
         if (result != 0) {
             free(buf);
             return abortRequest(req, HTTPD_500);
@@ -692,6 +759,15 @@ static esp_err_t save_startup_post_handler(httpd_req_t *req) {
         }
     }
 
+    if (canvas_line_flags_buffer != NULL) {
+        unsigned char* unit_b64 = NULL;
+        esp_err_t status = buffer_to_base64(canvas_line_flags_buffer, canvas_line_flags_buffer_size, &unit_b64);
+        if (status == ESP_OK) {
+            cJSON_AddStringToObject(buffers_field, "line_flags_b64", (char*)unit_b64);
+            free(unit_b64);
+        }
+    }
+
     cJSON_AddItemToObject(startupData, "buffers", buffers_field);
 
     char* startupFile = get_string_from_nvs(&canvas_nvs_handle, "startup_file");
@@ -743,6 +819,12 @@ static httpd_uri_t canvas_unit_buffer_get = {
     .handler   = canvas_unit_buffer_get_handler
 };
 
+static httpd_uri_t canvas_line_flags_buffer_get = {
+    .uri       = "/canvas/buffer/lineFlags",
+    .method    = HTTP_GET,
+    .handler   = canvas_line_flags_buffer_get_handler
+};
+
 static httpd_uri_t canvas_pixel_buffer_post = {
     .uri       = "/canvas/buffer/pixel",
     .method    = HTTP_POST,
@@ -759,6 +841,12 @@ static httpd_uri_t canvas_unit_buffer_post = {
     .uri       = "/canvas/buffer/unit",
     .method    = HTTP_POST,
     .handler   = canvas_unit_buffer_post_handler
+};
+
+static httpd_uri_t canvas_line_flags_buffer_post = {
+    .uri       = "/canvas/buffer/lineFlags",
+    .method    = HTTP_POST,
+    .handler   = canvas_line_flags_buffer_post_handler
 };
 
 #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
@@ -867,7 +955,7 @@ static const httpd_uri_t canvas_save_startup_post = {
     .handler   = save_startup_post_handler
 };
 
-void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock) {
+void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock, uint8_t* lineFlagsBuf, size_t lineFlagsBufSize, portMUX_TYPE* lineFlagsBufLock) {
     ESP_LOGI(LOG_TAG, "Starting browser canvas");
     canvas_nvs_handle = *nvsHandle;
     canvas_pixel_buffer = pixBuf;
@@ -879,6 +967,9 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     canvas_unit_buffer = unitBuf;
     canvas_unit_buffer_size = unitBufSize;
     canvas_unit_buffer_lock = unitBufLock;
+    canvas_line_flags_buffer = lineFlagsBuf;
+    canvas_line_flags_buffer_size = lineFlagsBufSize;
+    canvas_line_flags_buffer_lock = lineFlagsBufLock;
 
     basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
@@ -899,9 +990,11 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
         canvas_pixel_buffer_get.user_ctx = basic_auth_info;
         canvas_text_buffer_get.user_ctx = basic_auth_info;
         canvas_unit_buffer_get.user_ctx = basic_auth_info;
+        canvas_line_flags_buffer_get.user_ctx = basic_auth_info;
         canvas_pixel_buffer_post.user_ctx = basic_auth_info;
         canvas_text_buffer_post.user_ctx = basic_auth_info;
         canvas_unit_buffer_post.user_ctx = basic_auth_info;
+        canvas_line_flags_buffer_post.user_ctx = basic_auth_info;
         canvas_get_shaders.user_ctx = basic_auth_info;
         canvas_get_transitions.user_ctx = basic_auth_info;
         canvas_get_effects.user_ctx = basic_auth_info;
@@ -946,9 +1039,11 @@ void browser_canvas_init(httpd_handle_t* server, nvs_handle_t* nvsHandle, uint8_
     httpd_register_uri_handler(*server, &canvas_pixel_buffer_get);
     httpd_register_uri_handler(*server, &canvas_text_buffer_get);
     httpd_register_uri_handler(*server, &canvas_unit_buffer_get);
+    httpd_register_uri_handler(*server, &canvas_line_flags_buffer_get);
     httpd_register_uri_handler(*server, &canvas_pixel_buffer_post);
     httpd_register_uri_handler(*server, &canvas_text_buffer_post);
     httpd_register_uri_handler(*server, &canvas_unit_buffer_post);
+    httpd_register_uri_handler(*server, &canvas_line_flags_buffer_post);
     httpd_register_uri_handler(*server, &canvas_get_shaders);
     httpd_register_uri_handler(*server, &canvas_get_transitions);
     httpd_register_uri_handler(*server, &canvas_get_effects);
@@ -962,17 +1057,25 @@ void browser_canvas_stop(void) {
     ESP_LOGI(LOG_TAG, "Stopping browser canvas");
     canvas_pixel_buffer = NULL;
     canvas_pixel_buffer_size = 0;
+    canvas_pixel_buffer_lock = NULL;
     canvas_text_buffer = NULL;
     canvas_text_buffer_size = 0;
+    canvas_text_buffer_lock = NULL;
     canvas_unit_buffer = NULL;
     canvas_unit_buffer_size = 0;
+    canvas_unit_buffer_lock = NULL;
+    canvas_line_flags_buffer = NULL;
+    canvas_line_flags_buffer_size = 0;
+    canvas_line_flags_buffer_lock = NULL;
     httpd_unregister_uri_handler(*canvas_server, canvas_get.uri, canvas_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_pixel_buffer_get.uri, canvas_pixel_buffer_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_text_buffer_get.uri, canvas_text_buffer_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_unit_buffer_get.uri, canvas_unit_buffer_get.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_line_flags_buffer_get.uri, canvas_line_flags_buffer_get.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_pixel_buffer_post.uri, canvas_pixel_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_text_buffer_post.uri, canvas_text_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_unit_buffer_post.uri, canvas_unit_buffer_post.method);
+    httpd_unregister_uri_handler(*canvas_server, canvas_line_flags_buffer_post.uri, canvas_line_flags_buffer_post.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_shaders.uri, canvas_get_shaders.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_transitions.uri, canvas_get_transitions.method);
     httpd_unregister_uri_handler(*canvas_server, canvas_get_effects.uri, canvas_get_effects.method);
