@@ -1,5 +1,6 @@
 #include "util_brightness.h"
 
+#include "driver/i2c_master.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
@@ -7,10 +8,11 @@
 #include "util_generic.h"
 
 
-#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL) && defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
+#define LOG_TAG "BRT-CTRL"
 
-#define LOG_TAG "BRT-SENS"
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
 
+#if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
 
 static uint8_t* brightness;
 static uint8_t* baseBrightness;
@@ -77,5 +79,57 @@ void brightness_adjust_task(void* arg) {
         vTaskDelay(20 / portTICK_PERIOD_MS);
     }
 }
+
+#endif
+
+#if defined(CONFIG_BRIGHTNESS_CONTROL_USE_I2C_DAC)
+// Generic brightness control using I²C DAC (e.g. 0-10V analog dimming for electronic ballasts)
+
+static i2c_master_bus_handle_t bus_handle;
+static i2c_master_dev_handle_t i2c_dac_handle;
+
+esp_err_t brightness_control_init(void) {
+    ESP_LOGI(LOG_TAG, "Initializing I2C DAC brightness control");
+    i2c_master_bus_config_t i2c_bus_config = {
+        .clk_source = I2C_CLK_SRC_DEFAULT,
+        .i2c_port = -1, // auto select
+        .scl_io_num = CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_SCL_IO,
+        .sda_io_num = CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_SDA_IO,
+        .glitch_ignore_cnt = 7,
+    };
+    ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_bus_config, &bus_handle));
+
+    i2c_device_config_t i2c_dev_conf = {
+        .scl_speed_hz = CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_SPEED,
+        .device_address = CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_ADDR,
+    };
+    ESP_ERROR_CHECK(i2c_master_bus_add_device(bus_handle, &i2c_dev_conf, &i2c_dac_handle));
+    return ESP_OK;
+}
+
+void display_set_brightness(uint8_t brightness) {
+    ESP_LOGD(LOG_TAG, "I2C DAC brightness value: %u", brightness);
+    uint8_t buf[2];
+    #if defined(CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_8_BIT)
+    buf[0] = 0x00;
+    buf[1] = brightness;
+    #elif defined(CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_10_BIT)
+    buf[0] = brightness >> 6;
+    buf[1] = brightness << 2;
+    #elif defined(CONFIG_BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_12_BIT)
+    buf[0] = brightness >> 4;
+    buf[1] = brightness << 4;
+    #endif
+    i2c_master_transmit(i2c_dac_handle, buf, 2, -1);
+}
+#else
+esp_err_t brightness_control_init(void) {
+    return ESP_OK;
+}
+
+void display_set_brightness(uint8_t brightness) {
+    
+}
+#endif
 
 #endif

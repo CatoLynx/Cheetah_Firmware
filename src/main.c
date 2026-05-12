@@ -362,6 +362,10 @@ void app_main(void) {
     ESP_ERROR_CHECK(heartbeat_init());
     #endif
 
+    #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
+    ESP_ERROR_CHECK(brightness_control_init());
+    #endif
+
     #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL) && defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_SENSOR)
     ESP_ERROR_CHECK(brightness_sensor_init(&display_brightness, &display_baseBrightness));
     #endif

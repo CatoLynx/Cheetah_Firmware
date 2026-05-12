@@ -572,3 +572,57 @@ config HEARTBEAT_PERIOD_MS
         Period in milliseconds for heartbeat
 
 endmenu
+
+
+menu "Brightness Control Configuration"
+
+config BRIGHTNESS_CONTROL_USE_I2C_DAC
+    bool "Use I²C DAC for brightness control"
+    default false
+    help
+        Use a generic I²C DAC to output an analog brightness value
+
+choice BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION
+    depends on BRIGHTNESS_CONTROL_USE_I2C_DAC
+    bool "DAC resolution"
+    default BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_8_BIT
+
+    config BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_8_BIT
+        bool "8 Bit"
+    
+    config BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_10_BIT
+        bool "10 Bit"
+
+    config BRIGHTNESS_CONTROL_I2C_DAC_RESOLUTION_12_BIT
+        bool "12 Bit"
+endchoice
+
+config BRIGHTNESS_CONTROL_I2C_DAC_SDA_IO
+    depends on BRIGHTNESS_CONTROL_USE_I2C_DAC
+    int "I²C SDA GPIO"
+    default 0
+    help
+        GPIO number for I²C SDA line
+
+config BRIGHTNESS_CONTROL_I2C_DAC_SCL_IO
+    depends on BRIGHTNESS_CONTROL_USE_I2C_DAC
+    int "I²C SCL GPIO"
+    default 0
+    help
+        GPIO number for I²C SCL line
+
+config BRIGHTNESS_CONTROL_I2C_DAC_SPEED
+    depends on BRIGHTNESS_CONTROL_USE_I2C_DAC
+    int "I²C clock speed in Hz"
+    default 100000
+    help
+        I²C clock speed in Hz
+
+config BRIGHTNESS_CONTROL_I2C_DAC_ADDR
+    depends on BRIGHTNESS_CONTROL_USE_I2C_DAC
+    hex "I²C device address (7-Bit, Hex)"
+    default 0x60
+    help
+        I²C device address
+
+endmenu
