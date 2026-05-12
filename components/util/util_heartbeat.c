@@ -12,11 +12,11 @@ gptimer_handle_t gptimer = NULL;
 gptimer_config_t timer_config = {
     .clk_src = GPTIMER_CLK_SRC_DEFAULT,
     .direction = GPTIMER_COUNT_UP,
-    .resolution_hz = 1000, // 1000 Hz => 1 tick = 1 ms
+    .resolution_hz = 1000000, // 1000000 Hz => 1 tick = 1 us
 };
 gptimer_alarm_config_t alarm_config = {
     .reload_count = 0, // Value to load on alarm
-    .alarm_count = CONFIG_HEARTBEAT_PERIOD_MS / 2,
+    .alarm_count = (CONFIG_HEARTBEAT_PERIOD_MS * 1000) / 2,
     .flags.auto_reload_on_alarm = true, // Enable auto-reload
 };
 
