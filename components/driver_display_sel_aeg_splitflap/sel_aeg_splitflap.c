@@ -181,12 +181,12 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
 
 static void aeg_sel_splitflap_latch_input(void) {
     // 1 us low pulse
-    gpio_pulse(CONFIG_AEG_SEL_IN_LATCH_IO, 0, 1, 1);
+    gpio_pulse(CONFIG_AEG_SEL_IN_LATCH_IO, 0, 1, 0, 1);
 }
 
 static void aeg_sel_splitflap_latch_output(void) {
     // 1 us high pulse
-    gpio_pulse(CONFIG_AEG_SEL_OUT_LATCH_IO, 1, 1, 1);
+    gpio_pulse(CONFIG_AEG_SEL_OUT_LATCH_IO, 1, 1, 0, 1);
 }
 
 static void aeg_sel_splitflap_pre_transfer_cb(spi_transaction_t *t) {

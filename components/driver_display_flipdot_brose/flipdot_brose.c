@@ -127,7 +127,7 @@ void display_flip() {
      * Flip the currently selected pixel
      */
     
-    gpio_pulse(CONFIG_BROSE_PAN_E_IO, 1, CONFIG_BROSE_FLIP_PULSE_WIDTH, CONFIG_BROSE_FLIP_PAUSE_LENGTH);
+    gpio_pulse(CONFIG_BROSE_PAN_E_IO, 1, CONFIG_BROSE_FLIP_PULSE_WIDTH, 0, CONFIG_BROSE_FLIP_PAUSE_LENGTH);
 }
 
 void display_buffers_to_out_buf(uint8_t* pixBuf, uint8_t* prevPixBuf, size_t pixBufSize) {

@@ -105,7 +105,7 @@ void display_select_row(uint8_t address) {
     #endif
 
     #if defined(CONFIG_SR_LED_MATRIX_ROW_ADDR_USE_LATCH)
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, 1, SR_PULSE_WIDTH_US, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV);
+    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_IO, 1, SR_PULSE_WIDTH_US, 0, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_ROW_ADDR_LATCH_INV);
     #endif
 }
 
@@ -127,11 +127,11 @@ void display_disable() {
 
 void display_shiftBit(uint8_t byte) {
     gpio_set(CONFIG_SR_LED_MATRIX_DATA_IO, !!byte, CONFIG_SR_LED_MATRIX_DATA_INV);
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_CLK_IO, 1, SR_PULSE_WIDTH_US, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_CLK_INV);
+    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_CLK_IO, 1, SR_PULSE_WIDTH_US, 0, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_CLK_INV);
 }
 
 void display_latch() {
-    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_LATCH_IO, 1, SR_PULSE_WIDTH_US, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_LATCH_INV);
+    gpio_pulse_inv(CONFIG_SR_LED_MATRIX_LATCH_IO, 1, SR_PULSE_WIDTH_US, 0, SR_PULSE_WIDTH_US, CONFIG_SR_LED_MATRIX_LATCH_INV);
 }
 
 void display_render_frame_8bpp(uint8_t* frame, uint8_t* prevFrame, uint16_t frameBufSize) {

@@ -39,7 +39,7 @@ void display_shiftBit(uint8_t bit) {
      * Thus, the maximum data rate for all ones is 20 kbit/s.
      */
 
-    gpio_pulse_inv(CONFIG_SAFLAP_DATA_IO, 1, bit ? 20 : 5, 30, CONFIG_SAFLAP_DATA_IO_INVERT);
+    gpio_pulse_inv(CONFIG_SAFLAP_DATA_IO, 1, bit ? 20 : 5, 0, 30, CONFIG_SAFLAP_DATA_IO_INVERT);
 }
 
 void display_shiftByte(uint8_t byte) {

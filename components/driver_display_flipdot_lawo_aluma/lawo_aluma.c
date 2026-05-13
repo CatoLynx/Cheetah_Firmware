@@ -114,7 +114,7 @@ void display_select_column(uint8_t address) {
     }
 
     display_set_address(colAddress);
-    gpio_pulse(PIN_LC_N, 0, LATCH_PULSE_WIDTH_US, LATCH_PULSE_WIDTH_US);
+    gpio_pulse(PIN_LC_N, 0, LATCH_PULSE_WIDTH_US, 0, LATCH_PULSE_WIDTH_US);
 
     gpio_set_level(PIN_COL_A3, ((colAddress & 8) != 0));
 
@@ -133,7 +133,7 @@ void display_select_panel(uint8_t address) {
      */
 
     display_set_address(CONFIG_ALUMA_NUM_PANELS - (7 - address) - 1);
-    gpio_pulse(PIN_LP_N, 0, LATCH_PULSE_WIDTH_US, LATCH_PULSE_WIDTH_US);
+    gpio_pulse(PIN_LP_N, 0, LATCH_PULSE_WIDTH_US, 0, LATCH_PULSE_WIDTH_US);
 }
 
 void display_select_color(uint8_t color) {
@@ -163,7 +163,7 @@ void display_flip() {
      * Flip the currently selected pixel
      */
     
-    gpio_pulse(PIN_F, 1, FLIP_PULSE_WIDTH_US, FLIP_PAUSE_US);
+    gpio_pulse(PIN_F, 1, FLIP_PULSE_WIDTH_US, 0, FLIP_PAUSE_US);
 }
 
 void display_set_backlight(uint8_t state) {
