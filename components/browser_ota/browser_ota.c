@@ -221,6 +221,7 @@ static esp_err_t ota_verify_get_handler(httpd_req_t *req) {
     if (authenticated == false) return ESP_OK;
 
     esp_ota_mark_app_valid_cancel_rollback();
+    ESP_LOGI(LOG_TAG, "OTA partition verified");
     httpd_resp_set_type(req, "text/plain");
     httpd_resp_send(req, "OK", 3);
     return ESP_OK;
