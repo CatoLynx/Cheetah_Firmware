@@ -135,4 +135,21 @@ choice CSEG_LCD_SPI_HOST
         bool "HSPI"
 endchoice
 
+choice CSEG_LCD_SPI_MODE
+    bool "SPI Mode"
+    default CSEG_LCD_SPI_MODE_0
+
+    config CSEG_LCD_SPI_MODE_0
+        bool "Mode 0 (CPOL=0, CPHA=0)"
+
+    config CSEG_LCD_SPI_MODE_1
+        bool "Mode 1 (CPOL=0, CPHA=1)"
+
+    config CSEG_LCD_SPI_MODE_2
+        bool "Mode 2 (CPOL=1, CPHA=0)"
+
+    config CSEG_LCD_SPI_MODE_3
+        bool "Mode 3 (CPOL=1, CPHA=1)"
+endchoice
+
 endmenu

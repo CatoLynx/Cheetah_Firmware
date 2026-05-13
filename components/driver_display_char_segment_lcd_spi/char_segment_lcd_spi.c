@@ -100,7 +100,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle) {
     };
     spi_device_interface_config_t devcfg = {
         .clock_speed_hz = CONFIG_CSEG_LCD_SPI_CLK_FREQ,
-        .mode = 0,                      // positive clock, sample on rising edge
+        .mode = CONFIG_CSEG_LCD_SPI_MODE,
         .spics_io_num = -1,             // -1 = not used
         .queue_size = 1,                // max. 1 transaction in queue
         .pre_cb = cseg_lcd_pre_transfer_cb,
