@@ -11,7 +11,10 @@
 #define LOG_TAG "BROWSER-CONFIG"
 
 static httpd_handle_t* config_server;
+
+#if defined(CONFIG_PROJ_USE_AUTH)
 static basic_auth_info_t* basic_auth_info;
+#endif
 
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t browser_config_html_start[] asm("_binary_browser_config_html_start");
