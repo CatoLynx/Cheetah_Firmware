@@ -52,7 +52,7 @@ config_entry_t config_entries[] = {
     {.key = "wg_listen_port",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE, .comment = "WireGuard listening port"},
     {.key = "wg_endpoint",     .dataType = STR, .flags = BC_FIELD_FLAGS_NONE, .comment = "WireGuard endpoint IP"},
     {.key = "wg_endpnt_port",  .dataType = U16, .flags = BC_FIELD_FLAGS_NONE, .comment = "WireGuard endpoint port"},
-    {.key = "wg_keepalive",    .dataType = U16, .flags = BC_FIELD_FLAGS_NONE, .comment = "WireGuard keepalive perion (in seconds)"},
+    {.key = "wg_keepalive",    .dataType = U16, .flags = BC_FIELD_FLAGS_NONE, .comment = "WireGuard keepalive period (in seconds)"},
     {.key = "playlist_active", .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE, .comment = "1 to enable playlist playback, 0 to disable"},
     {.key = "pl_poll_url",     .dataType = STR, .flags = BC_FIELD_FLAGS_NONE, .comment = "URL to fetch a playlist file from"},
     {.key = "pl_poll_token",   .dataType = STR, .flags = BC_FIELD_FLAGS_WRITE_ONLY, .comment = "API token to fetch playlist from server"},
