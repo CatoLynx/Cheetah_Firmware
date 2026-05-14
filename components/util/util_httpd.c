@@ -105,7 +105,7 @@ bool basic_auth_handler(httpd_req_t* req, const char* log_tag) {
     if (buf_len > 1) {
         buf = calloc(1, buf_len);
         if (httpd_req_get_hdr_value_str(req, "Authorization", buf, buf_len) == ESP_OK) {
-            ESP_LOGI(log_tag, "Found header => Authorization: %s", buf);
+            ESP_LOGD(log_tag, "Found header => Authorization: %s", buf);
         } else {
             ESP_LOGE(log_tag, "No auth value received");
         }
@@ -118,7 +118,7 @@ bool basic_auth_handler(httpd_req_t* req, const char* log_tag) {
             httpd_resp_set_hdr(req, "WWW-Authenticate", auth_hdr);
             httpd_resp_send(req, NULL, 0);
         } else {
-            ESP_LOGI(log_tag, "Authenticated!");
+            ESP_LOGD(log_tag, "Authenticated!");
             authenticated = true;
         }
         free(auth_credentials);
