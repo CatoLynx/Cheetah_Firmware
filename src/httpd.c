@@ -136,10 +136,15 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddStringToObject(json, "compile_date", __DATE__);
     cJSON_AddStringToObject(json, "compile_time", __TIME__);
     cJSON_AddStringToObject(json, "git_version", GIT_VERSION);
-    cJSON_AddBoolToObject  (json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
+    cJSON_AddBoolToObject(json, "app_verified", (ota_state == ESP_OTA_IMG_VALID));
     cJSON_AddBoolToObject(json, "wireguard_up", wg_is_up());
     cJSON_AddNumberToObject(json, "spiffs_size", spiffs_total);
     cJSON_AddNumberToObject(json, "spiffs_free", spiffs_total - spiffs_used);
+    #if defined(CONFIG_PROJ_USE_AUTH)
+    cJSON_AddBoolToObject(json, "auth_enabled", true);
+    #else
+    cJSON_AddBoolToObject(json, "auth_enabled", false);
+    #endif
     #if defined(CONFIG_LOG_DEFAULT_LEVEL_NONE)
     cJSON_AddStringToObject(json, "log_level", "none");
     #elif defined(CONFIG_LOG_DEFAULT_LEVEL_ERROR)
