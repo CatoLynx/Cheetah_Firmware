@@ -76,7 +76,7 @@ void display_render() {
     uart_write_bytes(K9000_UART, display_outBuf, OUTPUT_BUFFER_SIZE);
 }
 
-void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize) {
+void display_update(uint8_t* textBuf, uint8_t* prevTextBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize, uint8_t* lineFlagsBuf, size_t lineFlagsBufSize) {
     // Nothing to do if buffer hasn't changed
     if (prevTextBuf != NULL && memcmp(textBuf, prevTextBuf, textBufSize) == 0) return;
 

@@ -1923,6 +1923,12 @@ CONFIG_DISPLAY_USE_PREV_TEXT_BUF=y
 #
 # CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP is not set
 # end of Quirks
+
+#
+# Line Flags
+#
+# CONFIG_DISPLAY_LINE_FLAGS_INDICATOR_LIGHT is not set
+# end of Line Flags
 # end of Display Configuration
 
 #
@@ -1930,6 +1936,18 @@ CONFIG_DISPLAY_USE_PREV_TEXT_BUF=y
 #
 # CONFIG_FAN_ENABLED is not set
 # end of Fan Configuration
+
+#
+# Heartbeat Configuration
+#
+# CONFIG_HEARTBEAT_ENABLED is not set
+# end of Heartbeat Configuration
+
+#
+# Brightness Control Configuration
+#
+# CONFIG_BRIGHTNESS_CONTROL_USE_I2C_DAC is not set
+# end of Brightness Control Configuration
 
 #
 # 16-segment LED Configuration
@@ -1989,7 +2007,7 @@ CONFIG_IBIS_TX_BUF_SIZE=256
 #
 # KRONE 9000 Split-Flap Configuration (Character Mode)
 #
-CONFIG_K9000_TX_IO=18
+CONFIG_K9000_TX_IO=32
 CONFIG_K9000_RX_IO=-1
 # CONFIG_K9000_UART_0 is not set
 CONFIG_K9000_UART_1=y
@@ -2010,10 +2028,16 @@ CONFIG_CSEG_LCD_FRCLK_IO=21
 CONFIG_CSEG_LCD_FRCLK_FREQ=100
 # CONFIG_CSEG_LCD_LATCH_INV is not set
 CONFIG_CSEG_LCD_LATCH_PULSE_LENGTH=10
+# CONFIG_CSEG_LCD_SEPARATE_OUTPUTS_PER_LINE is not set
 # CONFIG_CSEG_LCD_USE_ENABLE is not set
 CONFIG_CSEG_LCD_FONT_GV07=y
+# CONFIG_CSEG_LCD_FONT_SAF_MOSAIC_20 is not set
 CONFIG_CSEG_LCD_SPI_HOST_VSPI=y
 # CONFIG_CSEG_LCD_SPI_HOST_HSPI is not set
+CONFIG_CSEG_LCD_SPI_MODE_0=y
+# CONFIG_CSEG_LCD_SPI_MODE_1 is not set
+# CONFIG_CSEG_LCD_SPI_MODE_2 is not set
+# CONFIG_CSEG_LCD_SPI_MODE_3 is not set
 # end of Character-based Segment LCD Configuration
 
 #
@@ -2098,6 +2122,21 @@ CONFIG_AESYS_LED_MATRIX_BRT_IO=36
 CONFIG_AESYS_LED_MATRIX_FB_IO=34
 CONFIG_AESYS_LED_MATRIX_FB_LATCH_IO=25
 # end of aesys LED Matrix Configuration
+
+#
+# AEG Split-Flap Configuration (Selection Mode)
+#
+CONFIG_AEG_SEL_DATA_OUT_IO=0
+CONFIG_AEG_SEL_DATA_IN_IO=0
+CONFIG_AEG_SEL_CLOCK_IO=0
+CONFIG_AEG_SEL_OUT_LATCH_IO=0
+CONFIG_AEG_SEL_IN_LATCH_IO=0
+CONFIG_AEG_SEL_SET_BUTTON_IO=0
+# CONFIG_AEG_SEL_USE_ZACE is not set
+CONFIG_AEG_SEL_SPI_HOST_VSPI=y
+# CONFIG_AEG_SEL_SPI_HOST_HSPI is not set
+CONFIG_AEG_SEL_ROTATION_TIMEOUT=5000
+# end of AEG Split-Flap Configuration (Selection Mode)
 
 #
 # KRONE 8200 PST Split-Flap Configuration (Selection Mode)
