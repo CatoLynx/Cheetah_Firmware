@@ -50,6 +50,9 @@ static portMUX_TYPE* pixel_buffer_lock = NULL;
 static uint8_t* text_buffer;
 static size_t text_buffer_size = 0;
 static portMUX_TYPE* text_buffer_lock = NULL;
+static uint8_t* line_flags_buffer;
+static size_t line_flags_buffer_size = 0;
+static portMUX_TYPE* line_flags_buffer_lock = NULL;
 static uint8_t* unit_buffer;
 static size_t unit_buffer_size = 0;
 static portMUX_TYPE* unit_buffer_lock = NULL;
@@ -169,7 +172,7 @@ esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
     return ESP_OK;
 }
 
-void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock) {
+void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, portMUX_TYPE* pixBufLock, uint8_t* textBuf, size_t textBufSize, portMUX_TYPE* textBufLock, uint8_t* lineFlagsBuf, size_t lineFlagsBufSize, portMUX_TYPE* lineFlagsBufLock, uint8_t* unitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock) {
     ESP_LOGI(LOG_TAG, "Initializing playlist");
     pl_nvs_handle = *nvsHandle;
     pixel_buffer = pixBuf;
@@ -178,6 +181,9 @@ void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, 
     text_buffer = textBuf;
     text_buffer_size = textBufSize;
     text_buffer_lock = textBufLock;
+    line_flags_buffer = lineFlagsBuf;
+    line_flags_buffer_size = lineFlagsBufSize;
+    line_flags_buffer_lock = lineFlagsBufLock;
     unit_buffer = unitBuf;
     unit_buffer_size = unitBufSize;
     unit_buffer_lock = unitBufLock;
@@ -340,6 +346,11 @@ void playlist_task(void* arg) {
                             taskENTER_CRITICAL(text_buffer_lock);
                             memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
                             taskEXIT_CRITICAL(text_buffer_lock);
+                        }
+                        if (pl_buffers[pl_cur_buffer].lineFlagsBuffer != NULL) {
+                            taskENTER_CRITICAL(line_flags_buffer_lock);
+                            memcpy(line_flags_buffer,  pl_buffers[pl_cur_buffer].lineFlagsBuffer,  line_flags_buffer_size);
+                            taskEXIT_CRITICAL(line_flags_buffer_lock);
                         }
                         if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) {
                             taskENTER_CRITICAL(unit_buffer_lock);
@@ -563,6 +574,7 @@ esp_err_t playlist_process_json(cJSON* json) {
         for (uint16_t i = 0; i < pl_groups[j].numEntries; i++) {
             free(pl_groups[j].entries[i].pixelBuffer);
             free(pl_groups[j].entries[i].textBuffer);
+            free(pl_groups[j].entries[i].lineFlagsBuffer);
             free(pl_groups[j].entries[i].unitBuffer);
         }
         free(pl_groups[j].entries);
@@ -652,6 +664,19 @@ esp_err_t playlist_process_json(cJSON* json) {
                 pl_groups[j].entries[i].textBuffer = calloc(1, text_buffer_size);
                 esp_err_t ret = buffer_from_string(buffer_str, textbuf_b64, pl_groups[j].entries[i].textBuffer, text_buffer_size, LOG_TAG);
                 if (ret != ESP_OK) free(pl_groups[j].entries[i].textBuffer);
+            }
+            
+            cJSON* line_flags_buf_field = cJSON_GetObjectItem(buffer_field, "line_flags");
+            uint8_t line_flags_buf_b64 = 0;
+            if (line_flags_buf_field == NULL || cJSON_IsNull(line_flags_buf_field)) {
+                line_flags_buf_field = cJSON_GetObjectItem(buffer_field, "line_flags_b64");
+                line_flags_buf_b64 = 1;
+            }
+            if (line_flags_buf_field != NULL && !cJSON_IsNull(line_flags_buf_field)) {
+                char* buffer_str = cJSON_GetStringValue(line_flags_buf_field);
+                pl_groups[j].entries[i].lineFlagsBuffer = calloc(1, line_flags_buffer_size);
+                esp_err_t ret = buffer_from_string(buffer_str, line_flags_buf_b64, pl_groups[j].entries[i].lineFlagsBuffer, line_flags_buffer_size, LOG_TAG);
+                if (ret != ESP_OK) free(pl_groups[j].entries[i].lineFlagsBuffer);
             }
             
             cJSON* unitbuf_field = cJSON_GetObjectItem(buffer_field, "unit");

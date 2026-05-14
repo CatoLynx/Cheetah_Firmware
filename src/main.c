@@ -411,27 +411,27 @@ void app_main(void) {
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL);
-        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL);
+        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_CHARACTER)
         browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock);
         telegram_bot_init(&nvs_handle, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock);
-        playlist_init(&nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
+        playlist_init(&nvs_handle, NULL, 0, NULL, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock, NULL, 0, NULL);
         #endif
 
         #if defined(CONFIG_DISPLAY_TYPE_CHAR_ON_PIXEL) || defined(CONFIG_DISPLAY_TYPE_PIXEL_ON_CHAR)
         tpm2net_init(display_pixel_buffer, tpm2net_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, TPM2NET_FRAMEBUF_SIZE);
         artnet_init(display_pixel_buffer, artnet_output_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, ARTNET_FRAMEBUF_SIZE);
         browser_canvas_init(&server, &nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock);
-        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, NULL, 0, NULL);
+        playlist_init(&nvs_handle, display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, display_text_buffer, DISPLAY_TEXT_BUF_SIZE, &display_text_buffer_lock, display_line_flags_buffer, DISPLAY_LINE_FLAGS_BUF_SIZE, &display_line_flags_buffer_lock, NULL, 0, NULL);
         bitmap_generators_init(display_pixel_buffer, DISPLAY_PIX_BUF_SIZE, &display_pixel_buffer_lock, DISPLAY_VIEWPORT_WIDTH_PIXEL, DISPLAY_VIEWPORT_HEIGHT_PIXEL);
         #endif
         
         #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
         browser_canvas_init(&server, &nvs_handle, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock, NULL, 0, NULL);
-        playlist_init(&nvs_handle, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock);
+        playlist_init(&nvs_handle, NULL, 0, NULL, NULL, 0, NULL, NULL, 0, NULL, display_unit_buffer, DISPLAY_UNIT_BUF_SIZE, &display_unit_buffer_lock);
         #endif
 
         #if defined(CONFIG_DISPLAY_HAS_BRIGHTNESS_CONTROL)
