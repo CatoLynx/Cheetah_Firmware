@@ -87,8 +87,8 @@ static uint8_t* bitmap_generator_data_deletable = NULL;
 
 
 esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
-    static char *resp_buf;
-    static int resp_len;
+    static char *resp_buf = NULL;
+    static size_t resp_len = 0;
 
     switch(evt->event_id) {
         case HTTP_EVENT_ERROR: {
@@ -433,8 +433,8 @@ void playlist_update_from_http() {
 
     esp_err_t err = esp_http_client_perform(client);
 
-    cJSON_Delete(json);
     cJSON_free(post_data);
+    cJSON_Delete(json);
 
     if (err == ESP_OK) {
         ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %lld",
