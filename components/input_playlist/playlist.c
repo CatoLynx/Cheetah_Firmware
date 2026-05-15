@@ -320,6 +320,7 @@ void playlist_task(void* arg) {
 
         // Switch buffer if necessary
         if (pl_num_groups > 0) {
+            // TODO: Possible out of bounds read (pl_buffers[pl_cur_buffer])
             if (pl_restart_cycle == true || pl_last_switch == 0 || now - pl_last_switch >= pl_buffers[pl_cur_buffer].duration * 1000000) {
                 if (!(pl_restart_cycle == true || pl_last_switch == 0)) playlist_next_buffer();
                 if (pl_restart_cycle == true) {
