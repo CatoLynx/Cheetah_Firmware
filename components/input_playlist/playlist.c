@@ -15,6 +15,8 @@
 
 #define LOG_TAG "Playlist"
 
+// TODO: Possible memory leak that causes mbedTLS to fail to work after a while of polling playlists
+
 
 static TaskHandle_t pl_task_handle;
 static nvs_handle_t pl_nvs_handle;
