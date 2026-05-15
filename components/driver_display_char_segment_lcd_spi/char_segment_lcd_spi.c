@@ -189,7 +189,7 @@ void cseg_lcd_write_indicators(uint8_t* lineFlagsBuf, size_t lineFlagsBufSize) {
     free(indicatorData);
 }
 
-void cseg_lcd_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize, int8_t line) {
+void cseg_lcd_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_t charBufSize, const int8_t line) {
     // Operate on one line only. If line is negative, the "Line" is the whole character buffer.
     uint8_t* lineBuf;
     size_t lineBufSize;
@@ -250,6 +250,9 @@ void cseg_lcd_buffers_to_out_buf(uint8_t* charBuf, uint16_t* quirkFlagBuf, size_
         }
     }
     #endif
+
+    // Free only if the lineBuf was dynamically allocated above
+    if (line >= 0) free(lineBuf);
 }
 
 void cseg_lcd_render(void) {
