@@ -31,12 +31,30 @@
         <td id="auth-enabled"></td>
       </tr>
       <tr>
-        <td colspan="2">Free Heap</td>
+        <td rowspan="4">Heap</td>
+        <td>Total Free</td>
         <td id="heap-free"></td>
       </tr>
       <tr>
-        <td colspan="2">Minimum Free Heap</td>
+        <td>Free Internal</td>
+        <td id="heap-free-internal"></td>
+      </tr>
+      <tr>
+        <td>Free PSRAM</td>
+        <td id="heap-free-spiram"></td>
+      </tr>
+      <tr>
+        <td>Minimum Free</td>
         <td id="heap-free-min"></td>
+      </tr>
+      <tr>
+        <td rowspan="2">SPIFFS</td>
+        <td>Size</td>
+        <td id="spiffs-size"></td>
+      </tr>
+      <tr>
+        <td>Free</td>
+        <td id="spiffs-free"></td>
       </tr>
       <tr>
         <td rowspan="3">IP</td>
@@ -209,8 +227,12 @@
         $("#compile-datetime").html(data['compile_date'] + " " + data['compile_time']);
         $("#log-level").html(data['log_level']);
         $("#auth-enabled").html(data['auth_enabled'] ? "Yes" : "No");
-        $("#heap-free").html(data['heap_free']);
-        $("#heap-free-min").html(data['heap_free_min']);
+        $("#heap-free").html(data['heap_free'] + " (" + Math.round(data['heap_free'] / 1024) + " kB)");
+        $("#heap-free-internal").html(data['heap_free_internal'] + " (" + Math.round(data['heap_free_internal'] / 1024) + " kB)");
+        $("#heap-free-spiram").html(data['heap_free_spiram'] + " (" + Math.round(data['heap_free_spiram'] / 1024) + " kB)");
+        $("#heap-free-min").html(data['heap_free_min'] + " (" + Math.round(data['heap_free_min'] / 1024) + " kB)");
+        $("#spiffs-size").html(data['spiffs_size'] + " (" + Math.round(data['spiffs_size'] / 1024) + " kB)");
+        $("#spiffs-free").html(data['spiffs_free'] + " (" + Math.round(data['spiffs_free'] / 1024) + " kB)");
         $("#ip-sta").html(data['ip']['wifi_sta']);
         $("#ip-ap").html(data['ip']['wifi_ap']);
         $("#ip-eth").html(data['ip']['eth']);

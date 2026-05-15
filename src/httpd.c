@@ -142,6 +142,8 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddNumberToObject(json, "spiffs_free", spiffs_total - spiffs_used);
     cJSON_AddNumberToObject(json, "heap_free", esp_get_free_heap_size());
     cJSON_AddNumberToObject(json, "heap_free_min", esp_get_minimum_free_heap_size());
+    cJSON_AddNumberToObject(json, "heap_free_spiram", heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    cJSON_AddNumberToObject(json, "heap_free_internal", heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     #if defined(CONFIG_PROJ_USE_AUTH)
     cJSON_AddBoolToObject(json, "auth_enabled", true);
     #else
