@@ -140,6 +140,7 @@ static esp_err_t device_info_get_handler(httpd_req_t *req) {
     cJSON_AddBoolToObject(json, "wireguard_up", wg_is_up());
     cJSON_AddNumberToObject(json, "spiffs_size", spiffs_total);
     cJSON_AddNumberToObject(json, "spiffs_free", spiffs_total - spiffs_used);
+    cJSON_AddNumberToObject(json, "heap_free", esp_get_free_heap_size());
     #if defined(CONFIG_PROJ_USE_AUTH)
     cJSON_AddBoolToObject(json, "auth_enabled", true);
     #else
