@@ -222,6 +222,7 @@ static esp_err_t canvas_text_buffer_post_handler(httpd_req_t *req) {
                 continue;
             }
             ESP_LOGI(LOG_TAG, "Receive error, aborting");
+            free(buf);
             return abortRequest(req, HTTPD_500);
         }
         bytesRead += ret;
@@ -244,8 +245,8 @@ static esp_err_t canvas_text_buffer_post_handler(httpd_req_t *req) {
         taskEXIT_CRITICAL(canvas_text_buffer_lock);
         if (b64_len < canvas_text_buffer_size) canvas_text_buffer[b64_len] = 0; // Ensure null termination
         if (result != 0) {
-            free(buf);
             ESP_LOGI(LOG_TAG, "result != 0");
+            free(buf);
             return abortRequest(req, HTTPD_500);
         }
     }
