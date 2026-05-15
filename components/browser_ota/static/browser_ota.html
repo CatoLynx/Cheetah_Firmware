@@ -31,8 +31,12 @@
         <td id="auth-enabled"></td>
       </tr>
       <tr>
-        <td colspan="2">Heap Free</td>
+        <td colspan="2">Free Heap</td>
         <td id="heap-free"></td>
+      </tr>
+      <tr>
+        <td colspan="2">Minimum Free Heap</td>
+        <td id="heap-free-min"></td>
       </tr>
       <tr>
         <td rowspan="3">IP</td>
@@ -206,6 +210,7 @@
         $("#log-level").html(data['log_level']);
         $("#auth-enabled").html(data['auth_enabled'] ? "Yes" : "No");
         $("#heap-free").html(data['heap_free']);
+        $("#heap-free-min").html(data['heap_free_min']);
         $("#ip-sta").html(data['ip']['wifi_sta']);
         $("#ip-ap").html(data['ip']['wifi_ap']);
         $("#ip-eth").html(data['ip']['eth']);
