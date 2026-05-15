@@ -162,7 +162,7 @@ esp_err_t playlist_http_event_handler(esp_http_client_event_t *evt) {
         }
 
         case HTTP_EVENT_DISCONNECTED: {
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
             if (resp_buf != NULL) {
                 free(resp_buf);
                 resp_buf = NULL;
