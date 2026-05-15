@@ -342,19 +342,19 @@ void playlist_task(void* arg) {
                             memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
                             taskEXIT_CRITICAL(pixel_buffer_lock);
                         }
-                        if (pl_buffers[pl_cur_buffer].textBuffer  != NULL) {
+                        if (pl_buffers[pl_cur_buffer].textBuffer != NULL) {
                             taskENTER_CRITICAL(text_buffer_lock);
-                            memcpy(text_buffer,  pl_buffers[pl_cur_buffer].textBuffer,  text_buffer_size);
+                            memcpy(text_buffer, pl_buffers[pl_cur_buffer].textBuffer, text_buffer_size);
                             taskEXIT_CRITICAL(text_buffer_lock);
                         }
                         if (pl_buffers[pl_cur_buffer].lineFlagsBuffer != NULL) {
                             taskENTER_CRITICAL(line_flags_buffer_lock);
-                            memcpy(line_flags_buffer,  pl_buffers[pl_cur_buffer].lineFlagsBuffer,  line_flags_buffer_size);
+                            memcpy(line_flags_buffer, pl_buffers[pl_cur_buffer].lineFlagsBuffer, line_flags_buffer_size);
                             taskEXIT_CRITICAL(line_flags_buffer_lock);
                         }
-                        if (pl_buffers[pl_cur_buffer].unitBuffer  != NULL) {
+                        if (pl_buffers[pl_cur_buffer].unitBuffer != NULL) {
                             taskENTER_CRITICAL(unit_buffer_lock);
-                            memcpy(unit_buffer,  pl_buffers[pl_cur_buffer].unitBuffer,  unit_buffer_size);
+                            memcpy(unit_buffer, pl_buffers[pl_cur_buffer].unitBuffer, unit_buffer_size);
                             taskEXIT_CRITICAL(unit_buffer_lock);
                         }
 
