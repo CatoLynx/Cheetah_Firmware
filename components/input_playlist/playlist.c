@@ -322,7 +322,7 @@ void playlist_task(void* arg) {
 
         // Switch buffer if necessary
         if (pl_num_groups > 0) {
-            uint32_t duration = 1000000;
+            uint16_t duration = 1;
             if (pl_buffers != NULL && pl_cur_buffer < pl_num_buffers) duration = pl_buffers[pl_cur_buffer].duration;
             if (pl_restart_cycle == true || pl_last_switch == 0 || now - pl_last_switch >= duration * 1000000) {
                 if (!(pl_restart_cycle == true || pl_last_switch == 0)) playlist_next_buffer();
@@ -340,7 +340,7 @@ void playlist_task(void* arg) {
                     uint8_t active = 0;
                     nvs_get_u8(pl_nvs_handle, "playlist_active", &active);
                     if (active) {
-                        ESP_LOGD(LOG_TAG, "Switching to buffer %d", pl_cur_buffer);
+                        ESP_LOGD(LOG_TAG, "Switching to group %d, buffer %d", pl_cur_group, pl_cur_buffer);
                         if (pl_buffers[pl_cur_buffer].pixelBuffer != NULL) {
                             taskENTER_CRITICAL(pixel_buffer_lock);
                             memcpy(pixel_buffer, pl_buffers[pl_cur_buffer].pixelBuffer, pixel_buffer_size);
