@@ -192,29 +192,7 @@ void playlist_init(nvs_handle_t* nvsHandle, uint8_t* pixBuf, size_t pixBufSize, 
 
     playlist_deinit();
 
-    esp_err_t ret = nvs_get_u16(*nvsHandle, "pl_poll_intvl", &pollInterval);
-    if (ret != ESP_OK) pollInterval = 0;
-
-    ret = nvs_get_u8(*nvsHandle, "pl_save_to_file", &pl_save_to_file);
-    if (ret != ESP_OK) pl_save_to_file = 0;
-
-    pollUrl = get_string_from_nvs(nvsHandle, "pl_poll_url");
-    if (pollUrl != NULL) {
-        pollUrlInited = 1;
-        if (strlen(pollUrl) != 0) pollUrlValid = 1;
-    }
-
-    pollToken = get_string_from_nvs(nvsHandle, "pl_poll_token");
-    if (pollToken != NULL) {
-        pollTokenInited = 1;
-        if (strlen(pollToken) != 0) pollTokenValid = 1;
-    }
-
-    playlistFile = get_string_from_nvs(nvsHandle, "playlist_file");
-    if (playlistFile != NULL) {
-        playlistFileInited = 1;
-        if (strlen(playlistFile) != 0) playlistFileValid = 1;
-    }
+    playlist_update_config();
 
     if (pollInterval != 0 && ((pollUrlValid && pollTokenValid) || playlistFileValid)) {
         ESP_LOGI(LOG_TAG, "Starting playlist task");
@@ -277,6 +255,32 @@ void playlist_register_bitmap_generators(cJSON** bitmapGeneratorData, uint8_t* b
     bitmap_generator_data_deletable = bitmapGeneratorDataDeletable;
 }
 #endif
+
+void playlist_update_config(void) {
+    esp_err_t ret = nvs_get_u16(pl_nvs_handle, "pl_poll_intvl", &pollInterval);
+    if (ret != ESP_OK) pollInterval = 0;
+
+    ret = nvs_get_u8(pl_nvs_handle, "pl_save_to_file", &pl_save_to_file);
+    if (ret != ESP_OK) pl_save_to_file = 0;
+
+    pollUrl = get_string_from_nvs(&pl_nvs_handle, "pl_poll_url");
+    if (pollUrl != NULL) {
+        pollUrlInited = 1;
+        if (strlen(pollUrl) != 0) pollUrlValid = 1;
+    }
+
+    pollToken = get_string_from_nvs(&pl_nvs_handle, "pl_poll_token");
+    if (pollToken != NULL) {
+        pollTokenInited = 1;
+        if (strlen(pollToken) != 0) pollTokenValid = 1;
+    }
+
+    playlistFile = get_string_from_nvs(&pl_nvs_handle, "playlist_file");
+    if (playlistFile != NULL) {
+        playlistFileInited = 1;
+        if (strlen(playlistFile) != 0) playlistFileValid = 1;
+    }
+}
 
 void playlist_update_buffers() {
     pl_buffers = pl_groups[pl_cur_group].entries;
@@ -402,6 +406,7 @@ void playlist_task(void* arg) {
 
         // Update if necessary
         if (pl_last_update == 0 || now - pl_last_update >= pollInterval * 1000000) {
+            playlist_update_config();
             if (pollUrlValid && pollTokenValid && (wifi_gotIP || eth_gotIP)) {
                 playlist_update_from_http();
             } else if(playlistFileValid) {

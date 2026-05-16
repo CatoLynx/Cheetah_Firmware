@@ -41,6 +41,7 @@ void playlist_register_shaders(cJSON** shaderData, uint8_t* shaderDataDeletable)
 void playlist_register_transitions(cJSON** transitionData, uint8_t* transitionDataDeletable);
 void playlist_register_effects(cJSON** effectData, uint8_t* effectDataDeletable);
 void playlist_register_bitmap_generators(cJSON** bitmapGeneratorData, uint8_t* bitmapGeneratorDataDeletable);
+void playlist_update_config(void);
 void playlist_task(void* arg);
 void playlist_update_from_http();
 void playlist_update_from_file();
