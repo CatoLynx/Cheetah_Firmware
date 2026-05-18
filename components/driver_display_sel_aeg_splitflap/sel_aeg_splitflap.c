@@ -107,7 +107,11 @@ static const uint8_t unitIdToBitPosMap_sensors[AEG_SEL_MAX_UNITS][4] = {
     // 64...71 = Byte 0, ZACE bottom cycle 3, Decoder 1, BCD values 0...7
     {0, 0b00010100, ZACE_BOTTOM, 3}, {0, 0b10010100, ZACE_BOTTOM, 3}, {0, 0b01010100, ZACE_BOTTOM, 3}, {0, 0b11010100, ZACE_BOTTOM, 3}, {0, 0b00110100, ZACE_BOTTOM, 3}, {0, 0b10110100, ZACE_BOTTOM, 3}, {0, 0b01110100, ZACE_BOTTOM, 3}, {0, 0b11110100, ZACE_BOTTOM, 3},
 };
-
+// Define these to ensure we can write the correct BCD pattern to ZACE if not using it.
+// An all-0 pattern enables some outputs.
+#define ZACE_SENSOR_BYTE 0
+#define ZACE_SENSOR_CYCLE 3
+#define ZACE_SENSOR_OFF_MASK 0b00011100
 
 esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, uint16_t* display_num_units) {
     /*
@@ -260,6 +264,11 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
                 sensor_byteIdx = unitIdToBitPosMap_sensors[addr][0];
                 sensor_bitMask = unitIdToBitPosMap_sensors[addr][1];
                 display_outBuf[sensor_byteIdx] = sensor_bitMask;
+    #if defined(CONFIG_AEG_SEL_USE_ZACE)
+                if (currentZaceCycle == ZACE_SENSOR_CYCLE) {
+                    display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
+                }
+    #endif
             }
     #if defined(CONFIG_AEG_SEL_USE_ZACE)
             else {
@@ -308,7 +317,13 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
             // Update shift registers
             ESP_ERROR_CHECK(aeg_sel_update_registers());
 
-            // TODO: ZACE REG_SEL latching
+    #if defined(CONFIG_AEG_SEL_USE_ZACE)
+            // ZACE REG_SEL latching
+            gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO, (currentZaceCycle & 1), false);
+            gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A1_IO, (currentZaceCycle & 2), false);
+            if (currentZaceHalf == ZACE_TOP) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_TOP_IO, 1, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+            else if (currentZaceHalf == ZACE_BOTTOM) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO, 1, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+    #endif
         }
 
         // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
