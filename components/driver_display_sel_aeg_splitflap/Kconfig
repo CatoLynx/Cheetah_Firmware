@@ -70,6 +70,18 @@ config AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO
     help
         GPIO pin for ZACE register selection enable on bottom half of ZACE card
 
+config AEG_SEL_LATCH_PULSE_DURATION
+    int "Pulse duration for latches (us)"
+    default 1
+    help
+        Latch pulse duration in us
+
+config AEG_SEL_SPI_CLOCK
+    int "SPI clock speed (Hz)"
+    default 1000000
+    help
+        Clock speed in Hz
+
 choice AEG_SEL_SPI_HOST
     bool "SPI Host"
     default AEG_SEL_SPI_HOST_VSPI

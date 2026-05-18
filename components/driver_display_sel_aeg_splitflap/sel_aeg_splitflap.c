@@ -162,7 +162,7 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
         .max_transfer_sz = AEG_SEL_SPI_BUF_SIZE
     };
     spi_device_interface_config_t devcfg = {
-        .clock_speed_hz = 1000000,      // 1 MHz
+        .clock_speed_hz = CONFIG_AEG_SEL_SPI_CLOCK,
         .mode = 0,                      // positive clock, data changes on falling edge
         .spics_io_num = -1,             // -1 = not used
         .queue_size = 1,                // max. 1 transaction in queue
@@ -182,12 +182,12 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
 
 static void aeg_sel_splitflap_latch_input(void) {
     // 1 us low pulse
-    gpio_pulse(CONFIG_AEG_SEL_IN_LATCH_IO, 0, 1, 0, 1);
+    gpio_pulse(CONFIG_AEG_SEL_IN_LATCH_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
 }
 
 static void aeg_sel_splitflap_latch_output(void) {
     // 1 us high pulse
-    gpio_pulse(CONFIG_AEG_SEL_OUT_LATCH_IO, 1, 1, 0, 1);
+    gpio_pulse(CONFIG_AEG_SEL_OUT_LATCH_IO, 1, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
 }
 
 static void aeg_sel_splitflap_pre_transfer_cb(spi_transaction_t *t) {
