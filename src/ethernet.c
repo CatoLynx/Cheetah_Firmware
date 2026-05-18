@@ -124,7 +124,11 @@ void ethernet_init(void) {
 
     esp_eth_handle_t eth_handle = NULL;
     esp_eth_config_t eth_config_spi = ETH_DEFAULT_CONFIG(mac, phy);
-    ESP_ERROR_CHECK(esp_eth_driver_install(&eth_config_spi, &eth_handle));
+    ret = esp_eth_driver_install(&eth_config_spi, &eth_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "Failed to install Ethernet driver. Continuing without Ethernet.");
+        return;
+    }
     
     // Set MAC address to the ESP32's internal ETH MAC.
     // This is kinda meh, but works. The W5500 doesn't provide a MAC address of its own.
