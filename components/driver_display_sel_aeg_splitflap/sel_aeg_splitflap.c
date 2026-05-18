@@ -47,16 +47,16 @@ static int64_t motorStartTimes[AEG_SEL_MAX_UNITS] = {0};
 static uint8_t unitPositions[AEG_SEL_MAX_UNITS] = {0};
 
 /* HARDWARE PIN TO UNIT ID MAPPING
-    Motors:     DIRECT   a1  ... a8  =  0 ...  7 = Byte 6, Bits 7 ... 0
-                DIRECT   c1  ... c16 =  8 ... 23 = Byte 3, Bits 7 ... 0 & Byte 2, Bits 7 ... 0
-                ZACE TOP a1  ... a8  = 24 ... 31 zyklus 2 byte 0 bits 0-7 a8-a1 
-                ZACE TOP c1  ... c16 = 32 ... 47 zyklus 0 byte 0 bits 0-7 c16-c9 zyklus 1 byte 0 bits 0-7 c8-c1
+    Motors:     DIRECT   a1  ... a8  =  0 ...  7
+                DIRECT   c1  ... c16 =  8 ... 23
+                ZACE TOP a1  ... a8  = 24 ... 31
+                ZACE TOP c1  ... c16 = 32 ... 47
                 ZACE BOT a1  ... a8  = 48 ... 55
                 ZACE BOT c1  ... c16 = 56 ... 71
-    Sensors:    DIRECT   a9  ... a24 =  0 ... 15 = Byte 5, Bits 7 ... 0 & Byte 4, Bits 7 ... 0
-                DIRECT   c17 ... c24 = 16 ... 23 = Byte 1, Bits 7 ... 0
-                ZACE TOP a9  ... a24 = 24 ... 39 zyklus 3 decoder 0 bits 0-7 a9-a16 bitmaske XX110DDD zyklus 3 decoder 2 bits 0-7 a17-a24 bitmaske XX011DDD
-                ZACE TOP c17 ... c24 = 40 ... 47 zyklus 3 decoder 1 bits 0-7 c17-c24 bitmaske XX101DDD
+    Sensors:    DIRECT   a9  ... a24 =  0 ... 15
+                DIRECT   c17 ... c24 = 16 ... 23
+                ZACE TOP a9  ... a24 = 24 ... 39
+                ZACE TOP c17 ... c24 = 40 ... 47
                 ZACE BOT a9  ... a24 = 48 ... 63
                 ZACE BOT c17 ... c24 = 64 ... 71
 */
@@ -65,46 +65,47 @@ enum zace_halves {
     ZACE_TOP,
     ZACE_BOTTOM
 };
+// NOTE: ZACE data bus is flipped! Binary literals for ZACE (and ONLY for Zace) are LSB first!
 // Map entry layout: {Byte index in output buffer, bit mask to set or OR, ZACE half, ZACE cycle}
 static const uint8_t unitIdToBitPosMap_motors[AEG_SEL_MAX_UNITS][4] = {
     // 0...7 = Byte 6, Bits 7...0
     {6, 0b10000000, ZACE_NONE, 0}, {6, 0b01000000, ZACE_NONE, 0}, {6, 0b00100000, ZACE_NONE, 0}, {6, 0b00010000, ZACE_NONE, 0}, {6, 0b00001000, ZACE_NONE, 0}, {6, 0b00000100, ZACE_NONE, 0}, {6, 0b00000010, ZACE_NONE, 0}, {6, 0b00000001, ZACE_NONE, 0},
-    // 8...15 = Byte 3, Bits 7...0
+    // 8...15 = Byte 5, Bits 7...0
+    {5, 0b10000000, ZACE_NONE, 0}, {5, 0b01000000, ZACE_NONE, 0}, {5, 0b00100000, ZACE_NONE, 0}, {5, 0b00010000, ZACE_NONE, 0}, {5, 0b00001000, ZACE_NONE, 0}, {5, 0b00000100, ZACE_NONE, 0}, {5, 0b00000010, ZACE_NONE, 0}, {5, 0b00000001, ZACE_NONE, 0},
+    // 16...23 = Byte 3, Bits 7...0
     {3, 0b10000000, ZACE_NONE, 0}, {3, 0b01000000, ZACE_NONE, 0}, {3, 0b00100000, ZACE_NONE, 0}, {3, 0b00010000, ZACE_NONE, 0}, {3, 0b00001000, ZACE_NONE, 0}, {3, 0b00000100, ZACE_NONE, 0}, {3, 0b00000010, ZACE_NONE, 0}, {3, 0b00000001, ZACE_NONE, 0},
-    // 16...23 = Byte 2, Bits 7...0
-    {2, 0b10000000, ZACE_NONE, 0}, {2, 0b01000000, ZACE_NONE, 0}, {2, 0b00100000, ZACE_NONE, 0}, {2, 0b00010000, ZACE_NONE, 0}, {2, 0b00001000, ZACE_NONE, 0}, {2, 0b00000100, ZACE_NONE, 0}, {2, 0b00000010, ZACE_NONE, 0}, {2, 0b00000001, ZACE_NONE, 0},
     // 24...31 = Byte 0, ZACE top cycle 2, Bits 7...0
-    {0, 0b10000000, ZACE_TOP, 2}, {0, 0b01000000, ZACE_TOP, 2}, {0, 0b00100000, ZACE_TOP, 2}, {0, 0b00010000, ZACE_TOP, 2}, {0, 0b00001000, ZACE_TOP, 2}, {0, 0b00000100, ZACE_TOP, 2}, {0, 0b00000010, ZACE_TOP, 2}, {0, 0b00000001, ZACE_TOP, 2},
+    {0, 0b00000001, ZACE_TOP, 2}, {0, 0b00000010, ZACE_TOP, 2}, {0, 0b00000100, ZACE_TOP, 2}, {0, 0b00001000, ZACE_TOP, 2}, {0, 0b00010000, ZACE_TOP, 2}, {0, 0b00100000, ZACE_TOP, 2}, {0, 0b01000000, ZACE_TOP, 2}, {0, 0b10000000, ZACE_TOP, 2},
     // 32...39 = Byte 0, ZACE top cycle 1, Bits 7...0
-    {0, 0b10000000, ZACE_TOP, 1}, {0, 0b01000000, ZACE_TOP, 1}, {0, 0b00100000, ZACE_TOP, 1}, {0, 0b00010000, ZACE_TOP, 1}, {0, 0b00001000, ZACE_TOP, 1}, {0, 0b00000100, ZACE_TOP, 1}, {0, 0b00000010, ZACE_TOP, 1}, {0, 0b00000001, ZACE_TOP, 1},
+    {0, 0b00000001, ZACE_TOP, 1}, {0, 0b00000010, ZACE_TOP, 1}, {0, 0b00000100, ZACE_TOP, 1}, {0, 0b00001000, ZACE_TOP, 1}, {0, 0b00010000, ZACE_TOP, 1}, {0, 0b00100000, ZACE_TOP, 1}, {0, 0b01000000, ZACE_TOP, 1}, {0, 0b10000000, ZACE_TOP, 1},
     // 40...47 = Byte 0, ZACE top cycle 0, Bits 7...0
-    {0, 0b10000000, ZACE_TOP, 0}, {0, 0b01000000, ZACE_TOP, 0}, {0, 0b00100000, ZACE_TOP, 0}, {0, 0b00010000, ZACE_TOP, 0}, {0, 0b00001000, ZACE_TOP, 0}, {0, 0b00000100, ZACE_TOP, 0}, {0, 0b00000010, ZACE_TOP, 0}, {0, 0b00000001, ZACE_TOP, 0},
+    {0, 0b00000001, ZACE_TOP, 0}, {0, 0b00000010, ZACE_TOP, 0}, {0, 0b00000100, ZACE_TOP, 0}, {0, 0b00001000, ZACE_TOP, 0}, {0, 0b00010000, ZACE_TOP, 0}, {0, 0b00100000, ZACE_TOP, 0}, {0, 0b01000000, ZACE_TOP, 0}, {0, 0b10000000, ZACE_TOP, 0},
     // 24...31 = Byte 0, ZACE bottom cycle 2, Bits 7...0
-    {0, 0b10000000, ZACE_BOTTOM, 2}, {0, 0b01000000, ZACE_BOTTOM, 2}, {0, 0b00100000, ZACE_BOTTOM, 2}, {0, 0b00010000, ZACE_BOTTOM, 2}, {0, 0b00001000, ZACE_BOTTOM, 2}, {0, 0b00000100, ZACE_BOTTOM, 2}, {0, 0b00000010, ZACE_BOTTOM, 2}, {0, 0b00000001, ZACE_BOTTOM, 2},
+    {0, 0b00000001, ZACE_BOTTOM, 2}, {0, 0b00000010, ZACE_BOTTOM, 2}, {0, 0b00000100, ZACE_BOTTOM, 2}, {0, 0b00001000, ZACE_BOTTOM, 2}, {0, 0b00010000, ZACE_BOTTOM, 2}, {0, 0b00100000, ZACE_BOTTOM, 2}, {0, 0b01000000, ZACE_BOTTOM, 2}, {0, 0b10000000, ZACE_BOTTOM, 2},
     // 32...39 = Byte 0, ZACE bottom cycle 1, Bits 7...0
-    {0, 0b10000000, ZACE_BOTTOM, 1}, {0, 0b01000000, ZACE_BOTTOM, 1}, {0, 0b00100000, ZACE_BOTTOM, 1}, {0, 0b00010000, ZACE_BOTTOM, 1}, {0, 0b00001000, ZACE_BOTTOM, 1}, {0, 0b00000100, ZACE_BOTTOM, 1}, {0, 0b00000010, ZACE_BOTTOM, 1}, {0, 0b00000001, ZACE_BOTTOM, 1},
+    {0, 0b00000001, ZACE_BOTTOM, 1}, {0, 0b00000010, ZACE_BOTTOM, 1}, {0, 0b00000100, ZACE_BOTTOM, 1}, {0, 0b00001000, ZACE_BOTTOM, 1}, {0, 0b00010000, ZACE_BOTTOM, 1}, {0, 0b00100000, ZACE_BOTTOM, 1}, {0, 0b01000000, ZACE_BOTTOM, 1}, {0, 0b10000000, ZACE_BOTTOM, 1},
     // 40...47 = Byte 0, ZACE bottom cycle 0, Bits 7...0
-    {0, 0b10000000, ZACE_BOTTOM, 0}, {0, 0b01000000, ZACE_BOTTOM, 0}, {0, 0b00100000, ZACE_BOTTOM, 0}, {0, 0b00010000, ZACE_BOTTOM, 0}, {0, 0b00001000, ZACE_BOTTOM, 0}, {0, 0b00000100, ZACE_BOTTOM, 0}, {0, 0b00000010, ZACE_BOTTOM, 0}, {0, 0b00000001, ZACE_BOTTOM, 0},
+    {0, 0b00000001, ZACE_BOTTOM, 0}, {0, 0b00000010, ZACE_BOTTOM, 0}, {0, 0b00000100, ZACE_BOTTOM, 0}, {0, 0b00001000, ZACE_BOTTOM, 0}, {0, 0b00010000, ZACE_BOTTOM, 0}, {0, 0b00100000, ZACE_BOTTOM, 0}, {0, 0b01000000, ZACE_BOTTOM, 0}, {0, 0b10000000, ZACE_BOTTOM, 0},
 };
 static const uint8_t unitIdToBitPosMap_sensors[AEG_SEL_MAX_UNITS][4] = {
-    // 0...7 = Byte 5, Bits 7...0
-    {5, 0b10000000, ZACE_NONE, 0}, {5, 0b01000000, ZACE_NONE, 0}, {5, 0b00100000, ZACE_NONE, 0}, {5, 0b00010000, ZACE_NONE, 0}, {5, 0b00001000, ZACE_NONE, 0}, {5, 0b00000100, ZACE_NONE, 0}, {5, 0b00000010, ZACE_NONE, 0}, {5, 0b00000001, ZACE_NONE, 0},
-    // 8...15 = Byte 4, Bits 7...0
+    // 0...7 = Byte 4, Bits 7...0
     {4, 0b10000000, ZACE_NONE, 0}, {4, 0b01000000, ZACE_NONE, 0}, {4, 0b00100000, ZACE_NONE, 0}, {4, 0b00010000, ZACE_NONE, 0}, {4, 0b00001000, ZACE_NONE, 0}, {4, 0b00000100, ZACE_NONE, 0}, {4, 0b00000010, ZACE_NONE, 0}, {4, 0b00000001, ZACE_NONE, 0},
+    // 8...15 = Byte 2, Bits 7...0
+    {2, 0b10000000, ZACE_NONE, 0}, {2, 0b01000000, ZACE_NONE, 0}, {2, 0b00100000, ZACE_NONE, 0}, {2, 0b00010000, ZACE_NONE, 0}, {2, 0b00001000, ZACE_NONE, 0}, {2, 0b00000100, ZACE_NONE, 0}, {2, 0b00000010, ZACE_NONE, 0}, {2, 0b00000001, ZACE_NONE, 0},
     // 16...23 = Byte 1, Bits 7...0
     {1, 0b10000000, ZACE_NONE, 0}, {1, 0b01000000, ZACE_NONE, 0}, {1, 0b00100000, ZACE_NONE, 0}, {1, 0b00010000, ZACE_NONE, 0}, {1, 0b00001000, ZACE_NONE, 0}, {1, 0b00000100, ZACE_NONE, 0}, {1, 0b00000010, ZACE_NONE, 0}, {1, 0b00000001, ZACE_NONE, 0},
     // 24...31 = Byte 0, ZACE top cycle 3, Decoder 0, BCD values 0...7
-    {0, 0b00110000, ZACE_TOP, 3}, {0, 0b00110001, ZACE_TOP, 3}, {0, 0b00110010, ZACE_TOP, 3}, {0, 0b00110011, ZACE_TOP, 3}, {0, 0b00110100, ZACE_TOP, 3}, {0, 0b00110101, ZACE_TOP, 3}, {0, 0b00110110, ZACE_TOP, 3}, {0, 0b00110111, ZACE_TOP, 3},
+    {0, 0b00001100, ZACE_TOP, 3}, {0, 0b10001100, ZACE_TOP, 3}, {0, 0b01001100, ZACE_TOP, 3}, {0, 0b11001100, ZACE_TOP, 3}, {0, 0b00101100, ZACE_TOP, 3}, {0, 0b10101100, ZACE_TOP, 3}, {0, 0b01101100, ZACE_TOP, 3}, {0, 0b11101100, ZACE_TOP, 3},
     // 32...39 = Byte 0, ZACE top cycle 3, Decoder 2, BCD values 0...7
-    {0, 0b00011000, ZACE_TOP, 3}, {0, 0b00011001, ZACE_TOP, 3}, {0, 0b00011010, ZACE_TOP, 3}, {0, 0b00011011, ZACE_TOP, 3}, {0, 0b00011100, ZACE_TOP, 3}, {0, 0b00011101, ZACE_TOP, 3}, {0, 0b00011110, ZACE_TOP, 3}, {0, 0b00011111, ZACE_TOP, 3},
+    {0, 0b00011000, ZACE_TOP, 3}, {0, 0b10011000, ZACE_TOP, 3}, {0, 0b01011000, ZACE_TOP, 3}, {0, 0b11011000, ZACE_TOP, 3}, {0, 0b00111000, ZACE_TOP, 3}, {0, 0b10111000, ZACE_TOP, 3}, {0, 0b01111000, ZACE_TOP, 3}, {0, 0b11111000, ZACE_TOP, 3},
     // 40...47 = Byte 0, ZACE top cycle 3, Decoder 1, BCD values 0...7
-    {0, 0b00101000, ZACE_TOP, 3}, {0, 0b00101001, ZACE_TOP, 3}, {0, 0b00101010, ZACE_TOP, 3}, {0, 0b00101011, ZACE_TOP, 3}, {0, 0b00101100, ZACE_TOP, 3}, {0, 0b00101101, ZACE_TOP, 3}, {0, 0b00101110, ZACE_TOP, 3}, {0, 0b00101111, ZACE_TOP, 3},
+    {0, 0b00010100, ZACE_TOP, 3}, {0, 0b10010100, ZACE_TOP, 3}, {0, 0b01010100, ZACE_TOP, 3}, {0, 0b11010100, ZACE_TOP, 3}, {0, 0b00110100, ZACE_TOP, 3}, {0, 0b10110100, ZACE_TOP, 3}, {0, 0b01110100, ZACE_TOP, 3}, {0, 0b11110100, ZACE_TOP, 3},
     // 48...55 = Byte 0, ZACE bottom cycle 3, Decoder 0, BCD values 0...7
-    {0, 0b00110000, ZACE_BOTTOM, 3}, {0, 0b00110001, ZACE_BOTTOM, 3}, {0, 0b00110010, ZACE_BOTTOM, 3}, {0, 0b00110011, ZACE_BOTTOM, 3}, {0, 0b00110100, ZACE_BOTTOM, 3}, {0, 0b00110101, ZACE_BOTTOM, 3}, {0, 0b00110110, ZACE_BOTTOM, 3}, {0, 0b00110111, ZACE_BOTTOM, 3},
+    {0, 0b00001100, ZACE_BOTTOM, 3}, {0, 0b10001100, ZACE_BOTTOM, 3}, {0, 0b01001100, ZACE_BOTTOM, 3}, {0, 0b11001100, ZACE_BOTTOM, 3}, {0, 0b00101100, ZACE_BOTTOM, 3}, {0, 0b10101100, ZACE_BOTTOM, 3}, {0, 0b01101100, ZACE_BOTTOM, 3}, {0, 0b11101100, ZACE_BOTTOM, 3},
     // 56...63 = Byte 0, ZACE bottom cycle 3, Decoder 2, BCD values 0...7
-    {0, 0b00011000, ZACE_BOTTOM, 3}, {0, 0b00011001, ZACE_BOTTOM, 3}, {0, 0b00011010, ZACE_BOTTOM, 3}, {0, 0b00011011, ZACE_BOTTOM, 3}, {0, 0b00011100, ZACE_BOTTOM, 3}, {0, 0b00011101, ZACE_BOTTOM, 3}, {0, 0b00011110, ZACE_BOTTOM, 3}, {0, 0b00011111, ZACE_BOTTOM, 3},
+    {0, 0b00011000, ZACE_BOTTOM, 3}, {0, 0b10011000, ZACE_BOTTOM, 3}, {0, 0b01011000, ZACE_BOTTOM, 3}, {0, 0b11011000, ZACE_BOTTOM, 3}, {0, 0b00111000, ZACE_BOTTOM, 3}, {0, 0b10111000, ZACE_BOTTOM, 3}, {0, 0b01111000, ZACE_BOTTOM, 3}, {0, 0b11111000, ZACE_BOTTOM, 3},
     // 64...71 = Byte 0, ZACE bottom cycle 3, Decoder 1, BCD values 0...7
-    {0, 0b00101000, ZACE_BOTTOM, 3}, {0, 0b00101001, ZACE_BOTTOM, 3}, {0, 0b00101010, ZACE_BOTTOM, 3}, {0, 0b00101011, ZACE_BOTTOM, 3}, {0, 0b00101100, ZACE_BOTTOM, 3}, {0, 0b00101101, ZACE_BOTTOM, 3}, {0, 0b00101110, ZACE_BOTTOM, 3}, {0, 0b00101111, ZACE_BOTTOM, 3},
+    {0, 0b00010100, ZACE_BOTTOM, 3}, {0, 0b10010100, ZACE_BOTTOM, 3}, {0, 0b01010100, ZACE_BOTTOM, 3}, {0, 0b11010100, ZACE_BOTTOM, 3}, {0, 0b00110100, ZACE_BOTTOM, 3}, {0, 0b10110100, ZACE_BOTTOM, 3}, {0, 0b01110100, ZACE_BOTTOM, 3}, {0, 0b11110100, ZACE_BOTTOM, 3},
 };
 
 
@@ -290,7 +291,7 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
                     motor_bitMask = unitIdToBitPosMap_motors[motorIdx][1];
                     display_outBuf[motor_byteIdx] |= motor_bitMask;
                 }
-        #if defined(CONFIG_AEG_SEL_USE_ZACE)
+    #if defined(CONFIG_AEG_SEL_USE_ZACE)
                 else {
                     // The motor index is within the ZACE range
                     motor_byteIdx = unitIdToBitPosMap_motors[motorIdx][0];
