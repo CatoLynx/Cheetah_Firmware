@@ -80,11 +80,11 @@ static const uint8_t unitIdToBitPosMap_motors[AEG_SEL_MAX_UNITS][4] = {
     {0, 0b00000001, ZACE_TOP, 1}, {0, 0b00000010, ZACE_TOP, 1}, {0, 0b00000100, ZACE_TOP, 1}, {0, 0b00001000, ZACE_TOP, 1}, {0, 0b00010000, ZACE_TOP, 1}, {0, 0b00100000, ZACE_TOP, 1}, {0, 0b01000000, ZACE_TOP, 1}, {0, 0b10000000, ZACE_TOP, 1},
     // 40...47 = Byte 0, ZACE top cycle 0, Bits 7...0
     {0, 0b00000001, ZACE_TOP, 0}, {0, 0b00000010, ZACE_TOP, 0}, {0, 0b00000100, ZACE_TOP, 0}, {0, 0b00001000, ZACE_TOP, 0}, {0, 0b00010000, ZACE_TOP, 0}, {0, 0b00100000, ZACE_TOP, 0}, {0, 0b01000000, ZACE_TOP, 0}, {0, 0b10000000, ZACE_TOP, 0},
-    // 24...31 = Byte 0, ZACE bottom cycle 2, Bits 7...0
+    // 48...55 = Byte 0, ZACE bottom cycle 2, Bits 7...0
     {0, 0b00000001, ZACE_BOTTOM, 2}, {0, 0b00000010, ZACE_BOTTOM, 2}, {0, 0b00000100, ZACE_BOTTOM, 2}, {0, 0b00001000, ZACE_BOTTOM, 2}, {0, 0b00010000, ZACE_BOTTOM, 2}, {0, 0b00100000, ZACE_BOTTOM, 2}, {0, 0b01000000, ZACE_BOTTOM, 2}, {0, 0b10000000, ZACE_BOTTOM, 2},
-    // 32...39 = Byte 0, ZACE bottom cycle 1, Bits 7...0
+    // 56...63 = Byte 0, ZACE bottom cycle 1, Bits 7...0
     {0, 0b00000001, ZACE_BOTTOM, 1}, {0, 0b00000010, ZACE_BOTTOM, 1}, {0, 0b00000100, ZACE_BOTTOM, 1}, {0, 0b00001000, ZACE_BOTTOM, 1}, {0, 0b00010000, ZACE_BOTTOM, 1}, {0, 0b00100000, ZACE_BOTTOM, 1}, {0, 0b01000000, ZACE_BOTTOM, 1}, {0, 0b10000000, ZACE_BOTTOM, 1},
-    // 40...47 = Byte 0, ZACE bottom cycle 0, Bits 7...0
+    // 64...71 = Byte 0, ZACE bottom cycle 0, Bits 7...0
     {0, 0b00000001, ZACE_BOTTOM, 0}, {0, 0b00000010, ZACE_BOTTOM, 0}, {0, 0b00000100, ZACE_BOTTOM, 0}, {0, 0b00001000, ZACE_BOTTOM, 0}, {0, 0b00010000, ZACE_BOTTOM, 0}, {0, 0b00100000, ZACE_BOTTOM, 0}, {0, 0b01000000, ZACE_BOTTOM, 0}, {0, 0b10000000, ZACE_BOTTOM, 0},
 };
 static const uint8_t unitIdToBitPosMap_sensors[AEG_SEL_MAX_UNITS][4] = {
@@ -280,6 +280,9 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
                 if (sensor_zaceHalf == currentZaceHalf && sensor_zaceCycle == currentZaceCycle) {
                     display_outBuf[sensor_byteIdx] = sensor_bitMask;
                 }
+                if (sensor_zaceHalf != currentZaceHalf && currentZaceCycle == ZACE_SENSOR_CYCLE) {
+                    display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
+                }
             }
     #endif
 
@@ -321,14 +324,13 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
             // ZACE REG_SEL latching
             gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO, (currentZaceCycle & 1), false);
             gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A1_IO, (currentZaceCycle & 2), false);
-            if (currentZaceHalf == ZACE_TOP) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_TOP_IO, 1, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
-            else if (currentZaceHalf == ZACE_BOTTOM) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO, 1, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+            if (currentZaceHalf == ZACE_TOP) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_TOP_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+            else if (currentZaceHalf == ZACE_BOTTOM) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
     #endif
         }
 
         // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
         ESP_ERROR_CHECK(aeg_sel_update_registers());
-
         // Read position of active sensor
         unitPositions[addr] = display_inBuf[0] & 0x3F;
     }
