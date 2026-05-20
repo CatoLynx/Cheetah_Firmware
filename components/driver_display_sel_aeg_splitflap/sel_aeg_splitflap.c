@@ -416,7 +416,7 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
         // Start/stop units as necessary
         if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
             aeg_sel_start_unit(addr);
-        } else if (motorsActive[addr]) {
+        } else if (unitBuf[addr] == unitPositions[addr] && motorsActive[addr]) {
             aeg_sel_stop_unit(addr);
         }
     }
