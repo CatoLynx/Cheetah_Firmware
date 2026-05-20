@@ -340,7 +340,7 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
         aeg_sel_update_registers();
 
         // Read position of active sensor
-        unitPositions[addr] = display_inBuf[0] & 0x3F;
+        unitPositions[addr] = (~display_inBuf[0]) & 0x3F;
 
         // Start/stop units as necessary
         if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
