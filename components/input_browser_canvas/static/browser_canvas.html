@@ -881,7 +881,7 @@
                 if (unit["type"] == "text") {
                   input = $("<input type=\"text\">");
                   input.attr("maxlength", unit["len"]);
-                  input.on("input", onTextInputInput); // TODO: THIS IS THE TEXT BUFFER FUNCTION??? HAVE I NOT IMPLEMENTED THIS YET??
+                  input.on("input", updateUnitBuffer);
                 } else if(unit["type"] == "map") {
                   input = $("<select>");
                   input.change(updateUnitBuffer);
