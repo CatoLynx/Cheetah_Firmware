@@ -66,7 +66,8 @@
 
       var fieldFlags = {
         "WRITE_ONLY": 1,
-        "SPIFFS_FILE_SELECT": 2
+        "SPIFFS_FILE_SELECT": 2,
+        "BOOLEAN": 4
       };
 
       var spiffs_files = [];
@@ -138,13 +139,20 @@
       function buildForm(fields) {
         for(var field of fields) {
           if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field["type"]]) != -1) {
-            // Numerical field
-            var field_element = $('<input type="number">');
-            field_element.prop("name", field["name"]);
-            field_element.prop("step", 1);
-            field_element.prop("min", fieldMinValues[field["type"]]);
-            field_element.prop("max", fieldMaxValues[field["type"]]);
-            field_element.val(field["value"]);
+            if (field["flags"] & fieldFlags["BOOLEAN"]) {
+              // Checkbox
+              var field_element = $('<input type="checkbox">');
+              field_element.prop("name", field["name"]);
+              field_element.prop("checked", (field["value"] != 0));
+            } else {
+              // Numerical field
+              var field_element = $('<input type="number">');
+              field_element.prop("name", field["name"]);
+              field_element.prop("step", 1);
+              field_element.prop("min", fieldMinValues[field["type"]]);
+              field_element.prop("max", fieldMaxValues[field["type"]]);
+              field_element.val(field["value"]);
+            }
           } else if (fieldTypes[field["type"]] == "STR") {
             // String field
             var field_element;
@@ -154,7 +162,7 @@
               // Empty option
               var option = $("<option>");
               option.attr("value", "");
-              option.text("");
+              option.text("<Nothing>");
               field_element.append(option);
 
               for (const filename of spiffs_files) {
@@ -192,8 +200,13 @@
           var field_name = $(inputs[i]).prop("name");
           var field_type = parseInt($(inputs[i+1]).val());
           if (["I8", "I16", "I32", "I64", "U8", "U16", "U32", "U64"].indexOf(fieldTypes[field_type]) != -1) {
-            // Numerical field
-            var field_value = parseInt($(inputs[i]).val());
+            if (inputs[i].type == "checkbox") {
+              // Checkbox
+              var field_value = ($(inputs[i]).prop("checked")) ? 1 : 0;
+            } else {
+              // Numerical field
+              var field_value = parseInt($(inputs[i]).val());
+            }
             if (field_value == null) field_value = 0;
           } else {
             var field_value = $(inputs[i]).val();
