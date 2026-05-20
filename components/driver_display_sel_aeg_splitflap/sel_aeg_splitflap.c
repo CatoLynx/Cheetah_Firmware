@@ -141,6 +141,8 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
     if (CONFIG_AEG_SEL_OUT_LATCH_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_OUT_LATCH_IO);
     if (CONFIG_AEG_SEL_IN_LATCH_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_IN_LATCH_IO);
     if (CONFIG_AEG_SEL_SET_BUTTON_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_SET_BUTTON_IO);
+    if (CONFIG_AEG_SEL_ROTATING_LED_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_ROTATING_LED_IO);
+    if (CONFIG_AEG_SEL_TIMEOUT_LED_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_TIMEOUT_LED_IO);
 
     #if defined(CONFIG_AEG_SEL_USE_ZACE)
     if (CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO >= 0) gpio_reset_pin(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO);
@@ -155,6 +157,8 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
     if (CONFIG_AEG_SEL_OUT_LATCH_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_OUT_LATCH_IO, GPIO_MODE_OUTPUT);
     if (CONFIG_AEG_SEL_IN_LATCH_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_IN_LATCH_IO, GPIO_MODE_OUTPUT);
     if (CONFIG_AEG_SEL_SET_BUTTON_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_SET_BUTTON_IO, GPIO_MODE_INPUT);
+    if (CONFIG_AEG_SEL_ROTATING_LED_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_ROTATING_LED_IO, GPIO_MODE_OUTPUT);
+    if (CONFIG_AEG_SEL_TIMEOUT_LED_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_TIMEOUT_LED_IO, GPIO_MODE_OUTPUT);
 
     #if defined(CONFIG_AEG_SEL_USE_ZACE)
     if (CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO >= 0) gpio_set_direction(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO, GPIO_MODE_OUTPUT);
@@ -231,6 +235,17 @@ static void aeg_sel_stop_unit(uint8_t unitId) {
     ESP_LOGD(LOG_TAG, "Stopping unit %d (Pos = %d)", unitId, unitPositions[unitId]);
     motorsActive[unitId] = false;
     motorStartTimes[unitId] = 0;
+}
+
+static void aeg_sel_update_status_indicators(void) {
+    uint8_t rotationState = 0;
+    uint8_t timeoutState = 0;
+    for (uint8_t i = 0; i < AEG_SEL_MAX_UNITS; i++) {
+        if (motorsActive[i]) rotationState = 1;
+        if (motorsTimeout[i]) timeoutState = 1;
+    }
+    gpio_set(CONFIG_AEG_SEL_ROTATING_LED_IO, rotationState, 0);
+    gpio_set(CONFIG_AEG_SEL_TIMEOUT_LED_IO, timeoutState, 0);
 }
 
 static void aeg_sel_update_registers(void) {
@@ -433,6 +448,9 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
 
     // Turn off sensors
     aeg_sel_register_cycle(0xFFFF);
+
+    // Update status indicators
+    aeg_sel_update_status_indicators();
 }
 
 #endif

@@ -36,6 +36,18 @@ config AEG_SEL_SET_BUTTON_IO
     help
         GPIO pin for set button
 
+config AEG_SEL_ROTATING_LED_IO
+    int "Rotation status indicator GPIO"
+    default 0
+    help
+        GPIO pin for unit rotation status indicator
+
+config AEG_SEL_TIMEOUT_LED_IO
+    int "Timeout status indicator GPIO"
+    default 0
+    help
+        GPIO pin for unit timeout status indicator
+
 config AEG_SEL_USE_ZACE
     bool "Use ZACE expansion card"
     default false
