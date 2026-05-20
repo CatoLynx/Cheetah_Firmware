@@ -24,7 +24,7 @@ esp_err_t get_json_from_spiffs(const char* spiffsFileName, cJSON** json, const c
     char file_path[21]; // "/spiffs/" + 8.3 filename + null
     snprintf(file_path, 21, "/spiffs/%s", spiffsFileName);
     
-    ESP_LOGI(log_tag, "Opening file for reading: %s", file_path);
+    ESP_LOGD(log_tag, "Opening file for reading: %s", file_path);
     FILE* file = fopen(file_path, "rb");
     if (file == NULL) {
         ESP_LOGE(log_tag, "Failed to open file");
@@ -65,7 +65,7 @@ esp_err_t save_json_to_spiffs(const char* spiffsFileName, cJSON* json, const cha
     char file_path[21]; // "/spiffs/" + 8.3 filename + null
     snprintf(file_path, 21, "/spiffs/%s", spiffsFileName);
     
-    ESP_LOGI(log_tag, "Opening file for writing: %s", file_path);
+    ESP_LOGD(log_tag, "Opening file for writing: %s", file_path);
     FILE* file = fopen(file_path, "wb");
     if (file == NULL) {
         ESP_LOGE(log_tag, "Failed to open file");
