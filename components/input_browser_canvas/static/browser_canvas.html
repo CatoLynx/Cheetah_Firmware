@@ -947,6 +947,7 @@
               let map = display_info["config"]["maps"][unit["map"]];
               for (var j = 0; j < unit["len"]; j++) {
                 let code = moduleData[unit["addr"]+j];
+                if (unit["flags"].includes("double-step")) code = Math.floor(code / 2);
                 if (code in map) {
                   text += map[code];
                 } else {
@@ -980,6 +981,7 @@
               let map = swap(display_info["config"]["maps"][unit["map"]]);
               for (var i = 0; i < unit["len"]; i++) {
                 framebuf[unit["addr"] + i] = parseInt(map[value[i]]) || 0;
+                if (unit["flags"].includes("double-step")) framebuf[unit["addr"] + i] *= 2;
               }
             } else if(unit["type"] == "map") {
               // Already mapped
