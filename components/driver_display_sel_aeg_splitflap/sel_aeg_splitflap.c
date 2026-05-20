@@ -364,6 +364,10 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
     // Even though we don't use it to skip the loop,
     // prevUnitBuf is important here to check if the setpoint for a unit has changed.
     // This is used to reset its timeout state.
+    if (prevUnitBuf == NULL) {
+        ESP_LOGE(LOG_TAG, "Secondary unit buffer is NULL. This driver requires double buffering!");
+        return;
+    }
 
     taskENTER_CRITICAL(unitBufLock);
 
