@@ -117,6 +117,7 @@ static const uint8_t unitIdToBitPosMap_sensors[AEG_SEL_MAX_UNITS][4] = {
 #define ZACE_SENSOR_CYCLE 3
 #define ZACE_SENSOR_OFF_MASK 0b00011100
 
+
 esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, uint16_t* display_num_units) {
     /*
      * Set up all needed peripherals
@@ -185,6 +186,9 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
     ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
     #endif
 
+    // Init unit position buffer to impossible value to force refresh on all units
+    memset(unitPositions, 0xFF, AEG_SEL_MAX_UNITS);
+
     return ESP_OK;
 }
 
@@ -235,6 +239,93 @@ static void aeg_sel_update_registers(void) {
     }
 }
 
+static void aeg_sel_register_cycle(uint16_t sensorAddr) {
+    // Perform a full register update cycle and enable the given sensor
+    // as well as any motors that should be active.
+    // If sensorAddr is 0xFFFF, no sensor is enabled.
+
+    for (uint8_t cycle = 0; cycle < 8; cycle++) {
+        uint8_t currentZaceCycle = cycle % 4;
+        uint8_t currentZaceHalf = (cycle < 4) ? ZACE_TOP : ZACE_BOTTOM;
+        memset(display_outBuf, 0x00, AEG_SEL_SPI_OUT_BUF_SIZE);
+
+        // Set the registers for the sensor outputs
+        uint8_t sensor_byteIdx, sensor_bitMask, sensor_zaceHalf, sensor_zaceCycle;
+        if (sensorAddr == 0xFFFF) {
+            // Turn off all sensors
+            #if defined(CONFIG_AEG_SEL_USE_ZACE)
+            // All ZACE sensor outputs must be off
+            if (currentZaceCycle == ZACE_SENSOR_CYCLE) {
+                display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
+            }
+            #endif
+        } else if (sensorAddr < 24) {
+            // The active sensor is within the non-ZACE range
+            sensor_byteIdx = unitIdToBitPosMap_sensors[sensorAddr][0];
+            sensor_bitMask = unitIdToBitPosMap_sensors[sensorAddr][1];
+            display_outBuf[sensor_byteIdx] = sensor_bitMask;
+            #if defined(CONFIG_AEG_SEL_USE_ZACE)
+            // If current sensor is on the main board, all ZACE sensor outputs must be off
+            if (currentZaceCycle == ZACE_SENSOR_CYCLE) {
+                display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
+            }
+            #endif
+        }
+        #if defined(CONFIG_AEG_SEL_USE_ZACE)
+        else {
+            // The active sensor is within the ZACE range
+            sensor_byteIdx = unitIdToBitPosMap_sensors[sensorAddr][0];
+            sensor_bitMask = unitIdToBitPosMap_sensors[sensorAddr][1];
+            sensor_zaceHalf = unitIdToBitPosMap_sensors[sensorAddr][2];
+            sensor_zaceCycle = unitIdToBitPosMap_sensors[sensorAddr][3];
+            if (sensor_zaceHalf == currentZaceHalf && sensor_zaceCycle == currentZaceCycle) {
+                display_outBuf[sensor_byteIdx] = sensor_bitMask;
+            }
+            // ZACE sensor outputs on the non-active half must be off
+            if (sensor_zaceHalf != currentZaceHalf && currentZaceCycle == ZACE_SENSOR_CYCLE) {
+                display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
+            }
+        }
+        #endif
+
+        // Set the registers for the motor outputs
+        uint8_t motor_byteIdx, motor_bitMask, motor_zaceHalf, motor_zaceCycle;
+        for (uint8_t motorIdx = 0; motorIdx < AEG_SEL_MAX_UNITS; motorIdx++) {
+            if (!motorsActive[motorIdx]) continue;
+            
+            if (motorIdx < 24) {
+                // The motor index is within the non-ZACE range
+                motor_byteIdx = unitIdToBitPosMap_motors[motorIdx][0];
+                motor_bitMask = unitIdToBitPosMap_motors[motorIdx][1];
+                display_outBuf[motor_byteIdx] |= motor_bitMask;
+            }
+            #if defined(CONFIG_AEG_SEL_USE_ZACE)
+            else {
+                // The motor index is within the ZACE range
+                motor_byteIdx = unitIdToBitPosMap_motors[motorIdx][0];
+                motor_bitMask = unitIdToBitPosMap_motors[motorIdx][1];
+                motor_zaceHalf = unitIdToBitPosMap_motors[motorIdx][2];
+                motor_zaceCycle = unitIdToBitPosMap_motors[motorIdx][3];
+                if (motor_zaceHalf == currentZaceHalf && motor_zaceCycle == currentZaceCycle) {
+                    display_outBuf[motor_byteIdx] |= motor_bitMask;
+                }
+            }
+            #endif
+        }
+
+        // Update shift registers
+        aeg_sel_update_registers();
+
+        #if defined(CONFIG_AEG_SEL_USE_ZACE)
+        // ZACE REG_SEL latching
+        gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO, (currentZaceCycle & 1), false);
+        gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A1_IO, (currentZaceCycle & 2), false);
+        if (currentZaceHalf == ZACE_TOP) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_TOP_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+        else if (currentZaceHalf == ZACE_BOTTOM) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
+        #endif
+    }
+}
+
 static bool prevSetButtonPressed = false;
 static void aeg_sel_process_manual_inputs(uint8_t* unitBuf, size_t unitBufSize, uint8_t* display_framebuf_mask) {
     // Process manual inputs from the physical control panel
@@ -256,7 +347,7 @@ static void aeg_sel_process_manual_inputs(uint8_t* unitBuf, size_t unitBufSize, 
         uint8_t targetPos = targetPosTens * 10 + targetPosOnes;
 
         ESP_LOGI(LOG_TAG, "Manual input: Setting all units to position %d", targetPos);
-        
+
         for (uint16_t addr = 0; addr < unitBufSize; addr++) {
             if (addr >= AEG_SEL_MAX_UNITS) break;
 
@@ -298,86 +389,25 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
             aeg_sel_stop_unit(addr);
         }
 
-        // Do a full register cycle for the current address.
-        // To do a full update and multiplex cycle,
-        // four shift register writes must be done per ZACE half.
-        // This is because of how the ZACE card is connected.
-        for (uint8_t cycle = 0; cycle < 8; cycle++) {
-            uint8_t currentZaceCycle = cycle % 4;
-            uint8_t currentZaceHalf = (cycle < 4) ? ZACE_TOP : ZACE_BOTTOM;
-            memset(display_outBuf, 0x00, AEG_SEL_SPI_OUT_BUF_SIZE);
+        // Only do the register cycle if the unit is rotating.
+        // There is really no need to if it isn't.
+        // Motor states are written for all units in every cycle,
+        // so there is no way that a unit can be "deadlocked".
+        // Even if the last unit is rotating but is supposed to stop,
+        // The "sensors off" cycle at the end will disable its motor.
+        if (motorsActive[addr]) {
+            // Do a full register cycle for the current address.
+            // To do a full update and multiplex cycle,
+            // four shift register writes must be done per ZACE half.
+            // This is because of how the ZACE card is connected.
+            aeg_sel_register_cycle(addr);
 
-            // Set the registers for the sensor outputs
-            uint8_t sensor_byteIdx, sensor_bitMask, sensor_zaceHalf, sensor_zaceCycle;
-            if (addr < 24) {
-                // The active sensor is within the non-ZACE range
-                sensor_byteIdx = unitIdToBitPosMap_sensors[addr][0];
-                sensor_bitMask = unitIdToBitPosMap_sensors[addr][1];
-                display_outBuf[sensor_byteIdx] = sensor_bitMask;
-    #if defined(CONFIG_AEG_SEL_USE_ZACE)
-                if (currentZaceCycle == ZACE_SENSOR_CYCLE) {
-                    display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
-                }
-    #endif
-            }
-    #if defined(CONFIG_AEG_SEL_USE_ZACE)
-            else {
-                // The active sensor is within the ZACE range
-                sensor_byteIdx = unitIdToBitPosMap_sensors[addr][0];
-                sensor_bitMask = unitIdToBitPosMap_sensors[addr][1];
-                sensor_zaceHalf = unitIdToBitPosMap_sensors[addr][2];
-                sensor_zaceCycle = unitIdToBitPosMap_sensors[addr][3];
-                if (sensor_zaceHalf == currentZaceHalf && sensor_zaceCycle == currentZaceCycle) {
-                    display_outBuf[sensor_byteIdx] = sensor_bitMask;
-                }
-                if (sensor_zaceHalf != currentZaceHalf && currentZaceCycle == ZACE_SENSOR_CYCLE) {
-                    display_outBuf[ZACE_SENSOR_BYTE] = ZACE_SENSOR_OFF_MASK;
-                }
-            }
-    #endif
-
-            // Set the registers for the motor outputs
-            uint8_t motor_byteIdx, motor_bitMask, motor_zaceHalf, motor_zaceCycle;
-            for (uint8_t motorIdx = 0; motorIdx < AEG_SEL_MAX_UNITS; motorIdx++) {
-                if (!motorsActive[motorIdx]) continue;
-                
-                if (motorIdx < 24) {
-                    // The motor index is within the non-ZACE range
-                    motor_byteIdx = unitIdToBitPosMap_motors[motorIdx][0];
-                    motor_bitMask = unitIdToBitPosMap_motors[motorIdx][1];
-                    display_outBuf[motor_byteIdx] |= motor_bitMask;
-                }
-    #if defined(CONFIG_AEG_SEL_USE_ZACE)
-                else {
-                    // The motor index is within the ZACE range
-                    motor_byteIdx = unitIdToBitPosMap_motors[motorIdx][0];
-                    motor_bitMask = unitIdToBitPosMap_motors[motorIdx][1];
-                    motor_zaceHalf = unitIdToBitPosMap_motors[motorIdx][2];
-                    motor_zaceCycle = unitIdToBitPosMap_motors[motorIdx][3];
-                    if (motor_zaceHalf == currentZaceHalf && motor_zaceCycle == currentZaceCycle) {
-                        display_outBuf[motor_byteIdx] |= motor_bitMask;
-                    }
-                }
-            }
-    #endif
-
-            // Update shift registers
+            // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
             aeg_sel_update_registers();
 
-    #if defined(CONFIG_AEG_SEL_USE_ZACE)
-            // ZACE REG_SEL latching
-            gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A0_IO, (currentZaceCycle & 1), false);
-            gpio_set(CONFIG_AEG_SEL_ZACE_REG_SEL_A1_IO, (currentZaceCycle & 2), false);
-            if (currentZaceHalf == ZACE_TOP) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_TOP_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
-            else if (currentZaceHalf == ZACE_BOTTOM) gpio_pulse(CONFIG_AEG_SEL_ZACE_REG_SEL_EN_BOTTOM_IO, 0, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION, CONFIG_AEG_SEL_LATCH_PULSE_DURATION);
-    #endif
+            // Read position of active sensor
+            unitPositions[addr] = (~display_inBuf[0]) & 0x3F;
         }
-
-        // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
-        aeg_sel_update_registers();
-
-        // Read position of active sensor
-        unitPositions[addr] = (~display_inBuf[0]) & 0x3F;
 
         // Start/stop units as necessary
         if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
@@ -389,6 +419,9 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
 
     memcpy(prevUnitBuf, unitBuf, unitBufSize);
     taskEXIT_CRITICAL(unitBufLock);
+
+    // Turn off sensors
+    aeg_sel_register_cycle(0xFFFF);
 }
 
 #endif
