@@ -235,12 +235,49 @@ static void aeg_sel_update_registers(void) {
     }
 }
 
+static bool prevSetButtonPressed = false;
+static void aeg_sel_process_manual_inputs(uint8_t* unitBuf, size_t unitBufSize, uint8_t* display_framebuf_mask) {
+    // Process manual inputs from the physical control panel
+    uint8_t inputStates = ~display_inBuf[1];
+
+    // Check if test switch is flipped, no action needed otherwise
+    bool testMode = !!(inputStates & 1);
+    if (!testMode) return;
+
+    // If set button was pressed, set all available units to the target position.
+    uint8_t setButtonPressed = !gpio_get_level(CONFIG_AEG_SEL_SET_BUTTON_IO);
+    if (setButtonPressed && !prevSetButtonPressed) {
+        // 4-bit: pos. 1 to pos. 2; 2-bit: pos. 2 to pos. 1; 1-bit: pos. 3 to pos. 0
+        uint8_t targetPosTens = ((inputStates & 2) << 1) | ((inputStates & 4) >> 1) | ((inputStates & 8) >> 3);
+
+        // 8-bit: pos. 4 to pos. 3; 4-bit: pos. 5 to pos. 2; 2-bit: pos. 6 to pos. 1; 1-bit: pos. 7 to pos. 0
+        uint8_t targetPosOnes = ((inputStates & 16) >> 1) | ((inputStates & 32) >> 3) | ((inputStates & 64) >> 5) | ((inputStates & 128) >> 7);
+
+        uint8_t targetPos = targetPosTens * 10 + targetPosOnes;
+
+        ESP_LOGI(LOG_TAG, "Manual input: Setting all units to position %d", targetPos);
+        
+        for (uint16_t addr = 0; addr < unitBufSize; addr++) {
+            if (addr >= AEG_SEL_MAX_UNITS) break;
+
+            // Skip addresses that aren't present
+            if (!GET_MASK(display_framebuf_mask, addr)) continue;
+
+            unitBuf[addr] = targetPos;
+        }
+    }
+    prevSetButtonPressed = setButtonPressed;
+}
+
 void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
     // Even though we don't use it to skip the loop,
     // prevUnitBuf is important here to check if the setpoint for a unit has changed.
     // This is used to reset its timeout state.
 
     taskENTER_CRITICAL(unitBufLock);
+
+    // Process manual inputs
+    aeg_sel_process_manual_inputs(unitBuf, unitBufSize, display_framebuf_mask);
 
     for (uint16_t addr = 0; addr < unitBufSize; addr++) {
         if (addr >= AEG_SEL_MAX_UNITS) break;

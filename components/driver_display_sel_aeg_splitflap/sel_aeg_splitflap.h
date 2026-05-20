@@ -16,4 +16,5 @@ static void aeg_sel_splitflap_post_transfer_cb(spi_transaction_t *t);
 static void aeg_sel_start_unit(uint8_t unitId);
 static void aeg_sel_stop_unit(uint8_t unitId);
 static void aeg_sel_update_registers(void);
+static void aeg_sel_process_manual_inputs(uint8_t* unitBuf, size_t unitBufSize, uint8_t* display_framebuf_mask);
 void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock, uint8_t* display_framebuf_mask, uint16_t display_num_units);
