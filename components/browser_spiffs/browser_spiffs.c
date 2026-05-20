@@ -308,7 +308,7 @@ static esp_err_t spiffs_upload_post_handler(httpd_req_t *req) {
         ESP_LOGE(LOG_TAG, "Failed to close file, aborting");
         return abortRequest(req, HTTPD_500);
     }
-    ESP_LOGI(LOG_TAG, "File closed");
+    ESP_LOGD(LOG_TAG, "File closed");
 
     // End response
     httpd_resp_send_chunk(req, NULL, 0);
