@@ -151,6 +151,12 @@
       var lineFlagsBufferUpdateInProgress = false;
       var liveUpdate = false;
       const lineFlagNames = ["Indicator", "Flag 1", "Flag 2", "Flag 3", "Flag 4", "Flag 5", "Flag 6", "Flag 7"];
+
+      /* LIST OF PER-UNIT FLAGS FOR SELECTION DISPLAYS
+      upper         always make text uppercase
+      lower         always make text lowercase
+      double-step   positions jump in steps of 2, e.g. 0, 2, 4, 6, etc. (used for 32-flap AEG/ADtranz units)
+      */
       
       /* PIXEL FUNCTIONS ################################################### */
       let Pixel = function(x, y, width, height, spacing, color) {
@@ -976,6 +982,7 @@
               }
             } else if(unit["type"] == "map") {
               // Already mapped
+              if (unit["flags"].includes("double-step")) value *= 2;
               framebuf[unit["addr"]] = parseInt(value) || 0;
             }
           }
