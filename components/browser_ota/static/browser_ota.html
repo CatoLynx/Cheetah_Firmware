@@ -27,10 +27,6 @@
         <td id="log-level"></td>
       </tr>
       <tr>
-        <td colspan="2">Using Auth</td>
-        <td id="auth-enabled"></td>
-      </tr>
-      <tr>
         <td rowspan="4">Heap</td>
         <td>Total Free</td>
         <td id="heap-free"></td>
@@ -226,7 +222,6 @@
         $("#fw-version").html(data['git_version']);
         $("#compile-datetime").html(data['compile_date'] + " " + data['compile_time']);
         $("#log-level").html(data['log_level']);
-        $("#auth-enabled").html(data['auth_enabled'] ? "Yes" : "No");
         $("#heap-free").html(data['heap_free'] + " (" + Math.round(data['heap_free'] / 1024) + " kB)");
         $("#heap-free-internal").html(data['heap_free_internal'] + " (" + Math.round(data['heap_free_internal'] / 1024) + " kB)");
         $("#heap-free-spiram").html(data['heap_free_spiram'] + " (" + Math.round(data['heap_free_spiram'] / 1024) + " kB)");

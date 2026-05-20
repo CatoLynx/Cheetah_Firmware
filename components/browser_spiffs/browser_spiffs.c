@@ -9,6 +9,7 @@
 
 #include "browser_spiffs.h"
 #include "util_httpd.h"
+#include "util_nvs.h"
 #include "util_generic.h"
 #include "settings_secret.h"
 
@@ -17,6 +18,9 @@
 #define MAX_FILENAME_LENGTH 12 // 8.3 filename
 
 static httpd_handle_t* spiffs_server;
+static nvs_handle_t spiffs_nvs_handle;
+static basic_auth_info_t* basic_auth_info;
+static uint8_t spiffs_use_auth = 0;
 static uint32_t upload_payload_length = 0;
 static uint32_t upload_rx_len = 0;
 static uint8_t upload_success = 0;
@@ -347,23 +351,34 @@ static httpd_uri_t spiffs_upload_post = {
     .handler   = spiffs_upload_post_handler
 };
 
-void browser_spiffs_init(httpd_handle_t* server) {
+void browser_spiffs_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
     ESP_LOGI(LOG_TAG, "Init");
+    spiffs_nvs_handle = *nvsHandle;
+
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
-    #if defined(CONFIG_PROJ_USE_AUTH)
-    basic_auth_info_t *basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
+    basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
     basic_auth_info->realm    = "Cheetah SPIFFS";
     
-    spiffs_get.user_ctx = basic_auth_info;
-    spiffs_files_get.user_ctx = basic_auth_info;
-    spiffs_download_get.user_ctx = basic_auth_info;
-    spiffs_delete_post.user_ctx = basic_auth_info;
-    spiffs_upload_metadata_post.user_ctx = basic_auth_info;
-    spiffs_upload_post.user_ctx = basic_auth_info;
-    #endif
+    esp_err_t ret = nvs_get_u8(spiffs_nvs_handle, "use_auth", &spiffs_use_auth);
+    if (ret != ESP_OK) spiffs_use_auth = 0;
+
+    if (spiffs_use_auth) {
+        ESP_LOGI(LOG_TAG, "Using authentication");
+    } else {
+        ESP_LOGI(LOG_TAG, "Not using authentication");
+    }
+    
+    if (spiffs_use_auth) {
+        spiffs_get.user_ctx = basic_auth_info;
+        spiffs_files_get.user_ctx = basic_auth_info;
+        spiffs_download_get.user_ctx = basic_auth_info;
+        spiffs_delete_post.user_ctx = basic_auth_info;
+        spiffs_upload_metadata_post.user_ctx = basic_auth_info;
+        spiffs_upload_post.user_ctx = basic_auth_info;
+    }
 
     httpd_register_uri_handler(*server, &spiffs_get);
     httpd_register_uri_handler(*server, &spiffs_files_get);

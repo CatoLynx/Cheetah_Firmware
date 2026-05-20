@@ -389,9 +389,9 @@ void app_main(void) {
     mdns_instance_name_set(hostname);
 
     httpd_handle_t server = httpd_init(&nvs_handle);
-    browser_ota_init(&server);
+    browser_ota_init(&server, &nvs_handle);
     browser_config_init(&server, &nvs_handle);
-    browser_spiffs_init(&server);
+    browser_spiffs_init(&server, &nvs_handle);
     
     #if defined(CONFIG_I2S_MIC_ENABLED)
     i2s_mic_init();

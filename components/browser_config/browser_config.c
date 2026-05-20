@@ -11,10 +11,8 @@
 #define LOG_TAG "BROWSER-CONFIG"
 
 static httpd_handle_t* config_server;
-
-#if defined(CONFIG_PROJ_USE_AUTH)
 static basic_auth_info_t* basic_auth_info;
-#endif
+static uint8_t config_use_auth = 0;
 
 // Embedded files - refer to CMakeLists.txt
 extern const uint8_t browser_config_html_start[] asm("_binary_browser_config_html_start");
@@ -393,20 +391,30 @@ static httpd_uri_t config_post_update = {
 };
 
 void browser_config_init(httpd_handle_t* server, nvs_handle_t* nvsHandle) {
-    config_nvs_handle = *nvsHandle;
     ESP_LOGI(LOG_TAG, "Init");
+    config_nvs_handle = *nvsHandle;
+
     ESP_LOGI(LOG_TAG, "Registering URI handlers");
 
-    #if defined(CONFIG_PROJ_USE_AUTH)
     basic_auth_info = calloc(1, sizeof(basic_auth_info_t));
     basic_auth_info->username = HTTPD_CONFIG_USERNAME;
     basic_auth_info->password = HTTPD_CONFIG_PASSWORD;
     basic_auth_info->realm    = "Cheetah Configuration";
     
-    config_get.user_ctx = basic_auth_info;
-    config_get_fields.user_ctx = basic_auth_info;
-    config_post_update.user_ctx = basic_auth_info;
-    #endif
+    esp_err_t ret = nvs_get_u8(config_nvs_handle, "use_auth", &config_use_auth);
+    if (ret != ESP_OK) config_use_auth = 0;
+
+    if (config_use_auth) {
+        ESP_LOGI(LOG_TAG, "Using authentication");
+    } else {
+        ESP_LOGI(LOG_TAG, "Not using authentication");
+    }
+    
+    if (config_use_auth) {
+        config_get.user_ctx = basic_auth_info;
+        config_get_fields.user_ctx = basic_auth_info;
+        config_post_update.user_ctx = basic_auth_info;
+    }
 
     httpd_register_uri_handler(*server, &config_get);
     httpd_register_uri_handler(*server, &config_get_fields);
@@ -420,7 +428,5 @@ void browser_config_deinit(void) {
     httpd_unregister_uri_handler(*config_server, config_get.uri, config_get.method);
     httpd_unregister_uri_handler(*config_server, config_get_fields.uri, config_get_fields.method);
     httpd_unregister_uri_handler(*config_server, config_post_update.uri, config_post_update.method);
-    #if defined(CONFIG_PROJ_USE_AUTH)
     free(basic_auth_info);
-    #endif
 }
