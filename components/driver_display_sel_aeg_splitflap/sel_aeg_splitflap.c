@@ -38,6 +38,10 @@ static bool spi_transferOngoing = false;
 // Multiple motors can be active simultaneously.
 static bool motorsActive[AEG_SEL_MAX_UNITS] = {false};
 
+// Which motors have timed out.
+// This is to prevent them from being restarted automatically.
+static bool motorsTimeout[AEG_SEL_MAX_UNITS] = {false};
+
 // Per-unit timestamp of when the unit was started.
 // Used for calculating rotation timeouts.
 static int64_t motorStartTimes[AEG_SEL_MAX_UNITS] = {0};
@@ -206,47 +210,56 @@ static void aeg_sel_splitflap_post_transfer_cb(spi_transaction_t *t) {
 
 static void aeg_sel_start_unit(uint8_t unitId) {
     if (unitId >= AEG_SEL_MAX_UNITS) return;
+    ESP_LOGD(LOG_TAG, "Starting unit %d (Pos = %d)", unitId, unitPositions[unitId]);
     motorsActive[unitId] = true;
     motorStartTimes[unitId] = esp_timer_get_time();
 }
 
 static void aeg_sel_stop_unit(uint8_t unitId) {
     if (unitId >= AEG_SEL_MAX_UNITS) return;
+    ESP_LOGD(LOG_TAG, "Stopping unit %d (Pos = %d)", unitId, unitPositions[unitId]);
     motorsActive[unitId] = false;
     motorStartTimes[unitId] = 0;
 }
 
-static esp_err_t aeg_sel_update_registers(void) {
+static void aeg_sel_update_registers(void) {
     spi_transaction_t spi_trans = {
         .tx_buffer = display_outBuf,
         .length = AEG_SEL_SPI_BUF_SIZE * 8,
         .rx_buffer = display_inBuf,
         .rxlength = AEG_SEL_SPI_IN_BUF_SIZE * 8
     };
-    ESP_ERROR_CHECK(spi_device_polling_transmit(spi, &spi_trans));
-    return ESP_OK;
+    esp_err_t ret = spi_device_polling_transmit(spi, &spi_trans);
+    if (ret != ESP_OK) {
+        ESP_LOGE(LOG_TAG, "Register update failed: %s", esp_err_to_name(ret));
+    }
 }
 
 void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, portMUX_TYPE* unitBufLock, uint8_t* display_framebuf_mask, uint16_t display_num_units) {
-    // Nothing to do if buffer hasn't changed
-    // TODO: This kinda has to go as the update function must always check
-    // the sensors while at least one unit is rotating.
-    // Could MAYBE just check while no units are rotating.
-    //if (prevUnitBuf != NULL && memcmp(unitBuf, prevUnitBuf, unitBufSize) == 0) return;
+    // Even though we don't use it to skip the loop,
+    // prevUnitBuf is important here to check if the setpoint for a unit has changed.
+    // This is used to reset its timeout state.
 
     taskENTER_CRITICAL(unitBufLock);
-    // TODO: ??? wat do
-    //if (prevUnitBuf != NULL) memcpy(prevUnitBuf, unitBuf, unitBufSize);
 
     for (uint16_t addr = 0; addr < unitBufSize; addr++) {
         if (addr >= AEG_SEL_MAX_UNITS) break;
 
         // Skip addresses that aren't present
         if (!GET_MASK(display_framebuf_mask, addr)) continue;
+
+        // Reset rotation timeout if setpoint changed
+        if (motorsTimeout[addr] && (unitBuf[addr] != prevUnitBuf[addr])) {
+            motorsTimeout[addr] = false;
+        }
         
-        // Start/stop units as necessary
-        if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr]) aeg_sel_start_unit(addr);
-        else if (motorsActive[addr]) aeg_sel_stop_unit(addr);
+        // Check rotation timeout
+        int64_t now = esp_timer_get_time();
+        if (motorStartTimes[addr] != 0 && ((now - motorStartTimes[addr]) / 1000) >= CONFIG_AEG_SEL_ROTATION_TIMEOUT) {
+            ESP_LOGW(LOG_TAG, "Unit %d timed out", addr);
+            motorsTimeout[addr] = true;
+            aeg_sel_stop_unit(addr);
+        }
 
         // Do a full register cycle for the current address.
         // To do a full update and multiplex cycle,
@@ -288,13 +301,7 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
 
             // Set the registers for the motor outputs
             uint8_t motor_byteIdx, motor_bitMask, motor_zaceHalf, motor_zaceCycle;
-            int64_t now = esp_timer_get_time();
             for (uint8_t motorIdx = 0; motorIdx < AEG_SEL_MAX_UNITS; motorIdx++) {
-                // Check rotation timeout
-                if (motorStartTimes[motorIdx] != 0 && ((now - motorStartTimes[motorIdx]) / 1000) >= CONFIG_AEG_SEL_ROTATION_TIMEOUT) {
-                    aeg_sel_stop_unit(motorIdx);
-                    // TODO: Figure out how to keep timed-out unit from restarting automatically
-                }
                 if (!motorsActive[motorIdx]) continue;
                 
                 if (motorIdx < 24) {
@@ -318,7 +325,7 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
     #endif
 
             // Update shift registers
-            ESP_ERROR_CHECK(aeg_sel_update_registers());
+            aeg_sel_update_registers();
 
     #if defined(CONFIG_AEG_SEL_USE_ZACE)
             // ZACE REG_SEL latching
@@ -330,13 +337,20 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
         }
 
         // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
-        ESP_ERROR_CHECK(aeg_sel_update_registers());
+        aeg_sel_update_registers();
+
         // Read position of active sensor
         unitPositions[addr] = display_inBuf[0] & 0x3F;
+
+        // Start/stop units as necessary
+        if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
+            aeg_sel_start_unit(addr);
+        } else if (motorsActive[addr]) {
+            aeg_sel_stop_unit(addr);
+        }
     }
 
-    // TODO: Turn off sensors at the end
-
+    memcpy(prevUnitBuf, unitBuf, unitBufSize);
     taskEXIT_CRITICAL(unitBufLock);
 }
 
