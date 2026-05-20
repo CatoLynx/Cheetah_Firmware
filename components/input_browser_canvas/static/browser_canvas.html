@@ -940,7 +940,8 @@
             let unit = display_info["config"]["units"][i];
             let input = $("[data-unit-index=" + i + "]");
             if (unit["type"] == "map") {
-              input.val(moduleData[unit["addr"]]);
+              if (unit["flags"].includes("double-step")) input.val(Math.floor(moduleData[unit["addr"]] / 2));
+              else input.val(moduleData[unit["addr"]]);
             } else if (unit["type"] == "text") {
               let text = "";
               let map = display_info["config"]["maps"][unit["map"]];
