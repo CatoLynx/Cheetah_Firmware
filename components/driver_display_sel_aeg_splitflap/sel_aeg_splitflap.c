@@ -57,6 +57,12 @@ static int64_t motorStartTimes[AEG_SEL_MAX_UNITS] = {0};
 // Compared with the unit buffer to determine whether a unit needs to rotate.
 static uint8_t unitPositions[AEG_SEL_MAX_UNITS] = {0};
 
+// Flag to force a refresh (e.g. on boot).
+// This works by forcing all motors on
+// and ignoring sensor inputs for two seconds.
+static bool forceRefresh = false;
+static int64_t forceRefresh_startTime = 0;
+
 
 /* HARDWARE PIN TO UNIT ID MAPPING
     Motors:      0 ... 15 = DIRECT   c16 ... c1
@@ -198,6 +204,8 @@ esp_err_t display_init(nvs_handle_t* nvsHandle, uint8_t* display_framebuf_mask, 
     #endif
 
     // Init unit position buffer to impossible value to force refresh on all units
+    forceRefresh = true;
+    forceRefresh_startTime = esp_timer_get_time();
     memset(unitPositions, 0xFF, AEG_SEL_MAX_UNITS);
 
     return ESP_OK;
@@ -391,6 +399,12 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
         return;
     }
 
+    int64_t now = esp_timer_get_time();
+    if (forceRefresh && (now - forceRefresh_startTime >= 2000000UL)) {
+        // Reset force refresh flag after two seconds
+        forceRefresh = false;
+    }
+
     taskENTER_CRITICAL(unitBufLock);
 
     // Process manual inputs
@@ -408,7 +422,6 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
         }
         
         // Check rotation timeout
-        int64_t now = esp_timer_get_time();
         if (motorStartTimes[addr] != 0 && ((now - motorStartTimes[addr]) / 1000) >= CONFIG_AEG_SEL_ROTATION_TIMEOUT) {
             ESP_LOGW(LOG_TAG, "Unit %d timed out", addr);
             motorsTimeout[addr] = true;
@@ -431,22 +444,31 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
             // Do one more cycle to ensure we are getting the sensor inputs from the freshly enabled sensor
             aeg_sel_update_registers();
 
-            // Read position of active sensor
-            uint8_t invPos = (~display_inBuf[0]) & 0x3F;
-            
-            // Reverse bits to get correct Gray code
-            uint8_t grayPos = ((invPos & 32) >> 5) | ((invPos & 16) >> 3) | ((invPos & 8) >> 1) | ((invPos & 4) << 1) | ((invPos & 2) << 3) | ((invPos & 1) << 5);
+            // Skip reading sensors if force refresh is active.
+            // This is to ensure units keep rotating for a while
+            // to definitely leave their current position
+            if (!forceRefresh) {
+                // Read position of active sensor
+                uint8_t invPos = (~display_inBuf[0]) & 0x3F;
+                
+                // Reverse bits to get correct Gray code
+                uint8_t grayPos = ((invPos & 32) >> 5) | ((invPos & 16) >> 3) | ((invPos & 8) >> 1) | ((invPos & 4) << 1) | ((invPos & 2) << 3) | ((invPos & 1) << 5);
 
-            // Convert Gray code to binary
-            uint8_t pos = int_grayToBinary(grayPos);
-            unitPositions[addr] = pos;
+                // Convert Gray code to binary
+                uint8_t pos = int_grayToBinary(grayPos);
+                unitPositions[addr] = pos;
+            }
         }
 
         // Start/stop units as necessary
-        if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
+        if (forceRefresh) {
             aeg_sel_start_unit(addr);
-        } else if (unitBuf[addr] == unitPositions[addr] && motorsActive[addr]) {
-            aeg_sel_stop_unit(addr);
+        } else {
+            if (unitBuf[addr] != unitPositions[addr] && !motorsActive[addr] && !motorsTimeout[addr]) {
+                aeg_sel_start_unit(addr);
+            } else if (unitBuf[addr] == unitPositions[addr] && motorsActive[addr]) {
+                aeg_sel_stop_unit(addr);
+            }
         }
     }
 
