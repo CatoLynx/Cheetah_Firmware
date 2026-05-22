@@ -432,7 +432,14 @@ void display_update(uint8_t* unitBuf, uint8_t* prevUnitBuf, size_t unitBufSize, 
             aeg_sel_update_registers();
 
             // Read position of active sensor
-            unitPositions[addr] = (~display_inBuf[0]) & 0x3F;
+            uint8_t invPos = (~display_inBuf[0]) & 0x3F;
+            
+            // Reverse bits to get correct Gray code
+            uint8_t grayPos = ((invPos & 32) >> 5) | ((invPos & 16) >> 3) | ((invPos & 8) >> 1) | ((invPos & 4) << 1) | ((invPos & 2) << 3) | ((invPos & 1) << 5);
+
+            // Convert Gray code to binary
+            uint8_t pos = int_grayToBinary(grayPos);
+            unitPositions[addr] = pos;
         }
 
         // Start/stop units as necessary

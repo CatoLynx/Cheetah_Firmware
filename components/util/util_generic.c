@@ -45,6 +45,19 @@ uint8_t uint8_to_bcd(uint8_t n) {
   return tens * 16 + ones;
 }
 
+uint8_t int_grayToBinary(uint8_t grayCode) {
+  /*uint8_t result = 0;
+  for (; grayCode; grayCode >>= 1) {
+    result ^= grayCode;
+  }*/
+ uint8_t result = grayCode;
+ while (grayCode > 0) {
+  grayCode >>= 1;
+  result ^= grayCode;
+ }
+  return result;
+}
+
 void str_toUpper(char* str) {
   while (*str) {
     *str = toupper((unsigned char) *str);

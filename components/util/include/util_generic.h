@@ -46,6 +46,7 @@ uint8_t count_set_bits(uint8_t byte);
 uint8_t int_num_digits(int64_t n, uint8_t includeNegSign);
 uint8_t uint_num_digits(uint64_t n);
 uint8_t uint8_to_bcd(uint8_t n);
+uint8_t int_grayToBinary(uint8_t grayCode);
 void str_toUpper(char* str);
 void str_filterAllowed(char* out, char* in, char* allowedChars, bool allowLineBreaks);
 void str_filterDisallowed(char* out, char* in, char* disallowedChars, bool allowLineBreaks);
