@@ -24,7 +24,7 @@ def main():
 
     new_items = []
     for key, value in mapping.items():
-        new_key = (int(key) + args.rotate) % args.wrap
+        new_key = (int(key) + args.rotate) % args.num_flaps
         new_items.append((new_key, value))
 
     data['maps'][args.map] = dict(new_items)
