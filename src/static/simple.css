@@ -627,3 +627,8 @@ progress::-moz-progress-bar {
 progress:indeterminate::-moz-progress-bar {
   background-color: var(--accent-bg);
 }
+
+/* Custom additions */
+.small {
+  font-size: 0.5em;
+}
