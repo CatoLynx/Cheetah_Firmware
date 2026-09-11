@@ -92,7 +92,7 @@
       </table>
     </div>
     <div>
-      <label for="check-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
+      <label for="check-live-update" id="lbl-live-update"><input type="checkbox" id="check-live-update" /> Live Update</label>
       <input type="button" id="btn-update" value="Update" />
       <input type="button" id="btn-save-startup" value="Save startup data" /><br />
       <span id="save-startup-status"></span>
@@ -2049,6 +2049,10 @@
           drawBrightnessControl();
           $("#brightness-input").change(onBrightnessChange);
           $("#btn-save-brightness").click(saveDefaultBrightness);
+        }
+
+        if(!display_info["enable_live_update"]) {
+          $("#lbl-live-update").css("display", "none");
         }
       }
 

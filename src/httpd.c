@@ -231,6 +231,11 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
 #endif
 
     cJSON_AddBoolToObject(json, "brightness_control", DISPLAY_HAS_BRIGHTNESS_CONTROL);
+
+    uint8_t canvas_live_upd = 0;
+    nvs_get_u8(httpd_nvs_handle, "canvas_live_upd", &canvas_live_upd);
+    cJSON_AddBoolToObject(json, "enable_live_update", canvas_live_upd);
+
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
     cJSON* sel_config;
     esp_err_t ret = display_selection_loadConfiguration(&httpd_nvs_handle, &sel_config, LOG_TAG);
