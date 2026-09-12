@@ -60,6 +60,7 @@ config_entry_t config_entries[] = {
     {.key = "use_auth",        .dataType = U8,  .flags = BC_FIELD_FLAGS_BOOLEAN, .comment = "Require authentication to use OTA, SPIFFS, and config"},
     {.key = "canvas_use_auth", .dataType = U8,  .flags = BC_FIELD_FLAGS_BOOLEAN, .comment = "Require authentication to use the canvas"},
     {.key = "canvas_live_upd", .dataType = U8,  .flags = BC_FIELD_FLAGS_BOOLEAN, .comment = "Enable live update functionality in the canvas"},
+    {.key = "canvas_save_en",  .dataType = U8,  .flags = BC_FIELD_FLAGS_BOOLEAN, .comment = "Enable \"save default\" and \"save startup data\" buttons"},
     {.key = "deflt_bright",    .dataType = U8,  .flags = BC_FIELD_FLAGS_NONE, .comment = "Default brightness of the display"},
 };
 

@@ -2051,10 +2051,12 @@
           $("#btn-save-brightness").click(saveDefaultBrightness);
         }
 
-        if(!display_info["enable_live_update"]) {
+        if(!display_info["canvas_enable_live_update"]) {
           $("#lbl-live-update").css("display", "none");
           setLiveUpdate(false);
         }
+
+        setSaveEnabled(display_info["canvas_enable_save"]);
       }
 
       function onGetDisplayInfoError(jqXHR, textStatus, errorThrown) {
@@ -2091,6 +2093,16 @@
         if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateTextBuffer(event);
         if (display_info["type"] == "character" || display_info["type"] == "char_on_pixel" || display_info["type"] == "pixel_on_char") updateLineFlagsBuffer(event);
         if (display_info["type"] == "selection") updateUnitBuffer(event);
+      }
+
+      function setSaveEnabled(state) {
+        if (state) {
+          $("#btn-save-brightness").show();
+          $("#btn-save-startup").show();
+        } else {
+          $("#btn-save-brightness").hide();
+          $("#btn-save-startup").hide();
+        }
       }
 
       function saveStartupData() {

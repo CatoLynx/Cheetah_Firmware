@@ -234,7 +234,11 @@ static esp_err_t display_info_get_handler(httpd_req_t *req) {
 
     uint8_t canvas_live_upd = 0;
     nvs_get_u8(httpd_nvs_handle, "canvas_live_upd", &canvas_live_upd);
-    cJSON_AddBoolToObject(json, "enable_live_update", canvas_live_upd);
+    cJSON_AddBoolToObject(json, "canvas_enable_live_update", canvas_live_upd);
+
+    uint8_t canvas_save_en = 0;
+    nvs_get_u8(httpd_nvs_handle, "canvas_save_en", &canvas_save_en);
+    cJSON_AddBoolToObject(json, "canvas_enable_save", canvas_save_en);
 
 #if defined(CONFIG_DISPLAY_TYPE_SELECTION)
     cJSON* sel_config;
