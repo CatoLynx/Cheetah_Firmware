@@ -2053,6 +2053,7 @@
 
         if(!display_info["enable_live_update"]) {
           $("#lbl-live-update").css("display", "none");
+          setLiveUpdate(false);
         }
       }
 
@@ -2071,14 +2072,18 @@
         
       }
 
-      function onLiveUpdateChange(event) {
-        liveUpdate = $("#check-live-update").prop("checked");
-        localStorage.setItem("liveUpdate", liveUpdate);
-        if (liveUpdate) {
+      function setLiveUpdate(state) {
+        liveUpdate = state;
+        localStorage.setItem("liveUpdate", state);
+        if (state) {
           $("#btn-update").hide();
         } else {
           $("#btn-update").show();
         }
+      }
+
+      function onLiveUpdateChange(event) {
+        setLiveUpdate($("#check-live-update").prop("checked"));
       }
 
       function updateAllBuffers(event) {
