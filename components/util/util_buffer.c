@@ -77,8 +77,10 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
     uint16_t charBufIndex = 0;
     uint16_t charBufCol = 0;
     uint16_t charBufRow = 0;
+    uint8_t incrementCharBufColumn = 0; // Temporary flag to store whether a character would theoretically increase the column
     uint8_t incrementCharBufIndex = 0; // Temporary flag to store whether a character was added to the char buffer
-    uint8_t characterHandlingCompleted = 0; // Temporary flag to tellwhether a character needs to be handles further
+    uint8_t characterHandlingCompleted = 0; // Temporary flag to tell whether a character needs to be handled further
+    uint8_t eolReached = 0; // Set if the current line in the text buffer is running over the character buffer width
 
     // Reset the char buffer to user-defined character and the quirk flags buffer to 0x00
     memset(display_char_buffer, CONFIG_DISPLAY_CHAR_BUF_INIT_VALUE, charBufSize);
@@ -88,8 +90,11 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
         // Stop at null byte
         if (display_text_buffer[textBufIndex] == 0) return;
 
+        incrementCharBufColumn = 0;
         incrementCharBufIndex = 0;
         characterHandlingCompleted = 0;
+
+        eolReached = (charBufCol >= DISPLAY_FRAME_WIDTH_CHAR);
 
         #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
         if (display_text_buffer[textBufIndex] == '.') {
@@ -102,13 +107,23 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
             */
 
             if (textBufIndex == 0) {
-                display_quirk_flags_buffer[charBufIndex] |= QUIRK_FLAG_COMBINING_FULL_STOP;
-                incrementCharBufIndex = 1;
+                // Non-combining full stop if it's the first character
+                if (!eolReached) {
+                    display_quirk_flags_buffer[charBufIndex] |= QUIRK_FLAG_COMBINING_FULL_STOP;
+                    incrementCharBufIndex = 1;
+                }
+                incrementCharBufColumn = 1;
             } else if (display_text_buffer[textBufIndex - 1] == '.') {
-                display_quirk_flags_buffer[charBufIndex] |= QUIRK_FLAG_COMBINING_FULL_STOP;
-                incrementCharBufIndex = 1;
+                // Non-combining full stop if it's preceded by another full stop
+                if (!eolReached) {
+                    display_quirk_flags_buffer[charBufIndex] |= QUIRK_FLAG_COMBINING_FULL_STOP;
+                    incrementCharBufIndex = 1;
+                }
+                incrementCharBufColumn = 1;
             } else {
-                display_quirk_flags_buffer[charBufIndex - 1] |= QUIRK_FLAG_COMBINING_FULL_STOP;
+                // Combining full stop in any other case.
+                // Allow past EOL if it's on the last character of the line
+                if (!eolReached || charBufColumn == DISPLAY_FRAME_WIDTH_CHAR) display_quirk_flags_buffer[charBufIndex - 1] |= QUIRK_FLAG_COMBINING_FULL_STOP;
             }
             characterHandlingCompleted = 1;
         }
@@ -132,19 +147,15 @@ void buffer_textbuf_to_charbuf(uint8_t* display_text_buffer, uint8_t* display_ch
 
         if (!characterHandlingCompleted) {
             // If none of the above cases were true, treat the character as a normal character
-            display_char_buffer[charBufIndex] = display_text_buffer[textBufIndex];
-            incrementCharBufIndex = 1;
+            if (!eolReached) {
+                display_char_buffer[charBufIndex] = display_text_buffer[textBufIndex];
+                incrementCharBufIndex = 1;
+            }
+            incrementCharBufColumn = 1;
         }
 
-        if (incrementCharBufIndex) {
-            // Increase the char buffer index and positions if a character was added
-            charBufIndex++;
-            charBufCol++;
-            if (charBufCol >= DISPLAY_FRAME_WIDTH_CHAR) {
-                charBufCol = 0;
-                charBufRow++;
-            }
-        }
+        if (incrementCharBufColumn) charBufCol++;
+        if (incrementCharBufIndex) charBufIndex++;
     }
 }
 

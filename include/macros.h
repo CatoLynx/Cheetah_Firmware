@@ -103,13 +103,9 @@ DISPLAY_UNIT_BUF_SIZE:              Number of position slots for selection displ
     #define DISPLAY_CHAR_BUF_SIZE (DISPLAY_FRAME_WIDTH_CHAR * DISPLAY_FRAME_HEIGHT_CHAR)
     #define DISPLAY_LINE_FLAGS_BUF_SIZE (DISPLAY_FRAME_HEIGHT_CHAR)
 
-    #if defined(CONFIG_DISPLAY_QUIRKS_COMBINING_FULL_STOP)
-        // If the display has combining full stops, the text buffer needs to be
-        // twice as large as the char buffer, since every character could be succeeded by a full stop
-        #define DISPLAY_TEXT_BUF_SIZE (DISPLAY_CHAR_BUF_SIZE * 2)
-    #else
-        #define DISPLAY_TEXT_BUF_SIZE DISPLAY_CHAR_BUF_SIZE
-    #endif
+    // Just define the text buffer as 5x the char buffer size,
+    // to allow enough room for line overruns, combining full stops if applicable, etc.
+    #define DISPLAY_TEXT_BUF_SIZE DISPLAY_CHAR_BUF_SIZE * 5
 
     #if defined(CONFIG_DISPLAY_LINE_FLAGS_INDICATOR_LIGHT)
         #define _LINE_FLAG_BIT_0 0x01
