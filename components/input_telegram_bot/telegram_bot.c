@@ -118,7 +118,7 @@ esp_err_t telegram_bot_http_event_handler(esp_http_client_event_t *evt) {
         }
 
         case HTTP_EVENT_DISCONNECTED: {
-            ESP_LOGI(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
+            ESP_LOGD(LOG_TAG, "HTTP_EVENT_DISCONNECTED");
             if (resp_buf != NULL) {
                 free(resp_buf);
                 resp_buf = NULL;
@@ -257,7 +257,7 @@ void telegram_bot_send_request(telegram_api_endpoint_t endpoint, ...) {
     }
 
     if (err == ESP_OK) {
-        ESP_LOGI(LOG_TAG, "HTTP GET Status = %d, content_length = %lld",
+        ESP_LOGD(LOG_TAG, "HTTP GET Status = %d, content_length = %lld",
                 esp_http_client_get_status_code(client),
                 esp_http_client_get_content_length(client));
     } else {
@@ -440,7 +440,11 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
 
                     if (logChannelEnabled && logChannelIdInited && strlen(logChannelId) != 0) {
                         ESP_LOGD(LOG_TAG, "Sending log channel message");
-                        telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer);
+                        char* output_buffer_utf8 = malloc(output_buffer_size * 2);
+                        memset(output_buffer_utf8, 0x00, output_buffer_size * 2);
+                        buffer_iso88591_to_utf8(output_buffer_utf8, (char*)output_buffer);
+                        telegram_bot_send_request(TG_SEND_MESSAGE, logChannelIdInt, output_buffer_utf8);
+                        free(output_buffer_utf8);
                     }
                 }
 
@@ -450,6 +454,9 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
         }
 
         case TG_SEND_MESSAGE: {
+            char* jsonStr = cJSON_PrintUnformatted(json);
+            ESP_LOGI(LOG_TAG, "%s", jsonStr);
+            cJSON_free(jsonStr);
             break;
         }
     }
