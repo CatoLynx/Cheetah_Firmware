@@ -395,7 +395,15 @@ esp_err_t telegram_bot_process_response(telegram_api_endpoint_t endpoint, cJSON*
                     ESP_LOGD(LOG_TAG, "Filtering message text");
 
                     #if defined(CONFIG_TG_BOT_FORCE_UPPERCASE)
-                    str_toUpper(text_utf8); // TODO: Handle UTF-8 correctly
+                    // Filtering only works in UTF-8 and uppercasing only works in ISO-8859-1.
+                    // This is horrible. Just convert back and forth once.
+                    char* text_iso88591 = malloc(strlen(text_utf8) + 1); // Text can only be same length or less in ISO-8859-1
+                    memset(text_iso88591, 0x00, strlen(text_utf8) + 1);
+                    buffer_utf8_to_iso88591(text_iso88591, text_utf8);
+                    str_toUpper_iso88591(text_iso88591);
+                    memset(text_utf8, 0x00, strlen(text_utf8) + 1);
+                    buffer_iso88591_to_utf8(text_utf8, text_iso88591);
+                    free(text_iso88591);
                     #endif
 
                     #if defined(CONFIG_TG_BOT_CHARSET_METHOD_ALLOWED_CHARS_STR)

@@ -65,6 +65,17 @@ void str_toUpper(char* str) {
   }
 }
 
+void str_toUpper_iso88591(char* str) {
+  while (*str) {
+    if (*str >= 0xE0 && *str <= 0xFE && *str != 0xF7 /*division/multiplication sign*/) {
+      *str -= 0x20;
+    } else {
+      *str = toupper((unsigned char) *str);
+    }
+    str++;
+  }
+}
+
 void str_filterAllowed(char* out, char* in, char* allowedChars, bool allowLineBreaks) {
   char* allowedCharsOrig = allowedChars;
   while (*in) {
